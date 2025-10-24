@@ -1599,14 +1599,6 @@ class MainScene extends Phaser.Scene {
         busStop.fillRect(x - 12, groundLevel - 124, 4, 8); // Front windshield
         busStop.fillCircle(x - 6, groundLevel - 114, 2); // wheel
         busStop.fillCircle(x + 6, groundLevel - 114, 2); // wheel
-
-        // "BUS STOP" text below sign
-        const busText = this.add.text(x, groundLevel - 95, 'BUS STOP', {
-            fontSize: '9px',
-            color: '#1976D2',
-            fontStyle: 'bold',
-            fontFamily: 'Arial'
-        }).setOrigin(0.5).setDepth(10.5);
     }
 
     spawnBuses() {
