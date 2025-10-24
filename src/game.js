@@ -1583,53 +1583,26 @@ class MainScene extends Phaser.Scene {
         const busStop = this.add.graphics();
         busStop.setDepth(10.5); // Above buildings (10), but behind citizens (11) and buses (12)
 
-        // Shelter roof (blue/teal metal) - sits at top of 100px tall shelter
-        busStop.fillStyle(0x0277BD, 1);
-        busStop.fillRect(x - 60, groundLevel - 100, 120, 5);
-        busStop.fillStyle(0x01579B, 1);
-        busStop.fillRect(x - 60, groundLevel - 95, 120, 3);
-
-        // Shelter back wall (transparent plexiglass - light blue)
-        busStop.fillStyle(0x81D4FA, 0.3);
-        busStop.fillRect(x - 55, groundLevel - 92, 5, 87);
-        busStop.lineStyle(2, 0x0277BD, 1);
-        busStop.strokeRect(x - 55, groundLevel - 92, 5, 87);
-
-        // Support posts (metal poles) - go all the way to ground
+        // Simple pole that goes to ground
         busStop.fillStyle(0x424242, 1);
-        busStop.fillRect(x - 55, groundLevel - 100, 6, 100);
-        busStop.fillRect(x + 49, groundLevel - 100, 6, 100);
+        busStop.fillRect(x - 2, groundLevel - 110, 4, 110);
 
-        // Bench inside shelter (sitting height)
-        busStop.fillStyle(0x2196F3, 1);
-        busStop.fillRect(x - 45, groundLevel - 35, 80, 8);
-        busStop.fillRect(x - 45, groundLevel - 60, 80, 3); // back rest
-
-        // Bench legs
-        busStop.fillStyle(0x424242, 1);
-        busStop.fillRect(x - 40, groundLevel - 35, 4, 30);
-        busStop.fillRect(x + 26, groundLevel - 35, 4, 30);
-
-        // Bus stop sign pole - taller, goes to ground
-        busStop.fillStyle(0x424242, 1);
-        busStop.fillRect(x + 60, groundLevel - 110, 4, 110);
-
-        // Bus stop sign (blue circle with bus icon) - at top of pole
+        // Bus stop sign (blue circle with bus icon)
         busStop.fillStyle(0x1976D2, 1);
-        busStop.fillCircle(x + 62, groundLevel - 120, 18);
+        busStop.fillCircle(x, groundLevel - 120, 20);
         busStop.lineStyle(3, 0xFFFFFF, 1);
-        busStop.strokeCircle(x + 62, groundLevel - 120, 18);
+        busStop.strokeCircle(x, groundLevel - 120, 20);
 
         // Simple bus icon (white rectangle)
         busStop.fillStyle(0xFFFFFF, 1);
-        busStop.fillRoundedRect(x + 52, groundLevel - 128, 20, 12, 2);
-        busStop.fillRect(x + 50, groundLevel - 124, 4, 8); // Front windshield
-        busStop.fillCircle(x + 56, groundLevel - 114, 2); // wheel
-        busStop.fillCircle(x + 68, groundLevel - 114, 2); // wheel
+        busStop.fillRoundedRect(x - 10, groundLevel - 128, 20, 12, 2);
+        busStop.fillRect(x - 12, groundLevel - 124, 4, 8); // Front windshield
+        busStop.fillCircle(x - 6, groundLevel - 114, 2); // wheel
+        busStop.fillCircle(x + 6, groundLevel - 114, 2); // wheel
 
-        // "BUS" text below sign
-        const busText = this.add.text(x + 62, groundLevel - 95, 'BUS', {
-            fontSize: '10px',
+        // "BUS STOP" text below sign
+        const busText = this.add.text(x, groundLevel - 95, 'BUS STOP', {
+            fontSize: '9px',
             color: '#1976D2',
             fontStyle: 'bold',
             fontFamily: 'Arial'
