@@ -3490,20 +3490,30 @@ class MainScene extends Phaser.Scene {
 
     updateBuildingPreview() {
         if (!this.buildMode || !this.selectedBuilding) {
-            console.log('Preview skipped - buildMode:', this.buildMode, 'selectedBuilding:', this.selectedBuilding);
             return;
         }
 
         const building = this.buildingTypes[this.selectedBuilding];
+        if (!building) {
+            console.error('Building type not found:', this.selectedBuilding);
+            return;
+        }
+
         const mouseWorldX = this.input.activePointer.x + this.cameras.main.scrollX;
 
         // Snap to grid (every 240 pixels along the street for bigger buildings)
         const snappedX = Math.round(mouseWorldX / 240) * 240;
         const buildingY = this.gameHeight - 100; // Ground level (matches the gray street)
 
+        // Only recreate preview if position changed
+        if (this.buildingPreview && this.buildingPreview.snappedX === snappedX && this.buildingPreview.buildingY === buildingY) {
+            return; // Position hasn't changed, keep existing preview
+        }
+
         // Remove old preview
         if (this.buildingPreview) {
             this.buildingPreview.destroy();
+            this.buildingPreview = null;
         }
 
         // Create new preview in WORLD coordinates
@@ -3521,7 +3531,11 @@ class MainScene extends Phaser.Scene {
                                   building.width, building.height);
 
         // Draw building details (windows, doors, etc.) so user can see what they're placing
-        this.drawBuildingDetails(previewGraphics, this.selectedBuilding, snappedX, buildingY);
+        try {
+            this.drawBuildingDetails(previewGraphics, this.selectedBuilding, snappedX, buildingY);
+        } catch (error) {
+            console.error('Error drawing building preview details:', error);
+        }
 
         // Add bright green outline to show it's a preview
         previewGraphics.lineStyle(5, 0x00FF00, 0.8);
@@ -3795,39 +3809,44 @@ class MainScene extends Phaser.Scene {
     }
 
     saveGame() {
-        const saveData = {
-            money: this.money,
-            wood: this.wood,
-            bricks: this.bricks,
-            bankBalance: this.bankBalance,
-            loanAmount: this.loanAmount,
-            gameTime: this.gameTime,
-            timeSpeed: this.timeSpeed,
-            buildings: this.buildings.map(b => ({
-                type: b.type,
-                x: b.x,
-                y: b.y,
-                accumulatedIncome: b.accumulatedIncome || 0,
-                lastIncomeTime: b.lastIncomeTime || Date.now(),
-                storedResources: b.storedResources || 0,
-                lastResourceTime: b.lastResourceTime || Date.now(),
-                placedDistrict: b.placedDistrict || null,
-                districtBonus: b.districtBonus || 1.0,
-                // Save apartment units
-                units: b.units || undefined,
-                // Save hotel rooms
-                rooms: b.rooms || undefined,
-                lastNightCheck: b.lastNightCheck || undefined,
-                // Save shop inventory
-                inventory: b.inventory || undefined,
-                hasEmployee: b.hasEmployee,
-                isOpen: b.isOpen,
-                dailyWage: b.dailyWage,
-                lastWageCheck: b.lastWageCheck
-            }))
-        };
-        localStorage.setItem('mainstreetmayor_save', JSON.stringify(saveData));
-        console.log(`Game saved! ${this.buildings.length} buildings:`, this.buildings.map(b => `${b.type} at x=${b.x}`));
+        try {
+            const saveData = {
+                money: this.money,
+                wood: this.wood,
+                bricks: this.bricks,
+                bankBalance: this.bankBalance,
+                loanAmount: this.loanAmount,
+                gameTime: this.gameTime,
+                timeSpeed: this.timeSpeed,
+                buildings: this.buildings.map(b => ({
+                    type: b.type,
+                    x: b.x,
+                    y: b.y,
+                    accumulatedIncome: b.accumulatedIncome || 0,
+                    lastIncomeTime: b.lastIncomeTime || Date.now(),
+                    storedResources: b.storedResources || 0,
+                    lastResourceTime: b.lastResourceTime || Date.now(),
+                    placedDistrict: b.placedDistrict || null,
+                    districtBonus: b.districtBonus || 1.0,
+                    // Save apartment units
+                    units: b.units || undefined,
+                    // Save hotel rooms
+                    rooms: b.rooms || undefined,
+                    lastNightCheck: b.lastNightCheck || undefined,
+                    // Save shop inventory
+                    inventory: b.inventory || undefined,
+                    hasEmployee: b.hasEmployee,
+                    isOpen: b.isOpen,
+                    dailyWage: b.dailyWage,
+                    lastWageCheck: b.lastWageCheck
+                }))
+            };
+            localStorage.setItem('mainstreetmayor_save', JSON.stringify(saveData));
+            console.log(`Game saved! ${this.buildings.length} buildings:`, this.buildings.map(b => `${b.type} at x=${b.x}`));
+        } catch (error) {
+            console.error('Error saving game:', error);
+            // Game continues even if save fails
+        }
     }
 
     loadGame() {
