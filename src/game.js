@@ -36,6 +36,9 @@ class MainScene extends Phaser.Scene {
         // Creative mode (unlimited resources for building preview)
         this.creativeMode = false;
 
+        // Pause system
+        this.isPaused = false;
+
         // Building system
         this.buildMode = false;
         this.deleteMode = false;  // Delete building mode
@@ -44,22 +47,54 @@ class MainScene extends Phaser.Scene {
         this.buildings = [];
         this.buildingTypes = {
             house: { name: 'House', cost: 100, wood: 10, bricks: 5, width: 160, height: 260, color: 0xFF6B6B,
-                    incomeRate: 5, maxIncome: 50 },  // Two-story house, $5/min, max $50
+                    incomeRate: 5, maxIncome: 50, district: 'residential' },  // Two-story house, $5/min, max $50
             apartment: { name: 'Apartment', cost: 400, wood: 30, bricks: 35, width: 200, height: 360, color: 0xFF8C94,
-                    units: 8, incomePerUnit: 8, maxIncomePerUnit: 80 },  // 4 stories, 2 units per floor
+                    units: 8, incomePerUnit: 8, maxIncomePerUnit: 80, district: 'residential' },  // 4 stories, 2 units per floor
             hotel: { name: 'Hotel', cost: 600, wood: 40, bricks: 45, width: 240, height: 400, color: 0x9C27B0,
-                    rooms: 10, nightlyRate: 50, cleaningCost: 15 },  // 5 stories, 2 rooms per floor, $50/night per room, $15 to clean
+                    rooms: 10, nightlyRate: 50, cleaningCost: 15, district: 'residential' },  // 5 stories, 2 rooms per floor, $50/night per room, $15 to clean
             shop: { name: 'Shop', cost: 200, wood: 15, bricks: 10, width: 200, height: 240, color: 0x4ECDC4,
-                    incomeRate: 10, maxIncome: 100 },  // $10/min, max $100
+                    incomeRate: 10, maxIncome: 100, district: 'downtown' },  // $10/min, max $100
             restaurant: { name: 'Restaurant', cost: 300, wood: 20, bricks: 15, width: 240, height: 220, color: 0xFFE66D,
-                    incomeRate: 15, maxIncome: 150 },  // $15/min, max $150
-            bank: { name: 'Bank', cost: 500, wood: 25, bricks: 30, width: 220, height: 260, color: 0x2E7D32 },
-            market: { name: 'Market', cost: 150, wood: 12, bricks: 8, width: 180, height: 180, color: 0xFF9800 },
+                    incomeRate: 15, maxIncome: 150, district: 'downtown' },  // $15/min, max $150
+            bank: { name: 'Bank', cost: 500, wood: 25, bricks: 30, width: 220, height: 260, color: 0x2E7D32, district: 'downtown' },
+            market: { name: 'Market', cost: 150, wood: 12, bricks: 8, width: 180, height: 180, color: 0xFF9800, district: 'industrial' },
             lumbermill: { name: 'Lumber Mill', cost: 250, wood: 5, bricks: 20, width: 200, height: 200, color: 0x8D6E63,
-                    resourceType: 'wood', regenRate: 1, maxStorage: 15 },  // 1 wood/min, max 15
+                    resourceType: 'wood', regenRate: 1, maxStorage: 15, district: 'industrial' },  // 1 wood/min, max 15
             brickfactory: { name: 'Brick Factory', cost: 250, wood: 20, bricks: 5, width: 200, height: 200, color: 0xD84315,
-                    resourceType: 'bricks', regenRate: 1, maxStorage: 15 }  // 1 brick/min, max 15
+                    resourceType: 'bricks', regenRate: 1, maxStorage: 15, district: 'industrial' }  // 1 brick/min, max 15
         };
+
+        // District system
+        this.districts = {
+            residential: {
+                name: 'Residential District',
+                startX: 0,
+                endX: 1000,
+                centerX: 500,
+                color: 0xFF6B6B,
+                description: 'Houses, Apartments, Hotels'
+            },
+            downtown: {
+                name: 'Downtown',
+                startX: 1000,
+                endX: 2000,
+                centerX: 1500,
+                color: 0x4ECDC4,
+                description: 'Shops, Restaurants, Banks'
+            },
+            industrial: {
+                name: 'Industrial District',
+                startX: 2000,
+                endX: 3000,
+                centerX: 2500,
+                color: 0x8D6E63,
+                description: 'Markets, Lumber Mills, Brick Factories'
+            }
+        };
+        this.districtTravelMenuOpen = false;
+
+        // Settings menu state
+        this.settingsMenuOpen = false;
 
         // === BACKGROUND LAYERS (Parallax) ===
 
@@ -102,6 +137,9 @@ class MainScene extends Phaser.Scene {
         // Add street furniture (benches, lamp posts, trash cans, mailboxes)
         this.lampPosts = []; // Track lamp posts for day/night lighting
         this.createStreetFurniture();
+
+        // Create district markers
+        this.createDistrictMarkers();
 
         // Create player as a simple colored rectangle first
         this.player = this.physics.add.sprite(100, this.gameHeight - 200);
@@ -277,46 +315,343 @@ class MainScene extends Phaser.Scene {
         this.rKey = this.input.keyboard.addKey('R');
         this.tKey = this.input.keyboard.addKey('T');
         this.cKey = this.input.keyboard.addKey('C');
+        this.pKey = this.input.keyboard.addKey('P');
 
         // Mouse input for building placement
         this.input.on('pointerdown', (pointer) => {
-            if (this.buildMode && this.buildingPreview) {
-                this.placeBuilding();
+            if (this.buildMode && this.buildingPreview && !this.buildConfirmShowing) {
+                // Show confirmation dialog instead of placing immediately
+                const buildingType = this.buildingTypes[this.selectedBuilding];
+                const cost = buildingType.cost;
+                const wood = buildingType.wood;
+                const bricks = buildingType.bricks;
+
+                this.buildConfirmUI.setText(`Place ${buildingType.name}?\n\nCost: $${cost}, 🪵${wood}, 🧱${bricks}`);
+                this.buildConfirmContainer.setVisible(true);
+                this.buildConfirmShowing = true;
             }
         });
 
-        // UI - Controls (top left - compact)
-        const controls = this.add.text(20, 20, 'WASD/Arrows: Move | Space: Jump | B: Build | E: Interact | R: Restart | T: Speed | C: Creative', {
-            fontSize: '11px',
+        // UI - Controls (top left - simplified)
+        const controls = this.add.text(20, 20, 'WASD/Arrows: Move | Space: Jump | E: Interact', {
+            fontSize: '12px',
             color: '#ffffff',
             backgroundColor: '#000000',
             padding: { x: 8, y: 4 }
         }).setScrollFactor(0);
 
         // Resource UI (top left, below controls)
-        this.resourceUI = this.add.text(20, 48, '', {
+        this.resourceUI = this.add.text(20, 45, '', {
             fontSize: '14px',
             color: '#ffffff',
             backgroundColor: '#000000',
             padding: { x: 8, y: 6 }
         }).setScrollFactor(0);
 
-        // Time UI (top right)
-        this.timeUI = this.add.text(this.gameWidth - 220, 20, '', {
+        // Settings button (top right)
+        this.settingsButton = this.add.text(this.gameWidth - 130, 20, '⚙️ MENU', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#424242',
+            padding: { x: 12, y: 6 }
+        }).setScrollFactor(0).setDepth(9998).setInteractive();
+
+        this.settingsButton.on('pointerdown', () => {
+            this.settingsMenuOpen = !this.settingsMenuOpen;
+            this.settingsDropdown.setVisible(this.settingsMenuOpen);
+        });
+
+        this.settingsButton.on('pointerover', () => {
+            this.settingsButton.setStyle({ backgroundColor: '#616161' });
+        });
+
+        this.settingsButton.on('pointerout', () => {
+            this.settingsButton.setStyle({ backgroundColor: '#424242' });
+        });
+
+        // Settings dropdown menu
+        this.settingsDropdown = this.add.container(this.gameWidth - 200, 55);
+        this.settingsDropdown.setScrollFactor(0).setDepth(9999).setVisible(false);
+
+        const dropdownBg = this.add.rectangle(0, 0, 200, 240, 0x424242, 1);
+        dropdownBg.setOrigin(0, 0);
+        this.settingsDropdown.add(dropdownBg);
+
+        // Pause button
+        this.pauseButton = this.add.text(10, 10, '⏸️ Pause', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive();
+        this.settingsDropdown.add(this.pauseButton);
+
+        // Restart button
+        this.restartButton = this.add.text(10, 40, '🔄 Restart', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive();
+        this.settingsDropdown.add(this.restartButton);
+
+        // Speed button
+        this.speedButton = this.add.text(10, 70, '⏩ Speed: 1x', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive();
+        this.settingsDropdown.add(this.speedButton);
+
+        // Creative mode button
+        this.creativeButton = this.add.text(10, 100, '🎨 Creative: OFF', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive();
+        this.settingsDropdown.add(this.creativeButton);
+
+        // Travel button
+        this.travelButton = this.add.text(10, 130, '🚌 Fast Travel', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive();
+        this.settingsDropdown.add(this.travelButton);
+
+        // Build button
+        this.buildButton = this.add.text(10, 160, '🏗️ Build Mode', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive();
+        this.settingsDropdown.add(this.buildButton);
+
+        // Demolish button
+        this.demolishButton = this.add.text(10, 190, '💥 Demolish Mode', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive();
+        this.settingsDropdown.add(this.demolishButton);
+
+        // Add hover effects to all dropdown buttons
+        [this.pauseButton, this.restartButton, this.speedButton, this.creativeButton, this.travelButton, this.buildButton, this.demolishButton].forEach(btn => {
+            btn.on('pointerover', () => btn.setStyle({ color: '#FFD700' }));
+            btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
+        });
+
+        // Add click handlers for dropdown buttons
+        this.pauseButton.on('pointerdown', () => {
+            this.isPaused = !this.isPaused;
+            this.pauseButton.setText(this.isPaused ? '▶️ Resume' : '⏸️ Pause');
+            // No overlay - just pause time, allow building/interaction
+        });
+
+        this.restartButton.on('pointerdown', () => {
+            this.settingsMenuOpen = false;
+            this.settingsDropdown.setVisible(false);
+            this.restartConfirmShowing = true;
+            this.restartConfirmUI.setText('⚠️ RESTART GAME? ⚠️\nAll progress will be lost!');
+            this.restartConfirmContainer.setVisible(true);
+        });
+
+        this.speedButton.on('pointerdown', () => {
+            this.timeSpeed = this.timeSpeed === 1 ? 2 : this.timeSpeed === 2 ? 3 : 1;
+            this.speedButton.setText(`⏩ Speed: ${this.timeSpeed}x`);
+        });
+
+        this.creativeButton.on('pointerdown', () => {
+            this.creativeMode = !this.creativeMode;
+            this.creativeButton.setText(this.creativeMode ? '🎨 Creative: ON' : '🎨 Creative: OFF');
+        });
+
+        this.travelButton.on('pointerdown', () => {
+            this.settingsMenuOpen = false;
+            this.settingsDropdown.setVisible(false);
+            this.districtTravelMenuOpen = true;
+            this.districtTravelContainer.setVisible(true);
+        });
+
+        this.buildButton.on('pointerdown', () => {
+            this.settingsMenuOpen = false;
+            this.settingsDropdown.setVisible(false);
+            this.buildMode = !this.buildMode;
+            this.deleteMode = false;
+            this.buildMenuContainer.setVisible(this.buildMode);
+            if (this.buildMode) {
+                this.selectedBuilding = 'house';
+                this.updateBuildingButtonStates();
+            } else {
+                this.selectedBuilding = null;
+                if (this.buildingPreview) {
+                    this.buildingPreview.destroy();
+                    this.buildingPreview = null;
+                }
+            }
+        });
+
+        this.demolishButton.on('pointerdown', () => {
+            this.settingsMenuOpen = false;
+            this.settingsDropdown.setVisible(false);
+            this.deleteMode = !this.deleteMode;
+            this.buildMode = false;
+            this.buildMenuContainer.setVisible(false);
+            if (!this.deleteMode) {
+                this.selectedBuilding = null;
+                if (this.buildingPreview) {
+                    this.buildingPreview.destroy();
+                    this.buildingPreview = null;
+                }
+            }
+        });
+
+        // Time UI (top right, next to settings)
+        this.timeUI = this.add.text(this.gameWidth - 300, 20, '', {
             fontSize: '16px',
             color: '#ffffff',
             backgroundColor: '#1976D2',
             padding: { x: 10, y: 6 }
         }).setScrollFactor(0);
 
-        // Build menu UI
-        this.buildMenuUI = this.add.text(this.gameWidth / 2 - 200, 20, '', {
+        // Build menu UI (clickable buttons at bottom of screen)
+        this.buildMenuContainer = this.add.container(this.gameWidth / 2, this.gameHeight - 60);
+        this.buildMenuContainer.setScrollFactor(0).setDepth(9998).setVisible(false);
+
+        const buildMenuBg = this.add.rectangle(0, 0, this.gameWidth, 120, 0x000000, 0.9);
+        this.buildMenuContainer.add(buildMenuBg);
+
+        // Build menu title
+        this.buildMenuTitle = this.add.text(0, -40, 'SELECT BUILDING TO PLACE', {
             fontSize: '14px',
             color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 10, y: 8 }
-        }).setScrollFactor(0);
-        this.buildMenuUI.setVisible(false);
+            align: 'center'
+        }).setOrigin(0.5);
+        this.buildMenuContainer.add(this.buildMenuTitle);
+
+        // Create building buttons (2 rows of 4)
+        const buildings = [
+            { type: 'house', label: '🏠 House\n$100', color: '#FF6B6B' },
+            { type: 'apartment', label: '🏢 Apartment\n$400', color: '#FF8C94' },
+            { type: 'hotel', label: '🏨 Hotel\n$600', color: '#9C27B0' },
+            { type: 'shop', label: '🛍️ Shop\n$200', color: '#4ECDC4' },
+            { type: 'restaurant', label: '🍽️ Restaurant\n$300', color: '#FFE66D' },
+            { type: 'bank', label: '🏦 Bank\n$500', color: '#2E7D32' },
+            { type: 'market', label: '🏪 Market\n$150', color: '#FF9800' },
+            { type: 'lumbermill', label: '🌲 Lumber\n$250', color: '#8D6E63' }
+        ];
+
+        this.buildingButtons = {};
+        buildings.forEach((building, index) => {
+            const col = index % 4;
+            const row = Math.floor(index / 4);
+            const x = -300 + (col * 200);
+            const y = -5 + (row * 35);
+
+            const btn = this.add.text(x, y, building.label, {
+                fontSize: '12px',
+                color: '#ffffff',
+                backgroundColor: building.color,
+                padding: { x: 10, y: 5 },
+                align: 'center'
+            }).setOrigin(0.5).setInteractive();
+
+            btn.on('pointerdown', () => {
+                this.selectedBuilding = building.type;
+                this.updateBuildingButtonStates();
+            });
+
+            btn.on('pointerover', () => {
+                if (this.selectedBuilding !== building.type) {
+                    btn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
+                }
+            });
+
+            btn.on('pointerout', () => {
+                if (this.selectedBuilding !== building.type) {
+                    btn.setStyle({ backgroundColor: building.color, color: '#ffffff' });
+                }
+            });
+
+            this.buildMenuContainer.add(btn);
+            this.buildingButtons[building.type] = { button: btn, originalColor: building.color };
+        });
+
+        // Add brick factory button
+        const brickBtn = this.add.text(100, 30, '🧱 Brick\n$250', {
+            fontSize: '12px',
+            color: '#ffffff',
+            backgroundColor: '#D84315',
+            padding: { x: 10, y: 5 },
+            align: 'center'
+        }).setOrigin(0.5).setInteractive();
+
+        brickBtn.on('pointerdown', () => {
+            this.selectedBuilding = 'brickfactory';
+            this.updateBuildingButtonStates();
+        });
+
+        brickBtn.on('pointerover', () => {
+            if (this.selectedBuilding !== 'brickfactory') {
+                brickBtn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
+            }
+        });
+
+        brickBtn.on('pointerout', () => {
+            if (this.selectedBuilding !== 'brickfactory') {
+                brickBtn.setStyle({ backgroundColor: '#D84315', color: '#ffffff' });
+            }
+        });
+
+        this.buildMenuContainer.add(brickBtn);
+        this.buildingButtons['brickfactory'] = { button: brickBtn, originalColor: '#D84315' };
+
+        // Demolish mode UI (simple overlay)
+        this.demolishUI = this.add.text(this.gameWidth / 2, this.gameHeight - 60, '💥 DEMOLISH MODE - Click any building to delete it', {
+            fontSize: '18px',
+            color: '#ffffff',
+            backgroundColor: '#D32F2F',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(9998).setVisible(false);
+
+        // Building placement confirmation UI
+        this.buildConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
+        this.buildConfirmContainer.setScrollFactor(0).setDepth(10001).setVisible(false);
+
+        const buildConfirmBg = this.add.rectangle(0, 0, 400, 180, 0x1976D2, 1);
+        this.buildConfirmContainer.add(buildConfirmBg);
+
+        this.buildConfirmUI = this.add.text(0, -40, '', {
+            fontSize: '16px',
+            color: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+        this.buildConfirmContainer.add(this.buildConfirmUI);
+
+        this.buildConfirmButton = this.add.text(-80, 40, 'PLACE', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#2E7D32',
+            padding: { x: 20, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.buildConfirmContainer.add(this.buildConfirmButton);
+
+        this.buildCancelButton = this.add.text(80, 40, 'CANCEL', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#424242',
+            padding: { x: 20, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.buildConfirmContainer.add(this.buildCancelButton);
+
+        this.buildConfirmButton.on('pointerover', () => this.buildConfirmButton.setStyle({ backgroundColor: '#4CAF50' }));
+        this.buildConfirmButton.on('pointerout', () => this.buildConfirmButton.setStyle({ backgroundColor: '#2E7D32' }));
+        this.buildCancelButton.on('pointerover', () => this.buildCancelButton.setStyle({ backgroundColor: '#616161' }));
+        this.buildCancelButton.on('pointerout', () => this.buildCancelButton.setStyle({ backgroundColor: '#424242' }));
+
+        this.buildConfirmButton.on('pointerdown', () => {
+            this.placeBuilding();
+            this.buildConfirmContainer.setVisible(false);
+            this.buildConfirmShowing = false;
+        });
+
+        this.buildCancelButton.on('pointerdown', () => {
+            this.buildConfirmContainer.setVisible(false);
+            this.buildConfirmShowing = false;
+        });
+
+        this.buildConfirmShowing = false;
 
         // Bank UI
         this.bankUI = this.add.text(this.gameWidth / 2 - 200, this.gameHeight / 2 - 100, '', {
@@ -351,14 +686,50 @@ class MainScene extends Phaser.Scene {
         this.resourceBuildingMenuOpen = false;
         this.nearResourceBuilding = null; // Track which resource building player is near
 
-        // Restart confirmation UI
-        this.restartConfirmUI = this.add.text(this.gameWidth / 2, this.gameHeight / 2, '', {
+        // Restart confirmation UI (container with buttons)
+        this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
+        this.restartConfirmContainer.setScrollFactor(0).setDepth(10000).setVisible(false);
+
+        const restartBg = this.add.rectangle(0, 0, 400, 180, 0xC62828, 1);
+        this.restartConfirmContainer.add(restartBg);
+
+        this.restartConfirmUI = this.add.text(0, -40, '', {
             fontSize: '18px',
             color: '#ffffff',
-            backgroundColor: '#C62828',
-            padding: { x: 15, y: 10 }
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
-        this.restartConfirmUI.setVisible(false);
+            align: 'center'
+        }).setOrigin(0.5);
+        this.restartConfirmContainer.add(this.restartConfirmUI);
+
+        this.restartConfirmButton = this.add.text(-80, 40, 'CONFIRM', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#D32F2F',
+            padding: { x: 20, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.restartConfirmContainer.add(this.restartConfirmButton);
+
+        this.restartCancelButton = this.add.text(80, 40, 'CANCEL', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#424242',
+            padding: { x: 20, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.restartConfirmContainer.add(this.restartCancelButton);
+
+        this.restartConfirmButton.on('pointerover', () => this.restartConfirmButton.setStyle({ backgroundColor: '#EF5350' }));
+        this.restartConfirmButton.on('pointerout', () => this.restartConfirmButton.setStyle({ backgroundColor: '#D32F2F' }));
+        this.restartCancelButton.on('pointerover', () => this.restartCancelButton.setStyle({ backgroundColor: '#616161' }));
+        this.restartCancelButton.on('pointerout', () => this.restartCancelButton.setStyle({ backgroundColor: '#424242' }));
+
+        this.restartConfirmButton.on('pointerdown', () => {
+            this.resetGame();
+        });
+
+        this.restartCancelButton.on('pointerdown', () => {
+            this.restartConfirmShowing = false;
+            this.restartConfirmContainer.setVisible(false);
+        });
+
         this.restartConfirmShowing = false;
 
         // Delete confirmation UI
@@ -371,6 +742,102 @@ class MainScene extends Phaser.Scene {
         this.deleteConfirmUI.setVisible(false);
         this.deleteConfirmShowing = false;
         this.buildingToDelete = null;
+
+        // District travel UI (container with buttons)
+        this.districtTravelContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
+        this.districtTravelContainer.setScrollFactor(0).setDepth(10000).setVisible(false);
+
+        const travelBg = this.add.rectangle(0, 0, 500, 280, 0x1976D2, 1);
+        this.districtTravelContainer.add(travelBg);
+
+        this.districtTravelUI = this.add.text(0, -100, '🚌 FAST TRAVEL 🚌\nClick a district to travel:', {
+            fontSize: '18px',
+            color: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+        this.districtTravelContainer.add(this.districtTravelUI);
+
+        // Residential button
+        this.residentialButton = this.add.text(0, -40, '🏠 Residential District', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#FF6B6B',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setInteractive();
+        this.districtTravelContainer.add(this.residentialButton);
+
+        // Downtown button
+        this.downtownButton = this.add.text(0, 10, '🏢 Downtown', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#4ECDC4',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setInteractive();
+        this.districtTravelContainer.add(this.downtownButton);
+
+        // Industrial button
+        this.industrialButton = this.add.text(0, 60, '🏭 Industrial District', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#8D6E63',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setInteractive();
+        this.districtTravelContainer.add(this.industrialButton);
+
+        // Close button
+        this.travelCloseButton = this.add.text(0, 110, 'CLOSE', {
+            fontSize: '14px',
+            color: '#ffffff',
+            backgroundColor: '#424242',
+            padding: { x: 20, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.districtTravelContainer.add(this.travelCloseButton);
+
+        // Add hover effects
+        [this.residentialButton, this.downtownButton, this.industrialButton].forEach(btn => {
+            const originalBg = btn.style.backgroundColor;
+            btn.on('pointerover', () => btn.setStyle({ backgroundColor: '#FFD700', color: '#000000' }));
+            btn.on('pointerout', () => btn.setStyle({ backgroundColor: originalBg, color: '#ffffff' }));
+        });
+
+        this.travelCloseButton.on('pointerover', () => this.travelCloseButton.setStyle({ backgroundColor: '#616161' }));
+        this.travelCloseButton.on('pointerout', () => this.travelCloseButton.setStyle({ backgroundColor: '#424242' }));
+
+        // Add click handlers
+        this.residentialButton.on('pointerdown', () => {
+            this.player.x = this.districts.residential.centerX;
+            this.playerVisual.x = this.player.x;
+            this.districtTravelMenuOpen = false;
+            this.districtTravelContainer.setVisible(false);
+        });
+
+        this.downtownButton.on('pointerdown', () => {
+            this.player.x = this.districts.downtown.centerX;
+            this.playerVisual.x = this.player.x;
+            this.districtTravelMenuOpen = false;
+            this.districtTravelContainer.setVisible(false);
+        });
+
+        this.industrialButton.on('pointerdown', () => {
+            this.player.x = this.districts.industrial.centerX;
+            this.playerVisual.x = this.player.x;
+            this.districtTravelMenuOpen = false;
+            this.districtTravelContainer.setVisible(false);
+        });
+
+        this.travelCloseButton.on('pointerdown', () => {
+            this.districtTravelMenuOpen = false;
+            this.districtTravelContainer.setVisible(false);
+        });
+
+        // Pause UI
+        this.pauseUI = this.add.text(this.gameWidth / 2, this.gameHeight / 2, '', {
+            fontSize: '32px',
+            color: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 30, y: 20 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
+        this.pauseUI.setVisible(false);
 
         // Load saved game if exists
         this.loadGame();
@@ -826,6 +1293,56 @@ class MainScene extends Phaser.Scene {
                     this.createMailbox(x, groundLevel);
                     break;
             }
+        }
+    }
+
+    createDistrictMarkers() {
+        const groundLevel = this.gameHeight - 100;
+
+        // Create a marker for each district at its center
+        for (let districtKey in this.districts) {
+            const district = this.districts[districtKey];
+            const x = district.centerX;
+
+            // Sign post
+            const post = this.add.graphics();
+            post.setDepth(5);
+            post.fillStyle(0x654321, 1);
+            post.fillRect(x - 6, groundLevel - 200, 12, 200);
+
+            // Sign board background
+            const signBoard = this.add.graphics();
+            signBoard.setDepth(5);
+            signBoard.fillStyle(district.color, 1);
+            signBoard.fillRoundedRect(x - 120, groundLevel - 280, 240, 80, 8);
+            signBoard.lineStyle(4, 0x000000, 1);
+            signBoard.strokeRoundedRect(x - 120, groundLevel - 280, 240, 80, 8);
+
+            // District name text
+            const nameText = this.add.text(x, groundLevel - 260, district.name.toUpperCase(), {
+                fontSize: '18px',
+                color: '#ffffff',
+                fontStyle: 'bold',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(6);
+
+            // Description text
+            const descText = this.add.text(x, groundLevel - 235, district.description, {
+                fontSize: '11px',
+                color: '#ffffff',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(6);
+
+            // Add ground colored stripe for visual district separation
+            const stripe = this.add.rectangle(
+                district.startX + (district.endX - district.startX) / 2,
+                groundLevel + 10,
+                district.endX - district.startX,
+                20,
+                district.color,
+                0.2
+            );
+            stripe.setDepth(-5);
         }
     }
 
@@ -1582,12 +2099,33 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    updateBuildingButtonStates() {
+        // Update all building buttons to show which one is selected
+        for (let buildingType in this.buildingButtons) {
+            const btnData = this.buildingButtons[buildingType];
+            if (buildingType === this.selectedBuilding) {
+                btnData.button.setStyle({ backgroundColor: '#00FF00', color: '#000000' });
+            } else {
+                btnData.button.setStyle({ backgroundColor: btnData.originalColor, color: '#ffffff' });
+            }
+        }
+
+        // Update build menu title
+        if (this.selectedBuilding) {
+            const buildingType = this.buildingTypes[this.selectedBuilding];
+            const suggestedDistrict = buildingType ? this.districts[buildingType.district].name : '';
+            this.buildMenuTitle.setText(`${buildingType.name} selected\nSuggested: ${suggestedDistrict} (20% bonus!)\nClick on the map to place`);
+        }
+    }
+
     update() {
-        // Update game time based on real time passed and speed multiplier
+        // Update game time based on real time passed and speed multiplier (only if not paused)
         const now = Date.now();
-        const realTimePassed = (now - this.lastRealTime) / 1000; // seconds
-        const gameTimePassed = realTimePassed * this.timeSpeed * 60; // Game minutes (1 real second = 60 game seconds at 1x speed)
-        this.gameTime += gameTimePassed;
+        if (!this.isPaused) {
+            const realTimePassed = (now - this.lastRealTime) / 1000; // seconds
+            const gameTimePassed = realTimePassed * this.timeSpeed * 60; // Game minutes (1 real second = 60 game seconds at 1x speed)
+            this.gameTime += gameTimePassed;
+        }
         this.lastRealTime = now;
 
         // Calculate day, hour, minute
@@ -1669,17 +2207,7 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // Handle time speed toggle
-        if (Phaser.Input.Keyboard.JustDown(this.tKey)) {
-            this.timeSpeed = this.timeSpeed === 1 ? 2 : this.timeSpeed === 2 ? 3 : 1;
-            console.log(`Time speed: ${this.timeSpeed}x`);
-        }
-
-        // Handle creative mode toggle
-        if (Phaser.Input.Keyboard.JustDown(this.cKey) && !this.buildMode && !this.bankMenuOpen && !this.resourceBuildingMenuOpen && !this.restartConfirmShowing) {
-            this.creativeMode = !this.creativeMode;
-            console.log(`Creative mode: ${this.creativeMode ? 'ON' : 'OFF'}`);
-        }
+        // Time speed and creative mode are now controlled via settings menu (mouse clicks)
 
         // Update income accumulation and resource regeneration for all buildings
         for (let building of this.buildings) {
@@ -1689,11 +2217,12 @@ class MainScene extends Phaser.Scene {
             if (buildingType && buildingType.incomeRate) {
                 // Calculate time elapsed in minutes (adjusted for time speed)
                 const elapsedMinutes = ((now - building.lastIncomeTime) / 60000) * this.timeSpeed;
-                const incomeToAdd = elapsedMinutes * buildingType.incomeRate;
+                const bonus = building.districtBonus || 1.0;
+                const incomeToAdd = elapsedMinutes * buildingType.incomeRate * bonus;
 
                 building.accumulatedIncome = Math.min(
                     building.accumulatedIncome + incomeToAdd,
-                    buildingType.maxIncome
+                    buildingType.maxIncome * bonus
                 );
                 building.lastIncomeTime = now;
 
@@ -1757,11 +2286,12 @@ class MainScene extends Phaser.Scene {
                     if (unit.rented && unit.tenant) {
                         // Generate rent income
                         const elapsedMinutes = ((now - unit.lastIncomeTime) / 60000) * this.timeSpeed;
-                        const incomeToAdd = elapsedMinutes * unit.tenant.rentOffer;
+                        const bonus = building.districtBonus || 1.0;
+                        const incomeToAdd = elapsedMinutes * unit.tenant.rentOffer * bonus;
 
                         unit.accumulatedIncome = Math.min(
                             unit.accumulatedIncome + incomeToAdd,
-                            apartmentType.maxIncomePerUnit
+                            apartmentType.maxIncomePerUnit * bonus
                         );
                         unit.lastIncomeTime = now;
 
@@ -1884,25 +2414,7 @@ class MainScene extends Phaser.Scene {
         if (this.loanAmount > 0) resourceText += `\n💳 Debt: $${this.loanAmount}`;
         this.resourceUI.setText(resourceText);
 
-        // Restart confirmation
-        if (!this.restartConfirmShowing && Phaser.Input.Keyboard.JustDown(this.rKey) && !this.bankMenuOpen) {
-            this.restartConfirmShowing = true;
-            this.restartConfirmUI.setText('⚠️ RESTART GAME? ⚠️\nAll progress will be lost!\n\nPress R again to confirm\nPress ESC or Enter to cancel');
-            this.restartConfirmUI.setVisible(true);
-        }
-
-        if (this.restartConfirmShowing) {
-            // If confirmation is showing, check for confirmation or cancel
-            if (Phaser.Input.Keyboard.JustDown(this.rKey)) {
-                this.resetGame();
-            }
-            if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('ESC')) ||
-                       Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-                // ESC or Enter cancels
-                this.restartConfirmShowing = false;
-                this.restartConfirmUI.setVisible(false);
-            }
-        }
+        // Restart is now controlled via settings menu (mouse clicks)
 
         // Delete confirmation
         if (this.deleteConfirmShowing) {
@@ -1924,20 +2436,7 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // Toggle build mode
-        if (Phaser.Input.Keyboard.JustDown(this.bKey) && !this.restartConfirmShowing && !this.deleteConfirmShowing) {
-            this.buildMode = !this.buildMode;
-            this.deleteMode = false;  // Exit delete mode if entering build mode
-            if (this.buildMode) {
-                this.selectedBuilding = 'house'; // Default selection
-            } else {
-                this.selectedBuilding = null;
-                if (this.buildingPreview) {
-                    this.buildingPreview.destroy();
-                    this.buildingPreview = null;
-                }
-            }
-        }
+        // Pause and travel are now controlled via settings menu (mouse clicks)
 
         // Toggle delete mode
         if (Phaser.Input.Keyboard.JustDown(this.xKey) && !this.restartConfirmShowing && !this.deleteConfirmShowing) {
@@ -1952,44 +2451,20 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // Update build menu
+        // Build mode is now controlled via clickable menu at bottom of screen
+        // Update building preview if in build mode
         if (this.buildMode) {
-            let menuText = '=== BUILD MODE ===\n';
-            menuText += '1: House ($100, 🪵10, 🧱5)\n';
-            menuText += '2: Apartment ($400, 🪵30, 🧱35)\n';
-            menuText += '3: Shop ($200, 🪵15, 🧱10)\n';
-            menuText += '4: Restaurant ($300, 🪵20, 🧱15)\n';
-            menuText += '5: Bank ($500, 🪵25, 🧱30)\n';
-            menuText += '6: Market ($150, 🪵12, 🧱8)\n';
-            menuText += '7: Lumber Mill ($250, 🪵5, 🧱20)\n';
-            menuText += '8: Brick Factory ($250, 🪵20, 🧱5)\n';
-            menuText += 'Click to place | B to exit';
-            this.buildMenuUI.setText(menuText);
-            this.buildMenuUI.setVisible(true);
-
-            // Select building type
-            if (Phaser.Input.Keyboard.JustDown(this.key1)) this.selectedBuilding = 'house';
-            if (Phaser.Input.Keyboard.JustDown(this.key2)) this.selectedBuilding = 'apartment';
-            if (Phaser.Input.Keyboard.JustDown(this.key3)) this.selectedBuilding = 'shop';
-            if (Phaser.Input.Keyboard.JustDown(this.key4)) this.selectedBuilding = 'restaurant';
-            if (Phaser.Input.Keyboard.JustDown(this.key5)) this.selectedBuilding = 'bank';
-            if (Phaser.Input.Keyboard.JustDown(this.key6)) this.selectedBuilding = 'market';
-            if (Phaser.Input.Keyboard.JustDown(this.key7)) this.selectedBuilding = 'lumbermill';
-            if (Phaser.Input.Keyboard.JustDown(this.key8)) this.selectedBuilding = 'brickfactory';
-
-            // Update building preview
             this.updateBuildingPreview();
-        } else {
-            this.buildMenuUI.setVisible(false);
         }
 
         // Update delete mode UI
         if (this.deleteMode) {
-            let deleteText = '=== DELETE MODE ===\n';
-            deleteText += 'Click on a building to delete it\n';
-            deleteText += 'X to exit';
-            this.buildMenuUI.setText(deleteText);
-            this.buildMenuUI.setVisible(true);
+            this.demolishUI.setVisible(true);
+        } else {
+            this.demolishUI.setVisible(false);
+        }
+
+        if (this.deleteMode) {
 
             // Check for click on building to delete
             if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
@@ -2558,6 +3033,20 @@ class MainScene extends Phaser.Scene {
             }).setOrigin(0.5).setDepth(11);
         }
 
+        // Determine which district the building is in
+        let placedDistrict = null;
+        for (let districtKey in this.districts) {
+            const district = this.districts[districtKey];
+            if (x >= district.startX && x < district.endX) {
+                placedDistrict = districtKey;
+                break;
+            }
+        }
+
+        // Check if building is in its suggested district for bonus
+        const inCorrectDistrict = placedDistrict === building.district;
+        const districtBonus = inCorrectDistrict ? 1.2 : 1.0; // 20% bonus if in correct district
+
         // Add building with income and resource tracking
         const buildingData = {
             graphics: newBuilding,
@@ -2568,8 +3057,18 @@ class MainScene extends Phaser.Scene {
             accumulatedIncome: 0,
             lastIncomeTime: Date.now(),
             storedResources: 0,  // For resource buildings (lumber mill, brick factory)
-            lastResourceTime: Date.now()
+            lastResourceTime: Date.now(),
+            placedDistrict: placedDistrict,
+            districtBonus: districtBonus
         };
+
+        // Add visual indicator if building is in correct district
+        if (inCorrectDistrict) {
+            const bonusIndicator = this.add.text(x, y - building.height - 30, '⭐', {
+                fontSize: '20px'
+            }).setOrigin(0.5).setDepth(12);
+            buildingData.bonusIndicator = bonusIndicator;
+        }
 
         // Initialize apartment units if it's an apartment building
         if (this.selectedBuilding === 'apartment') {
@@ -2638,6 +3137,8 @@ class MainScene extends Phaser.Scene {
                 lastIncomeTime: b.lastIncomeTime || Date.now(),
                 storedResources: b.storedResources || 0,
                 lastResourceTime: b.lastResourceTime || Date.now(),
+                placedDistrict: b.placedDistrict || null,
+                districtBonus: b.districtBonus || 1.0,
                 // Save apartment units
                 units: b.units || undefined,
                 // Save hotel rooms
@@ -2688,7 +3189,9 @@ class MainScene extends Phaser.Scene {
                         buildingData.lastResourceTime || Date.now(),
                         buildingData.units,
                         buildingData.rooms,
-                        buildingData.lastNightCheck
+                        buildingData.lastNightCheck,
+                        buildingData.placedDistrict || null,
+                        buildingData.districtBonus || 1.0
                     );
                 });
                 console.log(`Successfully loaded ${this.buildings.length} buildings`);
@@ -2702,7 +3205,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null) {
+    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0) {
         const building = this.buildingTypes[type];
         if (!building) {
             console.error(`Building type ${type} not found!`);
@@ -2803,8 +3306,19 @@ class MainScene extends Phaser.Scene {
             accumulatedIncome: accumulatedIncome,
             lastIncomeTime: lastIncomeTime,
             storedResources: storedResources,
-            lastResourceTime: lastResourceTime
+            lastResourceTime: lastResourceTime,
+            placedDistrict: placedDistrict,
+            districtBonus: districtBonus
         };
+
+        // Add visual indicator if building is in correct district
+        const inCorrectDistrict = placedDistrict === building.district;
+        if (inCorrectDistrict) {
+            const bonusIndicator = this.add.text(x, buildingY - building.height - 30, '⭐', {
+                fontSize: '20px'
+            }).setOrigin(0.5).setDepth(12);
+            buildingData.bonusIndicator = bonusIndicator;
+        }
 
         // Restore apartment units if they exist
         if (units) {
