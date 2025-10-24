@@ -3817,7 +3817,13 @@ class MainScene extends Phaser.Scene {
                 units: b.units || undefined,
                 // Save hotel rooms
                 rooms: b.rooms || undefined,
-                lastNightCheck: b.lastNightCheck || undefined
+                lastNightCheck: b.lastNightCheck || undefined,
+                // Save shop inventory
+                inventory: b.inventory || undefined,
+                hasEmployee: b.hasEmployee,
+                isOpen: b.isOpen,
+                dailyWage: b.dailyWage,
+                lastWageCheck: b.lastWageCheck
             }))
         };
         localStorage.setItem('mainstreetmayor_save', JSON.stringify(saveData));
@@ -3870,7 +3876,12 @@ class MainScene extends Phaser.Scene {
                         buildingData.rooms,
                         buildingData.lastNightCheck,
                         buildingData.placedDistrict || null,
-                        buildingData.districtBonus || 1.0
+                        buildingData.districtBonus || 1.0,
+                        buildingData.inventory,
+                        buildingData.hasEmployee,
+                        buildingData.isOpen,
+                        buildingData.dailyWage,
+                        buildingData.lastWageCheck
                     );
                 });
                 console.log(`Successfully loaded ${this.buildings.length} buildings`);
@@ -3884,7 +3895,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0) {
+    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null) {
         const building = this.buildingTypes[type];
         if (!building) {
             console.error(`Building type ${type} not found!`);
@@ -4010,6 +4021,20 @@ class MainScene extends Phaser.Scene {
         if (rooms) {
             buildingData.rooms = rooms;
             buildingData.lastNightCheck = lastNightCheck || this.gameTime;
+        }
+
+        // Initialize shop inventory if it's a shop (use saved data or defaults)
+        if (this.isShop(type)) {
+            buildingData.inventory = inventory || {
+                stock: 50,
+                maxStock: 100,
+                restockCost: 5,
+                salesPerCustomer: 5
+            };
+            buildingData.hasEmployee = hasEmployee !== null ? hasEmployee : false;
+            buildingData.isOpen = isOpen !== null ? isOpen : false;
+            buildingData.dailyWage = dailyWage !== null ? dailyWage : 0;
+            buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.gameTime;
         }
 
         // Add window lights for nighttime
