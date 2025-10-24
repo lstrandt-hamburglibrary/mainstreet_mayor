@@ -728,8 +728,16 @@ class MainScene extends Phaser.Scene {
             console.log('❌ CANCEL button clicked');
             this.buildConfirmContainer.setVisible(false);
             this.buildConfirmShowing = false;
-            console.log('Confirmation dialog hidden, buildConfirmShowing:', this.buildConfirmShowing);
-            // Preview continues to follow mouse after canceling
+
+            // Clear the preview and selection when canceling
+            if (this.buildingPreview) {
+                this.buildingPreview.destroy();
+                this.buildingPreview = null;
+            }
+            this.selectedBuilding = null;
+            this.updateBuildingButtonStates();
+
+            console.log('Canceled - preview cleared, can select new building');
         });
 
         this.buildConfirmShowing = false;
@@ -3762,7 +3770,9 @@ class MainScene extends Phaser.Scene {
             }).setOrigin(0.5).setDepth(11);
         } else if (this.selectedBuilding === 'apartment') {
             // Add "APARTMENTS" sign at top
-            const aptSign = this.add.text(x, y - building.height + 25, 'APARTMENTS', {
+            const signY = y - building.height + 25;
+            console.log(`Adding APARTMENTS sign at (${x}, ${signY}), building top: ${y - building.height}`);
+            const aptSign = this.add.text(x, signY, 'APARTMENTS', {
                 fontSize: '14px',
                 color: '#000000',
                 backgroundColor: '#FFD700',
@@ -3863,6 +3873,7 @@ class MainScene extends Phaser.Scene {
 
         // Initialize apartment units if it's an apartment building
         if (this.selectedBuilding === 'apartment') {
+            console.log(`🏢 Creating apartment building at (${x}, ${y}) with height ${building.height}`);
             buildingData.units = [];
             for (let i = 0; i < building.units; i++) {
                 buildingData.units.push({
