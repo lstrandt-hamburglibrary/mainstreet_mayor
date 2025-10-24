@@ -3842,7 +3842,6 @@ class MainScene extends Phaser.Scene {
         // Add building with income and resource tracking
         const buildingData = {
             graphics: newBuilding,
-            label: label,
             type: this.selectedBuilding,
             x: x,
             y: y,
@@ -4138,7 +4137,6 @@ class MainScene extends Phaser.Scene {
         // Add loaded building with income and resource tracking (use buildingY for current ground level)
         const buildingData = {
             graphics: newBuilding,
-            label: label,
             type: type,
             x: x,
             y: buildingY,
