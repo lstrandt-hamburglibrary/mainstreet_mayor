@@ -3697,16 +3697,26 @@ class MainScene extends Phaser.Scene {
         // Draw detailed building features (windows, doors, roof, etc.)
         this.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y);
 
-        // Add label (bigger text for bigger buildings)
-        const label = this.add.text(x, y - building.height - 55, building.name, {
-            fontSize: '18px',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 8, y: 5 }
-        }).setOrigin(0.5).setDepth(11);
-
-        // Special decorations for specific building types
-        if (this.selectedBuilding === 'bank') {
+        // Add building-specific signs (no floating labels)
+        if (this.selectedBuilding === 'house') {
+            // Add "HOUSE" sign above door
+            const houseSign = this.add.text(x, y - 60, 'HOUSE', {
+                fontSize: '12px',
+                color: '#FFFFFF',
+                backgroundColor: '#8B4513',
+                padding: { x: 5, y: 3 },
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (this.selectedBuilding === 'apartment') {
+            // Add "APARTMENTS" sign at top
+            const aptSign = this.add.text(x, y - building.height + 25, 'APARTMENTS', {
+                fontSize: '14px',
+                color: '#000000',
+                backgroundColor: '#FFD700',
+                padding: { x: 8, y: 4 },
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (this.selectedBuilding === 'bank') {
             // Add dollar sign symbol
             const dollarSign = this.add.text(x, y - building.height / 2, '$', {
                 fontSize: '80px',
@@ -3997,16 +4007,26 @@ class MainScene extends Phaser.Scene {
             console.error(`Error drawing details for ${type}:`, error);
         }
 
-        // Add label (bigger text for bigger buildings)
-        const label = this.add.text(x, buildingY - building.height - 55, building.name, {
-            fontSize: '18px',
-            color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 8, y: 5 }
-        }).setOrigin(0.5).setDepth(11);
-
-        // Special decorations for specific building types
-        if (type === 'bank') {
+        // Add building-specific signs (no floating labels)
+        if (type === 'house') {
+            // Add "HOUSE" sign above door
+            const houseSign = this.add.text(x, buildingY - 60, 'HOUSE', {
+                fontSize: '12px',
+                color: '#FFFFFF',
+                backgroundColor: '#8B4513',
+                padding: { x: 5, y: 3 },
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (type === 'apartment') {
+            // Add "APARTMENTS" sign at top
+            const aptSign = this.add.text(x, buildingY - building.height + 25, 'APARTMENTS', {
+                fontSize: '14px',
+                color: '#000000',
+                backgroundColor: '#FFD700',
+                padding: { x: 8, y: 4 },
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (type === 'bank') {
             // Add dollar sign symbol
             const dollarSign = this.add.text(x, buildingY - building.height / 2, '$', {
                 fontSize: '80px',
