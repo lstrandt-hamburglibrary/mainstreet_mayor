@@ -375,7 +375,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#424242',
             padding: { x: 12, y: 6 }
-        }).setScrollFactor(0).setDepth(9998).setInteractive();
+        }).setScrollFactor(0).setDepth(99999).setInteractive();
 
         this.settingsButton.on('pointerdown', () => {
             this.settingsMenuOpen = !this.settingsMenuOpen;
@@ -392,7 +392,7 @@ class MainScene extends Phaser.Scene {
 
         // Settings dropdown menu
         this.settingsDropdown = this.add.container(this.gameWidth - 200, 55);
-        this.settingsDropdown.setScrollFactor(0).setDepth(9999).setVisible(false);
+        this.settingsDropdown.setScrollFactor(0).setDepth(100000).setVisible(false);
 
         const dropdownBg = this.add.rectangle(0, 0, 200, 240, 0x424242, 1);
         dropdownBg.setOrigin(0, 0);
@@ -528,11 +528,11 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#1976D2',
             padding: { x: 10, y: 6 }
-        }).setScrollFactor(0);
+        }).setScrollFactor(0).setDepth(99998);
 
         // Build menu UI (clickable buttons at bottom of screen)
         this.buildMenuContainer = this.add.container(this.gameWidth / 2, this.gameHeight - 80);
-        this.buildMenuContainer.setScrollFactor(0).setDepth(9998).setVisible(false);
+        this.buildMenuContainer.setScrollFactor(0).setDepth(99997).setVisible(false);
 
         const buildMenuBg = this.add.rectangle(0, 0, this.gameWidth, 160, 0x000000, 0.9);
         this.buildMenuContainer.add(buildMenuBg);
@@ -1160,10 +1160,10 @@ class MainScene extends Phaser.Scene {
         this.gameWidth = newWidth;
 
         // Update world bounds
-        this.physics.world.setBounds(0, 0, 3000, this.gameHeight);
+        this.physics.world.setBounds(0, 0, 12000, this.gameHeight);
 
         // Update camera bounds
-        this.cameras.main.setBounds(0, 0, 3000, this.gameHeight);
+        this.cameras.main.setBounds(0, 0, 12000, this.gameHeight);
 
         // Calculate new ground position
         const newGroundY = this.gameHeight - 50;
