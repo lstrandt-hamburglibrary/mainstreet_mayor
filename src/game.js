@@ -2667,6 +2667,15 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    updateMoneyUI() {
+        // Update resource UI with current money, wood, bricks
+        let resourceText = `💰 Cash: $${this.money}  🪵 ${this.wood}  🧱 ${this.bricks}`;
+        if (this.creativeMode) resourceText += `  [CREATIVE MODE]`;
+        if (this.bankBalance > 0) resourceText += `\n🏦 Bank: $${this.bankBalance}`;
+        if (this.loanAmount > 0) resourceText += `\n💳 Debt: $${this.loanAmount}`;
+        this.resourceUI.setText(resourceText);
+    }
+
     update() {
         // Update game time based on real time passed and speed multiplier (only if not paused)
         const now = Date.now();
@@ -3010,11 +3019,7 @@ class MainScene extends Phaser.Scene {
         }
 
         // Update resource UI
-        let resourceText = `💰 Cash: $${this.money}  🪵 ${this.wood}  🧱 ${this.bricks}`;
-        if (this.creativeMode) resourceText += `  [CREATIVE MODE]`;
-        if (this.bankBalance > 0) resourceText += `\n🏦 Bank: $${this.bankBalance}`;
-        if (this.loanAmount > 0) resourceText += `\n💳 Debt: $${this.loanAmount}`;
-        this.resourceUI.setText(resourceText);
+        this.updateMoneyUI();
 
         // Update buses
         if (!this.isPaused) {
