@@ -4,60 +4,114 @@ class MainScene extends Phaser.Scene {
     }
 
     create() {
-        // Set world bounds
-        this.physics.world.setBounds(0, 0, 3000, 600);
+        // Set world bounds (use window height for dynamic sizing)
+        this.gameHeight = window.innerHeight;
+        this.gameWidth = window.innerWidth;
+        this.physics.world.setBounds(0, 0, 3000, this.gameHeight);
 
-        // Track stairs and climbing state
-        this.stairZones = [];
-        this.isClimbing = false;
+        // Listen for resize events
+        this.scale.on('resize', this.handleResize, this);
 
-        // Resources
+        // Resources (default starting values)
         this.money = 1000;
         this.wood = 50;
         this.bricks = 30;
 
+        // Rental application system
+        this.pendingApplications = []; // Applications waiting in mailbox
+        this.mailboxes = []; // Track all mailboxes on the street
+        this.nearMailbox = null; // Track which mailbox player is near
+
+        // Bank system
+        this.bankBalance = 0;  // Money stored in bank
+        this.loanAmount = 0;   // Money owed to bank
+        this.loanInterestRate = 0.1; // 10% interest
+        this.savingsInterestRate = 0.05; // 5% interest on savings
+
+        // Time system
+        this.gameTime = 0; // Time in game minutes (0 = Day 1, 00:00)
+        this.timeSpeed = 1; // 1x, 2x, or 3x speed
+        this.lastRealTime = Date.now();
+
+        // Creative mode (unlimited resources for building preview)
+        this.creativeMode = false;
+
         // Building system
         this.buildMode = false;
+        this.deleteMode = false;  // Delete building mode
         this.selectedBuilding = null;
         this.buildingPreview = null;
         this.buildings = [];
         this.buildingTypes = {
-            house: { name: 'House', cost: 100, wood: 10, bricks: 5, width: 160, height: 200, color: 0xFF6B6B },
-            shop: { name: 'Shop', cost: 200, wood: 15, bricks: 10, width: 200, height: 240, color: 0x4ECDC4 },
-            restaurant: { name: 'Restaurant', cost: 300, wood: 20, bricks: 15, width: 240, height: 220, color: 0xFFE66D }
+            house: { name: 'House', cost: 100, wood: 10, bricks: 5, width: 160, height: 260, color: 0xFF6B6B,
+                    incomeRate: 5, maxIncome: 50 },  // Two-story house, $5/min, max $50
+            apartment: { name: 'Apartment', cost: 400, wood: 30, bricks: 35, width: 200, height: 360, color: 0xFF8C94,
+                    units: 8, incomePerUnit: 8, maxIncomePerUnit: 80 },  // 4 stories, 2 units per floor
+            hotel: { name: 'Hotel', cost: 600, wood: 40, bricks: 45, width: 240, height: 400, color: 0x9C27B0,
+                    rooms: 10, nightlyRate: 50, cleaningCost: 15 },  // 5 stories, 2 rooms per floor, $50/night per room, $15 to clean
+            shop: { name: 'Shop', cost: 200, wood: 15, bricks: 10, width: 200, height: 240, color: 0x4ECDC4,
+                    incomeRate: 10, maxIncome: 100 },  // $10/min, max $100
+            restaurant: { name: 'Restaurant', cost: 300, wood: 20, bricks: 15, width: 240, height: 220, color: 0xFFE66D,
+                    incomeRate: 15, maxIncome: 150 },  // $15/min, max $150
+            bank: { name: 'Bank', cost: 500, wood: 25, bricks: 30, width: 220, height: 260, color: 0x2E7D32 },
+            market: { name: 'Market', cost: 150, wood: 12, bricks: 8, width: 180, height: 180, color: 0xFF9800 },
+            lumbermill: { name: 'Lumber Mill', cost: 250, wood: 5, bricks: 20, width: 200, height: 200, color: 0x8D6E63,
+                    resourceType: 'wood', regenRate: 1, maxStorage: 15 },  // 1 wood/min, max 15
+            brickfactory: { name: 'Brick Factory', cost: 250, wood: 20, bricks: 5, width: 200, height: 200, color: 0xD84315,
+                    resourceType: 'bricks', regenRate: 1, maxStorage: 15 }  // 1 brick/min, max 15
         };
 
-        // Sky
-        this.add.rectangle(1500, 300, 3000, 600, 0x87CEEB).setScrollFactor(0.5);
+        // === BACKGROUND LAYERS (Parallax) ===
 
-        // Ground
-        const ground = this.add.rectangle(1500, 550, 3000, 100, 0x555555);
+        // Sky - gradient background (fixed, doesn't scroll) - will update dynamically
+        this.skyGraphics = this.add.graphics();
+        this.skyGraphics.setScrollFactor(0);
+        this.skyGraphics.setDepth(-100); // Far background
+        // Initial sky (will be updated in update loop)
+        this.updateSky();
+
+        // Sun/Moon (changes based on time of day) - very slow parallax
+        this.celestialBody = this.add.graphics();
+        this.celestialBody.setScrollFactor(0.05);
+        this.celestialBody.setDepth(-90); // Behind mountains
+        this.updateCelestialBody(); // Will be called in update loop
+
+        // Distant mountains (far background) - slowest parallax
+        this.createMountains();
+
+        // Distant city skyline - medium parallax
+        this.createDistantCity();
+
+        // Clouds - slow parallax
+        this.createClouds();
+
+        // Stars - appear at night
+        this.createStars();
+
+        // Ground (positioned at bottom of screen)
+        this.groundY = this.gameHeight - 50;
+        this.ground = this.add.rectangle(1500, this.groundY, 3000, 100, 0x555555);
+        this.ground.setDepth(-10); // Above background, below buildings
 
         // Ground platform for physics
-        const groundPlatform = this.physics.add.staticGroup();
-        groundPlatform.create(1500, 500, null).setSize(3000, 20).setVisible(false).refreshBody();
+        this.groundPlatform = this.physics.add.staticGroup();
+        this.platformY = this.gameHeight - 100;
+        this.groundPlatformBody = this.groundPlatform.create(1500, this.platformY, null).setSize(3000, 20).setVisible(false);
+        this.groundPlatformBody.refreshBody();
 
-        // Add some platforms
-        const platform1 = this.physics.add.staticGroup();
-        platform1.create(375, 400, null).setSize(150, 20).setVisible(false).refreshBody();
-        this.add.rectangle(375, 400, 150, 20, 0x8B4513);
-
-        const platform2 = this.physics.add.staticGroup();
-        platform2.create(625, 350, null).setSize(150, 20).setVisible(false).refreshBody();
-        this.add.rectangle(625, 350, 150, 20, 0x8B4513);
-
-        // Create stairs
-        this.createStairs(500, 450, 6);
-        this.createStairs(800, 400, 8);
+        // Add street furniture (benches, lamp posts, trash cans, mailboxes)
+        this.lampPosts = []; // Track lamp posts for day/night lighting
+        this.createStreetFurniture();
 
         // Create player as a simple colored rectangle first
-        this.player = this.physics.add.sprite(100, 400);
+        this.player = this.physics.add.sprite(100, this.gameHeight - 200);
         const playerBox = this.add.rectangle(0, 0, 30, 60, 0x2196F3);
         this.player.setSize(30, 60);
         this.player.setCollideWorldBounds(true);
 
         // Attach visual to player
-        this.playerVisual = this.add.container(100, 400);
+        this.playerVisual = this.add.container(100, this.gameHeight - 200);
+        this.playerVisual.setDepth(100); // Player on top of everything
 
         // Shadow
         const shadow = this.add.ellipse(0, 28, 35, 10, 0x000000, 0.3);
@@ -195,12 +249,10 @@ class MainScene extends Phaser.Scene {
         this.playerVisual.add(badge);
 
         // Add collisions
-        this.physics.add.collider(this.player, groundPlatform);
-        this.physics.add.collider(this.player, platform1);
-        this.physics.add.collider(this.player, platform2);
+        this.physics.add.collider(this.player, this.groundPlatform);
 
         // Camera follow
-        this.cameras.main.setBounds(0, 0, 3000, 600);
+        this.cameras.main.setBounds(0, 0, 3000, this.gameHeight);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
         // Controls
@@ -211,10 +263,20 @@ class MainScene extends Phaser.Scene {
         this.dKey = this.input.keyboard.addKey('D');
         this.spaceKey = this.input.keyboard.addKey('SPACE');
         this.bKey = this.input.keyboard.addKey('B');
+        this.xKey = this.input.keyboard.addKey('X');  // Delete mode
         this.key1 = this.input.keyboard.addKey('ONE');
         this.key2 = this.input.keyboard.addKey('TWO');
         this.key3 = this.input.keyboard.addKey('THREE');
+        this.key4 = this.input.keyboard.addKey('FOUR');
+        this.key5 = this.input.keyboard.addKey('FIVE');
+        this.key6 = this.input.keyboard.addKey('SIX');
+        this.key7 = this.input.keyboard.addKey('SEVEN');
+        this.key8 = this.input.keyboard.addKey('EIGHT');
         this.enterKey = this.input.keyboard.addKey('ENTER');
+        this.eKey = this.input.keyboard.addKey('E');
+        this.rKey = this.input.keyboard.addKey('R');
+        this.tKey = this.input.keyboard.addKey('T');
+        this.cKey = this.input.keyboard.addKey('C');
 
         // Mouse input for building placement
         this.input.on('pointerdown', (pointer) => {
@@ -223,68 +285,1665 @@ class MainScene extends Phaser.Scene {
             }
         });
 
-        // UI
-        const title = this.add.text(20, 20, 'Main Street Mayor', {
-            fontSize: '24px',
+        // UI - Controls (top left - compact)
+        const controls = this.add.text(20, 20, 'WASD/Arrows: Move | Space: Jump | B: Build | E: Interact | R: Restart | T: Speed | C: Creative', {
+            fontSize: '11px',
             color: '#ffffff',
             backgroundColor: '#000000',
-            padding: { x: 10, y: 10 }
+            padding: { x: 8, y: 4 }
         }).setScrollFactor(0);
 
-        const controls = this.add.text(20, 60, 'Arrow Keys/WASD: Move\nSpace: Jump\nW/S on stairs: Climb\nB: Build Mode', {
+        // Resource UI (top left, below controls)
+        this.resourceUI = this.add.text(20, 48, '', {
             fontSize: '14px',
             color: '#ffffff',
             backgroundColor: '#000000',
-            padding: { x: 10, y: 5 }
+            padding: { x: 8, y: 6 }
         }).setScrollFactor(0);
 
-        // Resource UI
-        this.resourceUI = this.add.text(20, 140, '', {
+        // Time UI (top right)
+        this.timeUI = this.add.text(this.gameWidth - 220, 20, '', {
             fontSize: '16px',
             color: '#ffffff',
-            backgroundColor: '#000000',
-            padding: { x: 10, y: 8 }
+            backgroundColor: '#1976D2',
+            padding: { x: 10, y: 6 }
         }).setScrollFactor(0);
 
         // Build menu UI
-        this.buildMenuUI = this.add.text(400, 20, '', {
+        this.buildMenuUI = this.add.text(this.gameWidth / 2 - 200, 20, '', {
             fontSize: '14px',
             color: '#ffffff',
             backgroundColor: '#000000',
             padding: { x: 10, y: 8 }
         }).setScrollFactor(0);
         this.buildMenuUI.setVisible(false);
+
+        // Bank UI
+        this.bankUI = this.add.text(this.gameWidth / 2 - 200, this.gameHeight / 2 - 100, '', {
+            fontSize: '14px',
+            color: '#ffffff',
+            backgroundColor: '#2E7D32',
+            padding: { x: 10, y: 8 }
+        }).setScrollFactor(0).setDepth(9999);
+        this.bankUI.setVisible(false);
+        this.bankMenuOpen = false;
+        this.nearBank = null; // Track which bank player is near
+
+        // Mailbox UI for rental applications
+        this.mailboxUI = this.add.text(this.gameWidth / 2, this.gameHeight / 2, '', {
+            fontSize: '14px',
+            color: '#ffffff',
+            backgroundColor: '#1976D2',
+            padding: { x: 15, y: 12 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(9999);
+        this.mailboxUI.setVisible(false);
+        this.mailboxMenuOpen = false;
+        this.currentApplicationIndex = 0; // Track which application is being viewed
+
+        // Resource building UI
+        this.resourceBuildingUI = this.add.text(this.gameWidth / 2 - 200, this.gameHeight / 2 - 100, '', {
+            fontSize: '14px',
+            color: '#ffffff',
+            backgroundColor: '#FF9800',
+            padding: { x: 10, y: 8 }
+        }).setScrollFactor(0).setDepth(9999);
+        this.resourceBuildingUI.setVisible(false);
+        this.resourceBuildingMenuOpen = false;
+        this.nearResourceBuilding = null; // Track which resource building player is near
+
+        // Restart confirmation UI
+        this.restartConfirmUI = this.add.text(this.gameWidth / 2, this.gameHeight / 2, '', {
+            fontSize: '18px',
+            color: '#ffffff',
+            backgroundColor: '#C62828',
+            padding: { x: 15, y: 10 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
+        this.restartConfirmUI.setVisible(false);
+        this.restartConfirmShowing = false;
+
+        // Delete confirmation UI
+        this.deleteConfirmUI = this.add.text(this.gameWidth / 2, this.gameHeight / 2, '', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#FF5722',
+            padding: { x: 15, y: 10 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
+        this.deleteConfirmUI.setVisible(false);
+        this.deleteConfirmShowing = false;
+        this.buildingToDelete = null;
+
+        // Load saved game if exists
+        this.loadGame();
+
+        // Debug: Check localStorage on startup
+        console.log('=== GAME STARTUP DEBUG ===');
+        const savedData = localStorage.getItem('mainstreetmayor_save');
+        if (savedData) {
+            const parsed = JSON.parse(savedData);
+            console.log('Save data exists:', parsed);
+            console.log('Buildings in save:', parsed.buildings);
+        } else {
+            console.log('No save data found in localStorage');
+        }
+        console.log('Buildings loaded into game:', this.buildings.length);
+        console.log('=== END DEBUG ===');
     }
 
-    createStairs(x, y, numSteps) {
-        const stepWidth = 80;
-        const stepHeight = 20;
+    handleResize(gameSize) {
+        const newWidth = gameSize.width;
+        const newHeight = gameSize.height;
 
-        for (let i = 0; i < numSteps; i++) {
-            // Visual step
-            const step = this.add.rectangle(x + stepWidth/2, y - (i * stepHeight) + stepHeight/2,
-                                           stepWidth, stepHeight, 0xA0522D);
-            step.setStrokeStyle(2, 0x654321);
+        // Update stored dimensions
+        const oldHeight = this.gameHeight;
+        this.gameHeight = newHeight;
+        this.gameWidth = newWidth;
 
-            // Create a zone for this step for climbing detection
-            const zone = this.add.zone(x + stepWidth/2, y - (i * stepHeight) + stepHeight/2,
-                                      stepWidth, stepHeight);
-            this.physics.add.existing(zone);
-            zone.body.setAllowGravity(false);
-            this.stairZones.push(zone);
+        // Update world bounds
+        this.physics.world.setBounds(0, 0, 3000, this.gameHeight);
+
+        // Update camera bounds
+        this.cameras.main.setBounds(0, 0, 3000, this.gameHeight);
+
+        // Calculate new ground position
+        const newGroundY = this.gameHeight - 50;
+        const newPlatformY = this.gameHeight - 100;
+
+        // Update ground position
+        this.ground.y = newGroundY;
+        this.groundY = newGroundY;
+
+        // Update platform position
+        this.groundPlatformBody.y = newPlatformY;
+        this.platformY = newPlatformY;
+        this.groundPlatformBody.body.reset(1500, newPlatformY);
+
+        // Reposition all buildings
+        for (let building of this.buildings) {
+            const buildingType = this.buildingTypes[building.type];
+            const newBuildingY = this.gameHeight - 100;
+
+            // Clear and redraw building
+            building.graphics.clear();
+            building.graphics.fillStyle(buildingType.color, 1);
+            building.graphics.fillRect(
+                building.x - buildingType.width/2,
+                newBuildingY - buildingType.height,
+                buildingType.width,
+                buildingType.height
+            );
+            building.graphics.lineStyle(3, 0x000000, 1);
+            building.graphics.strokeRect(
+                building.x - buildingType.width/2,
+                newBuildingY - buildingType.height,
+                buildingType.width,
+                buildingType.height
+            );
+
+            // Redraw building details
+            this.drawBuildingDetails(building.graphics, building.type, building.x, newBuildingY);
+
+            // Update label position
+            building.label.y = newBuildingY - buildingType.height - 55;
+
+            // Update building Y coordinate
+            building.y = newBuildingY;
+        }
+
+        // Keep player above ground
+        if (this.player.y > newPlatformY - 50) {
+            this.player.y = newPlatformY - 50;
+            this.playerVisual.y = this.player.y;
+        }
+
+        // Update background layers
+        if (this.skyGraphics) {
+            this.updateSky(); // Use dynamic sky based on time of day
+        }
+
+        // Redraw mountains at new height
+        if (this.mountainGraphics) {
+            this.mountainGraphics.clear();
+            for (let i = 0; i < 8; i++) {
+                const baseX = i * 500 - 200;
+                const peakHeight = 150 + Math.random() * 100;
+                const baseY = this.gameHeight - 100;
+
+                this.mountainGraphics.fillStyle(0x8B7355, 1);
+                this.mountainGraphics.beginPath();
+                this.mountainGraphics.moveTo(baseX, baseY);
+                this.mountainGraphics.lineTo(baseX + 250, baseY - peakHeight);
+                this.mountainGraphics.lineTo(baseX + 500, baseY);
+                this.mountainGraphics.closePath();
+                this.mountainGraphics.fillPath();
+
+                if (peakHeight > 200) {
+                    this.mountainGraphics.fillStyle(0xFFFFFF, 0.8);
+                    this.mountainGraphics.beginPath();
+                    this.mountainGraphics.moveTo(baseX + 200, baseY - peakHeight + 30);
+                    this.mountainGraphics.lineTo(baseX + 250, baseY - peakHeight);
+                    this.mountainGraphics.lineTo(baseX + 300, baseY - peakHeight + 30);
+                    this.mountainGraphics.closePath();
+                    this.mountainGraphics.fillPath();
+                }
+            }
+        }
+
+        // Redraw distant city at new height
+        if (this.cityGraphics) {
+            this.cityGraphics.clear();
+            for (let i = 0; i < 15; i++) {
+                const x = i * 250 + Math.random() * 100;
+                const buildingWidth = 60 + Math.random() * 80;
+                const buildingHeight = 100 + Math.random() * 150;
+                const baseY = this.gameHeight - 100;
+
+                this.cityGraphics.fillStyle(0x4A5568, 0.6);
+                this.cityGraphics.fillRect(x, baseY - buildingHeight, buildingWidth, buildingHeight);
+
+                const windowRows = Math.floor(buildingHeight / 20);
+                const windowCols = Math.floor(buildingWidth / 15);
+
+                for (let row = 0; row < windowRows; row++) {
+                    for (let col = 0; col < windowCols; col++) {
+                        if (Math.random() > 0.3) {
+                            this.cityGraphics.fillStyle(0xFFE66D, 0.7);
+                            this.cityGraphics.fillRect(
+                                x + col * 15 + 5,
+                                baseY - buildingHeight + row * 20 + 8,
+                                8,
+                                10
+                            );
+                        }
+                    }
+                }
+            }
+        }
+
+        // Update UI positions (time display, resource display, etc.)
+        if (this.timeUI) {
+            this.timeUI.x = this.gameWidth - 220;
+        }
+        if (this.buildMenuUI) {
+            this.buildMenuUI.x = this.gameWidth / 2 - 200;
+        }
+        if (this.bankUI) {
+            this.bankUI.setPosition(this.gameWidth / 2 - 200, this.gameHeight / 2 - 100);
+        }
+        if (this.resourceBuildingUI) {
+            this.resourceBuildingUI.setPosition(this.gameWidth / 2 - 200, this.gameHeight / 2 - 100);
+        }
+        if (this.restartConfirmUI) {
+            this.restartConfirmUI.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+        }
+        if (this.deleteConfirmUI) {
+            this.deleteConfirmUI.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+        }
+
+        console.log(`Resized to ${newWidth}x${newHeight}`);
+    }
+
+    createMountains() {
+        // Create distant mountains with parallax effect
+        this.mountainGraphics = this.add.graphics();
+        this.mountainGraphics.setScrollFactor(0.1);
+        this.mountainGraphics.setDepth(-80); // Behind city and clouds
+        const mountainGraphics = this.mountainGraphics;
+
+        // Multiple mountain peaks across the world
+        for (let i = 0; i < 8; i++) {
+            const baseX = i * 500 - 200;
+            const peakHeight = 150 + Math.random() * 100;
+            const baseY = this.gameHeight - 100;
+
+            // Mountain gradient (darker at base, lighter at peak)
+            mountainGraphics.fillStyle(0x8B7355, 1);
+            mountainGraphics.beginPath();
+            mountainGraphics.moveTo(baseX, baseY);
+            mountainGraphics.lineTo(baseX + 250, baseY - peakHeight);
+            mountainGraphics.lineTo(baseX + 500, baseY);
+            mountainGraphics.closePath();
+            mountainGraphics.fillPath();
+
+            // Snow cap on taller peaks
+            if (peakHeight > 200) {
+                mountainGraphics.fillStyle(0xFFFFFF, 0.8);
+                mountainGraphics.beginPath();
+                mountainGraphics.moveTo(baseX + 200, baseY - peakHeight + 30);
+                mountainGraphics.lineTo(baseX + 250, baseY - peakHeight);
+                mountainGraphics.lineTo(baseX + 300, baseY - peakHeight + 30);
+                mountainGraphics.closePath();
+                mountainGraphics.fillPath();
+            }
+        }
+    }
+
+    createDistantCity() {
+        // Create distant city skyline
+        this.cityGraphics = this.add.graphics();
+        this.cityGraphics.setScrollFactor(0.3);
+        this.cityGraphics.setDepth(-70); // In front of mountains, behind main street
+        const cityGraphics = this.cityGraphics;
+
+        // Generate random buildings in the distance
+        for (let i = 0; i < 15; i++) {
+            const x = i * 250 + Math.random() * 100;
+            const buildingWidth = 60 + Math.random() * 80;
+            const buildingHeight = 100 + Math.random() * 150;
+            const baseY = this.gameHeight - 100;
+
+            // Building silhouette (darker, semi-transparent)
+            cityGraphics.fillStyle(0x4A5568, 0.6);
+            cityGraphics.fillRect(x, baseY - buildingHeight, buildingWidth, buildingHeight);
+
+            // Windows (small yellow rectangles)
+            const windowRows = Math.floor(buildingHeight / 20);
+            const windowCols = Math.floor(buildingWidth / 15);
+
+            for (let row = 0; row < windowRows; row++) {
+                for (let col = 0; col < windowCols; col++) {
+                    if (Math.random() > 0.3) { // Not all windows are lit
+                        cityGraphics.fillStyle(0xFFE66D, 0.7);
+                        cityGraphics.fillRect(
+                            x + col * 15 + 5,
+                            baseY - buildingHeight + row * 20 + 8,
+                            8,
+                            10
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    createClouds() {
+        // Create fluffy clouds
+        this.clouds = [];
+        for (let i = 0; i < 6; i++) {
+            const cloudContainer = this.add.container(
+                Math.random() * 3000,
+                50 + Math.random() * (this.gameHeight * 0.3)
+            );
+            cloudContainer.setScrollFactor(0.15 + Math.random() * 0.1);
+            cloudContainer.setDepth(-60); // In front of city, behind main street
+
+            // Create cloud shape with multiple circles
+            const cloudGraphics = this.add.graphics();
+            cloudGraphics.fillStyle(0xFFFFFF, 0.8);
+
+            // Main cloud body
+            cloudGraphics.fillCircle(0, 0, 40);
+            cloudGraphics.fillCircle(-30, 5, 35);
+            cloudGraphics.fillCircle(30, 5, 35);
+            cloudGraphics.fillCircle(-15, -10, 30);
+            cloudGraphics.fillCircle(15, -10, 30);
+
+            cloudContainer.add(cloudGraphics);
+            this.clouds.push({
+                container: cloudContainer,
+                speed: 0.02 + Math.random() * 0.03,
+                startX: cloudContainer.x
+            });
+        }
+    }
+
+    createStars() {
+        // Create twinkling stars (only visible at night)
+        this.stars = [];
+        for (let i = 0; i < 80; i++) {
+            const star = this.add.circle(
+                Math.random() * 3000,
+                Math.random() * (this.gameHeight * 0.6),
+                1 + Math.random() * 1.5,
+                0xFFFFFF,
+                0.8
+            );
+            star.setScrollFactor(0.02);
+            star.setDepth(-95); // Between sky and sun/moon
+            star.setVisible(false); // Hidden during day
+            this.stars.push({
+                circle: star,
+                twinkleSpeed: 0.5 + Math.random() * 1.5,
+                phase: Math.random() * Math.PI * 2
+            });
+        }
+    }
+
+    updateSky() {
+        // Safety check
+        if (!this.skyGraphics || this.gameTime === undefined || !this.gameHeight) {
+            return;
+        }
+
+        // Calculate hour of day
+        const totalMinutes = Math.floor(this.gameTime);
+        const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+
+        this.skyGraphics.clear();
+
+        // Day colors (6am-6pm): bright blue
+        // Night colors (6pm-6am): dark blue/purple
+        let topColor, bottomColor;
+
+        if (hour >= 6 && hour < 20) {
+            // Daytime - bright blue sky (6am to 8pm)
+            const dayProgress = (hour - 6) / 14; // 0 to 1 during day
+            topColor = 0x87CEEB;
+            bottomColor = 0xE0F6FF;
+        } else {
+            // Nighttime - dark sky (8pm to 6am)
+            topColor = 0x0A1128; // Very dark blue
+            bottomColor = 0x1B2845; // Slightly lighter dark blue
+        }
+
+        this.skyGraphics.fillGradientStyle(topColor, topColor, bottomColor, bottomColor, 1);
+        this.skyGraphics.fillRect(0, 0, 3000, this.gameHeight);
+    }
+
+    addWindowLights(buildingData, buildingType) {
+        // Create glowing window overlays for nighttime
+        buildingData.windowLights = [];
+        const x = buildingData.x;
+        const y = buildingData.y;
+
+        if (buildingData.type === 'house') {
+            // Two-story house - 4 rows of 2 windows
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 2; col++) {
+                    const wx = x - 30 + (col * 60);
+                    const wy = y - buildingType.height + 35 + (row * 55);
+                    const light = this.add.rectangle(wx, wy, 18, 20, 0xFFD700, 0.6);
+                    light.setDepth(11);
+                    light.setVisible(false);
+                    buildingData.windowLights.push(light);
+                }
+            }
+        } else if (buildingData.type === 'apartment') {
+            // 4 floors, 2 units per floor, 2 windows per unit
+            const floorHeight = buildingType.height / 4;
+            for (let floor = 0; floor < 4; floor++) {
+                for (let unit = 0; unit < 2; unit++) {
+                    const unitIndex = floor * 2 + unit;
+                    const unitX = x - 50 + (unit * 100);
+                    const unitY = y - buildingType.height + (floor * floorHeight) + 35;
+
+                    for (let win = 0; win < 2; win++) {
+                        const wx = unitX - 15 + (win * 30);
+                        const light = this.add.rectangle(wx, unitY, 18, 20, 0xFFD700, 0.7);
+                        light.setDepth(11);
+                        light.setVisible(false);
+                        light.unitIndex = unitIndex; // Tag with unit index for occupied check
+                        buildingData.windowLights.push(light);
+                    }
+                }
+            }
+        } else if (buildingData.type === 'hotel') {
+            // 5 floors, 2 rooms per floor, 2 windows per room
+            const floorHeight = buildingType.height / 5;
+            for (let floor = 0; floor < 5; floor++) {
+                for (let room = 0; room < 2; room++) {
+                    const roomIndex = floor * 2 + room;
+                    const roomX = x - 60 + (room * 120);
+                    const roomY = y - buildingType.height + (floor * floorHeight) + 40;
+
+                    for (let win = 0; win < 2; win++) {
+                        const wx = roomX - 20 + (win * 40);
+                        const light = this.add.rectangle(wx, roomY, 20, 22, 0xFFD700, 0.7);
+                        light.setDepth(11);
+                        light.setVisible(false);
+                        light.roomIndex = roomIndex; // Tag with room index for occupied check
+                        buildingData.windowLights.push(light);
+                    }
+                }
+            }
+        }
+    }
+
+    updateCelestialBody() {
+        // Calculate time of day (0-24 hours)
+        const totalMinutes = Math.floor(this.gameTime);
+        const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+
+        // Clear previous drawing
+        this.celestialBody.clear();
+
+        // Position in sky (moves across the sky during day)
+        const skyArcProgress = (hour % 24) / 24; // 0 to 1
+        const sunX = 300 + skyArcProgress * 2400;
+        const sunY = this.gameHeight * 0.2 + Math.sin(skyArcProgress * Math.PI) * -50;
+
+        // Day time (6am to 6pm) - Show sun
+        if (hour >= 6 && hour < 18) {
+            // Sun
+            this.celestialBody.fillStyle(0xFFD700, 1);
+            this.celestialBody.fillCircle(sunX, sunY, 40);
+
+            // Sun rays
+            this.celestialBody.lineStyle(3, 0xFFE66D, 0.8);
+            for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 8) {
+                const rayLength = 60;
+                this.celestialBody.lineBetween(
+                    sunX + Math.cos(angle) * 45,
+                    sunY + Math.sin(angle) * 45,
+                    sunX + Math.cos(angle) * rayLength,
+                    sunY + Math.sin(angle) * rayLength
+                );
+            }
+        } else {
+            // Night time - Show moon
+            this.celestialBody.fillStyle(0xE8E8E8, 1);
+            this.celestialBody.fillCircle(sunX, sunY, 35);
+
+            // Moon craters
+            this.celestialBody.fillStyle(0xD0D0D0, 0.5);
+            this.celestialBody.fillCircle(sunX - 10, sunY - 8, 8);
+            this.celestialBody.fillCircle(sunX + 12, sunY + 5, 6);
+            this.celestialBody.fillCircle(sunX - 5, sunY + 12, 5);
+        }
+    }
+
+    createStreetFurniture() {
+        const groundLevel = this.gameHeight - 100;
+
+        // Place furniture at intervals along the street
+        // Avoid building positions (multiples of 240)
+        for (let x = 120; x < 3000; x += 240) {
+            const furnitureType = Math.floor(Math.random() * 4); // 0-3 for 4 types
+
+            // Randomly skip some positions for variety
+            if (Math.random() > 0.6) continue;
+
+            switch(furnitureType) {
+                case 0:
+                    this.createLampPost(x, groundLevel);
+                    break;
+                case 1:
+                    this.createBench(x, groundLevel);
+                    break;
+                case 2:
+                    this.createTrashCan(x, groundLevel);
+                    break;
+                case 3:
+                    this.createMailbox(x, groundLevel);
+                    break;
+            }
+        }
+    }
+
+    createLampPost(x, groundLevel) {
+        const lampPost = this.add.graphics();
+        lampPost.setDepth(5); // In front of ground, behind buildings
+
+        // Post (dark gray pole)
+        lampPost.fillStyle(0x404040, 1);
+        lampPost.fillRect(x - 4, groundLevel - 120, 8, 120);
+
+        // Base (wider bottom)
+        lampPost.fillStyle(0x303030, 1);
+        lampPost.fillRect(x - 8, groundLevel - 10, 16, 10);
+
+        // Light fixture (top)
+        lampPost.fillStyle(0x2C3E50, 1);
+        lampPost.fillRect(x - 12, groundLevel - 130, 24, 12);
+
+        // Light bulb (glowing) - separate circle for day/night control
+        const lightBulb = this.add.circle(x, groundLevel - 124, 8, 0xFFE66D, 0.9);
+        lightBulb.setDepth(6);
+        lightBulb.setVisible(false); // Off during day
+
+        // Light glow effect - larger circle for night glow
+        const lightGlow = this.add.circle(x, groundLevel - 124, 20, 0xFFFFAA, 0.3);
+        lightGlow.setDepth(6);
+        lightGlow.setVisible(false); // Off during day
+
+        // Store reference for day/night updates
+        this.lampPosts.push({
+            bulb: lightBulb,
+            glow: lightGlow
+        });
+    }
+
+    createBench(x, groundLevel) {
+        const bench = this.add.graphics();
+        bench.setDepth(5);
+
+        // Seat (wooden brown)
+        bench.fillStyle(0x8B4513, 1);
+        bench.fillRect(x - 25, groundLevel - 25, 50, 8);
+
+        // Backrest
+        bench.fillStyle(0x8B4513, 1);
+        bench.fillRect(x - 25, groundLevel - 50, 50, 8);
+
+        // Vertical slats on backrest
+        bench.fillStyle(0x654321, 1);
+        for (let i = 0; i < 5; i++) {
+            bench.fillRect(x - 20 + (i * 10), groundLevel - 48, 3, 23);
+        }
+
+        // Metal legs (dark gray)
+        bench.fillStyle(0x505050, 1);
+        bench.fillRect(x - 20, groundLevel - 25, 4, 25);
+        bench.fillRect(x + 16, groundLevel - 25, 4, 25);
+
+        // Armrests
+        bench.fillStyle(0x654321, 1);
+        bench.fillRect(x - 28, groundLevel - 35, 6, 10);
+        bench.fillRect(x + 22, groundLevel - 35, 6, 10);
+    }
+
+    createTrashCan(x, groundLevel) {
+        const trashCan = this.add.graphics();
+        trashCan.setDepth(5);
+
+        // Can body (green/blue city trash can)
+        trashCan.fillStyle(0x2E7D32, 1);
+        trashCan.fillRect(x - 12, groundLevel - 35, 24, 35);
+
+        // Lid (darker green)
+        trashCan.fillStyle(0x1B5E20, 1);
+        trashCan.fillRect(x - 14, groundLevel - 40, 28, 5);
+
+        // Lid handle
+        trashCan.fillStyle(0x000000, 1);
+        trashCan.fillCircle(x, groundLevel - 37, 3);
+
+        // Recycling symbol (simplified)
+        trashCan.lineStyle(2, 0xFFFFFF, 1);
+        trashCan.strokeCircle(x, groundLevel - 18, 8);
+
+        // Highlight/shine
+        trashCan.fillStyle(0xFFFFFF, 0.3);
+        trashCan.fillRect(x - 8, groundLevel - 32, 4, 20);
+    }
+
+    createMailbox(x, groundLevel) {
+        const mailbox = this.add.graphics();
+        mailbox.setDepth(5);
+
+        // Post (brown wooden post)
+        mailbox.fillStyle(0x654321, 1);
+        mailbox.fillRect(x - 3, groundLevel - 60, 6, 60);
+
+        // Mailbox body (blue USPS style)
+        mailbox.fillStyle(0x1976D2, 1);
+        mailbox.fillRoundedRect(x - 15, groundLevel - 75, 30, 20, 3);
+
+        // Mailbox flag (red)
+        mailbox.fillStyle(0xD32F2F, 1);
+        mailbox.fillRect(x + 12, groundLevel - 70, 8, 10);
+
+        // Mail slot (black)
+        mailbox.fillStyle(0x000000, 1);
+        mailbox.fillRect(x - 10, groundLevel - 68, 20, 3);
+
+        // White stripe on mailbox
+        mailbox.fillStyle(0xFFFFFF, 1);
+        mailbox.fillRect(x - 12, groundLevel - 67, 24, 2);
+
+        // Track this mailbox for interaction
+        this.mailboxes.push({
+            graphics: mailbox,
+            x: x,
+            y: groundLevel,
+            hasApplications: false
+        });
+    }
+
+    generateRentalApplication(apartmentBuilding, unitIndex) {
+        // Random name generation
+        const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda',
+                           'William', 'Elizabeth', 'David', 'Barbara', 'Richard', 'Susan', 'Joseph', 'Jessica',
+                           'Thomas', 'Sarah', 'Charles', 'Karen', 'Daniel', 'Nancy', 'Matthew', 'Lisa'];
+        const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
+                          'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
+                          'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White'];
+
+        // Random employment
+        const jobs = ['Software Engineer', 'Teacher', 'Nurse', 'Accountant', 'Sales Manager', 'Chef',
+                     'Graphic Designer', 'Marketing Specialist', 'Mechanic', 'Electrician', 'Dentist',
+                     'Pharmacist', 'Police Officer', 'Firefighter', 'Construction Worker', 'Lawyer',
+                     'Real Estate Agent', 'Retail Manager', 'Bank Teller', 'Insurance Agent'];
+
+        const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const job = jobs[Math.floor(Math.random() * jobs.length)];
+
+        // Base rent for apartment unit
+        const baseRent = this.buildingTypes.apartment.incomePerUnit;
+
+        // Rent offer varies +/- 30% from base
+        const rentVariation = 0.7 + (Math.random() * 0.6); // 0.7 to 1.3
+        const rentOffer = Math.floor(baseRent * rentVariation);
+
+        // Credit score (300-850)
+        const creditScore = Math.floor(300 + Math.random() * 550);
+
+        // Employment length (months)
+        const employmentLength = Math.floor(6 + Math.random() * 60); // 6 months to 5 years
+
+        return {
+            name: `${firstName} ${lastName}`,
+            job: job,
+            rentOffer: rentOffer,
+            creditScore: creditScore,
+            employmentLength: employmentLength,
+            apartmentBuilding: apartmentBuilding,
+            unitIndex: unitIndex
+        };
+    }
+
+    generateApplicationsForVacantUnit(apartmentBuilding, unitIndex) {
+        // Generate 3-5 applications
+        const numApplications = 3 + Math.floor(Math.random() * 3);
+        const applications = [];
+
+        for (let i = 0; i < numApplications; i++) {
+            applications.push(this.generateRentalApplication(apartmentBuilding, unitIndex));
+        }
+
+        // Add to pending applications
+        this.pendingApplications.push({
+            apartmentBuilding: apartmentBuilding,
+            unitIndex: unitIndex,
+            applications: applications,
+            arrivalTime: Date.now()
+        });
+
+        // Flag mailboxes as having applications
+        for (let mailbox of this.mailboxes) {
+            mailbox.hasApplications = true;
+        }
+
+        console.log(`${numApplications} applications received for apartment unit ${unitIndex + 1}`);
+    }
+
+    checkTenantRisk(unit) {
+        // Check if tenant might skip out on rent based on credit score
+        if (!unit.tenant || !unit.rented) return;
+
+        const now = Date.now();
+        const timeSinceLastCheck = (now - unit.lastRiskCheck) / 1000 / 60; // minutes
+
+        // Check once per game day (24 game hours)
+        if (timeSinceLastCheck < 24 * 60) return;
+
+        unit.lastRiskCheck = now;
+
+        const creditScore = unit.tenant.creditScore;
+        let skipChance = 0;
+
+        // Calculate skip chance based on credit score
+        if (creditScore >= 750) {
+            skipChance = 0.001; // 0.1% chance - very reliable
+        } else if (creditScore >= 650) {
+            skipChance = 0.01; // 1% chance - mostly reliable
+        } else if (creditScore >= 550) {
+            skipChance = 0.05; // 5% chance - moderate risk
+        } else {
+            skipChance = 0.15; // 15% chance - high risk!
+        }
+
+        // Roll the dice
+        if (Math.random() < skipChance) {
+            // Tenant bolted! Lose accumulated income
+            console.log(`⚠️ ${unit.tenant.name} skipped out on rent! Lost $${unit.accumulatedIncome}`);
+
+            // Unit becomes vacant
+            unit.rented = false;
+            unit.tenant = null;
+            unit.accumulatedIncome = 0;
+
+            // Generate new applications after a delay
+            const building = this.buildings.find(b => b.units && b.units.includes(unit));
+            const unitIndex = building.units.indexOf(unit);
+
+            // Wait a bit before new applications arrive (simulate time to clean/list unit)
+            setTimeout(() => {
+                this.generateApplicationsForVacantUnit(building, unitIndex);
+            }, 5000); // 5 seconds delay
+        }
+    }
+
+    drawBuildingDetails(graphics, type, x, y) {
+        const building = this.buildingTypes[type];
+
+        if (type === 'house') {
+            // House: Two-story residential with 2x4 symmetrical windows
+            const windowColor = 0xFFFF99;
+            const windowWidth = 20;
+            const windowHeight = 25;
+            const spacing = 25;
+
+            // Floor separator line (between stories)
+            graphics.lineStyle(3, 0x654321, 1);
+            graphics.lineBetween(x - building.width/2, y - building.height/2, x + building.width/2, y - building.height/2);
+
+            // 2 columns, 4 rows of windows (2 per floor)
+            for (let row = 0; row < 4; row++) {
+                for (let col = 0; col < 2; col++) {
+                    const wx = x - spacing + (col * spacing * 2);
+                    const wy = y - building.height + 50 + (row * 50);
+
+                    // Window shadow (depth effect - darker rectangle behind)
+                    graphics.fillStyle(0x000000, 0.3);
+                    graphics.fillRect(wx - windowWidth/2 + 2, wy + 2, windowWidth, windowHeight);
+
+                    // Window
+                    graphics.fillStyle(windowColor, 1);
+                    graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
+
+                    // Window reflection (lighter top half)
+                    graphics.fillStyle(0xFFFFFF, 0.3);
+                    graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight/2);
+
+                    // Window frame
+                    graphics.lineStyle(2, 0x654321, 1);
+                    graphics.strokeRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
+
+                    // Window cross
+                    graphics.lineStyle(1, 0x654321, 1);
+                    graphics.lineBetween(wx, wy, wx, wy + windowHeight);
+                    graphics.lineBetween(wx - windowWidth/2, wy + windowHeight/2, wx + windowWidth/2, wy + windowHeight/2);
+                }
+            }
+
+            // Door shadow (3D depth)
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillRect(x - 20 + 3, y - 50 + 3, 40, 50);
+
+            // Front door (centered)
+            graphics.fillStyle(0x8B4513, 1);
+            graphics.fillRect(x - 20, y - 50, 40, 50);
+            graphics.lineStyle(2, 0x654321, 1);
+            graphics.strokeRect(x - 20, y - 50, 40, 50);
+
+            // Door panels
+            graphics.lineStyle(1, 0x654321, 1);
+            graphics.strokeRect(x - 15, y - 45, 12, 20);
+            graphics.strokeRect(x + 3, y - 45, 12, 20);
+
+            // Doorknob with shadow
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillCircle(x + 13, y - 24, 3);
+            graphics.fillStyle(0xFFD700, 1);
+            graphics.fillCircle(x + 12, y - 25, 3);
+            graphics.fillStyle(0xFFFF99, 0.5);
+            graphics.fillCircle(x + 11, y - 26, 1.5);
+
+            // 3D Peaked Roof with angular perspective
+            // Dark underside shadow
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillTriangle(
+                x - building.width/2 - 10, y - building.height,
+                x, y - building.height - 35,
+                x + building.width/2 + 10, y - building.height
+            );
+
+            // Left side of roof (lighter)
+            graphics.fillStyle(0xA0522D, 1);
+            graphics.fillTriangle(
+                x - building.width/2 - 10, y - building.height,
+                x, y - building.height - 35,
+                x, y - building.height
+            );
+
+            // Right side of roof (darker for 3D effect)
+            graphics.fillStyle(0x8B4513, 1);
+            graphics.fillTriangle(
+                x, y - building.height - 35,
+                x + building.width/2 + 10, y - building.height,
+                x, y - building.height
+            );
+
+            // Roof outline
+            graphics.lineStyle(2, 0x654321, 1);
+            graphics.strokeTriangle(
+                x - building.width/2 - 10, y - building.height,
+                x, y - building.height - 35,
+                x + building.width/2 + 10, y - building.height
+            );
+
+            // Roof ridge line (3D edge)
+            graphics.lineStyle(1, 0x000000, 0.5);
+            graphics.lineBetween(x, y - building.height, x, y - building.height - 35);
+
+        } else if (type === 'apartment') {
+            // Apartment: Four-story building with 2 units per floor (8 units total)
+            const windowColor = 0xFFFF99;
+            const windowWidth = 18;
+            const windowHeight = 20;
+            const floorHeight = building.height / 4; // 90px per floor
+
+            // Draw floor separator lines
+            graphics.lineStyle(2, 0x654321, 1);
+            for (let floor = 1; floor < 4; floor++) {
+                const floorY = y - (floor * floorHeight);
+                graphics.lineBetween(x - building.width/2, floorY, x + building.width/2, floorY);
+            }
+
+            // Draw units (2 per floor, 4 floors = 8 units)
+            for (let floor = 0; floor < 4; floor++) {
+                for (let unit = 0; unit < 2; unit++) {
+                    const unitX = x - 50 + (unit * 100); // Left or right unit
+                    const unitY = y - building.height + (floor * floorHeight) + 20;
+                    const unitIndex = floor * 2 + unit; // Calculate unit index (0-7)
+
+                    // Windows for each unit (2 windows)
+                    for (let win = 0; win < 2; win++) {
+                        const wx = unitX - 15 + (win * 30);
+                        const wy = unitY + 15;
+
+                        // Window shadow
+                        graphics.fillStyle(0x000000, 0.3);
+                        graphics.fillRect(wx - windowWidth/2 + 1, wy + 1, windowWidth, windowHeight);
+
+                        // Window
+                        graphics.fillStyle(windowColor, 1);
+                        graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
+
+                        // Window reflection
+                        graphics.fillStyle(0xFFFFFF, 0.3);
+                        graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight/2);
+
+                        // Window frame
+                        graphics.lineStyle(1, 0x654321, 1);
+                        graphics.strokeRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
+                    }
+                    // Note: VACANT signs are added dynamically as text in the update loop
+                }
+            }
+
+            // Main entrance - Double glass doors on first floor (centered)
+            const entranceWidth = 50;
+            const entranceHeight = 70;
+            const entranceY = y - entranceHeight;
+
+            // Door frame shadow
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, entranceWidth, entranceHeight);
+
+            // Door frame
+            graphics.fillStyle(0x654321, 1);
+            graphics.fillRect(x - entranceWidth/2, entranceY, entranceWidth, entranceHeight);
+
+            // Left glass door
+            graphics.fillStyle(0x87CEEB, 0.7);
+            graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, (entranceWidth/2) - 5, entranceHeight - 6);
+
+            // Right glass door
+            graphics.fillRect(x + 2, entranceY + 3, (entranceWidth/2) - 5, entranceHeight - 6);
+
+            // Glass reflection
+            graphics.fillStyle(0xFFFFFF, 0.3);
+            graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, (entranceWidth/2) - 5, (entranceHeight - 6)/2);
+            graphics.fillRect(x + 2, entranceY + 3, (entranceWidth/2) - 5, (entranceHeight - 6)/2);
+
+            // Door divider (between double doors)
+            graphics.fillStyle(0x654321, 1);
+            graphics.fillRect(x - 2, entranceY, 4, entranceHeight);
+
+            // Door handles (gold)
+            graphics.fillStyle(0xFFD700, 1);
+            graphics.fillCircle(x - 10, entranceY + entranceHeight/2, 3);
+            graphics.fillCircle(x + 10, entranceY + entranceHeight/2, 3);
+
+            // Flat roof
+            graphics.fillStyle(0x696969, 1);
+            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
+
+        } else if (type === 'hotel') {
+            // Hotel: Five-story building with 2 rooms per floor (10 rooms total)
+            const windowColor = 0xFFFF99;
+            const windowWidth = 20;
+            const windowHeight = 22;
+            const floorHeight = building.height / 5; // 80px per floor
+
+            // Draw floor separator lines
+            graphics.lineStyle(2, 0x654321, 1);
+            for (let floor = 1; floor < 5; floor++) {
+                const floorY = y - (floor * floorHeight);
+                graphics.lineBetween(x - building.width/2, floorY, x + building.width/2, floorY);
+            }
+
+            // Draw rooms (2 per floor, 5 floors = 10 rooms)
+            for (let floor = 0; floor < 5; floor++) {
+                for (let room = 0; room < 2; room++) {
+                    const roomX = x - 60 + (room * 120); // Left or right room
+                    const roomY = y - building.height + (floor * floorHeight) + 25;
+                    const roomIndex = floor * 2 + room; // Calculate room index (0-9)
+
+                    // Windows for each room (2 windows)
+                    for (let win = 0; win < 2; win++) {
+                        const wx = roomX - 20 + (win * 40);
+                        const wy = roomY + 15;
+
+                        // Window shadow
+                        graphics.fillStyle(0x000000, 0.3);
+                        graphics.fillRect(wx - windowWidth/2 + 1, wy + 1, windowWidth, windowHeight);
+
+                        // Window
+                        graphics.fillStyle(windowColor, 1);
+                        graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
+
+                        // Window reflection
+                        graphics.fillStyle(0xFFFFFF, 0.3);
+                        graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight/2);
+
+                        // Window frame
+                        graphics.lineStyle(1, 0x654321, 1);
+                        graphics.strokeRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
+                    }
+                    // Note: DIRTY signs are added dynamically as text in the update loop
+                }
+            }
+
+            // Main entrance - Large revolving door on first floor (centered)
+            const entranceWidth = 60;
+            const entranceHeight = 75;
+            const entranceY = y - entranceHeight;
+
+            // Door frame shadow
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, entranceWidth, entranceHeight);
+
+            // Door frame (gold)
+            graphics.fillStyle(0xFFD700, 1);
+            graphics.fillRect(x - entranceWidth/2, entranceY, entranceWidth, entranceHeight);
+
+            // Glass revolving door
+            graphics.fillStyle(0x87CEEB, 0.6);
+            graphics.fillRect(x - entranceWidth/2 + 5, entranceY + 5, entranceWidth - 10, entranceHeight - 10);
+
+            // Glass reflection
+            graphics.fillStyle(0xFFFFFF, 0.4);
+            graphics.fillRect(x - entranceWidth/2 + 5, entranceY + 5, entranceWidth - 10, (entranceHeight - 10)/2);
+
+            // Revolving door dividers (cross pattern)
+            graphics.fillStyle(0xC0C0C0, 1);
+            graphics.fillRect(x - 2, entranceY + 5, 4, entranceHeight - 10); // Vertical
+            graphics.fillRect(x - entranceWidth/2 + 5, entranceY + entranceHeight/2 - 2, entranceWidth - 10, 4); // Horizontal
+
+            // Hotel sign above entrance
+            graphics.fillStyle(0xFFD700, 1);
+            graphics.fillRect(x - 40, y - building.height + 10, 80, 20);
+            graphics.lineStyle(2, 0x654321, 1);
+            graphics.strokeRect(x - 40, y - building.height + 10, 80, 20);
+
+            // Flat roof with decorative trim
+            graphics.fillStyle(0x696969, 1);
+            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
+
+        } else if (type === 'shop') {
+            // Shop: Commercial with large display windows
+            const windowColor = 0x87CEEB;
+
+            // Large storefront window shadow (depth)
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRect(x - 60 + 3, y - 120 + 3, 120, 60);
+
+            // Large storefront window (centered)
+            graphics.fillStyle(windowColor, 1);
+            graphics.fillRect(x - 60, y - 120, 120, 60);
+
+            // Window reflection
+            graphics.fillStyle(0xFFFFFF, 0.2);
+            graphics.fillRect(x - 60, y - 120, 120, 30);
+
+            graphics.lineStyle(3, 0x000000, 1);
+            graphics.strokeRect(x - 60, y - 120, 120, 60);
+
+            // Window panes
+            graphics.lineStyle(2, 0x000000, 1);
+            graphics.lineBetween(x - 60, y - 90, x + 60, y - 90);
+            graphics.lineBetween(x - 30, y - 120, x - 30, y - 60);
+            graphics.lineBetween(x + 30, y - 120, x + 30, y - 60);
+
+            // Upper floor windows (2 windows, symmetrical)
+            for (let col = 0; col < 2; col++) {
+                const wx = x - 35 + (col * 70);
+                const wy = y - building.height + 30;
+
+                // Window shadow
+                graphics.fillStyle(0x000000, 0.3);
+                graphics.fillRect(wx - 15 + 2, wy + 2, 30, 35);
+
+                graphics.fillStyle(windowColor, 1);
+                graphics.fillRect(wx - 15, wy, 30, 35);
+
+                // Window reflection
+                graphics.fillStyle(0xFFFFFF, 0.2);
+                graphics.fillRect(wx - 15, wy, 30, 17);
+
+                graphics.lineStyle(2, 0x000000, 1);
+                graphics.strokeRect(wx - 15, wy, 30, 35);
+                graphics.lineBetween(wx, wy, wx, wy + 35);
+            }
+
+            // 3D Angular Awning with perspective
+            // Awning shadow underneath
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRect(x - 70, y - 120, 140, 8);
+
+            // Awning top (flat part)
+            graphics.fillStyle(0xFF6347, 1);
+            graphics.fillRect(x - 70, y - 130, 140, 10);
+
+            // Awning front face (3D perspective - angled)
+            graphics.fillStyle(0xDC143C, 1);
+            graphics.beginPath();
+            graphics.moveTo(x - 70, y - 120);
+            graphics.lineTo(x + 70, y - 120);
+            graphics.lineTo(x + 65, y - 115);
+            graphics.lineTo(x - 65, y - 115);
+            graphics.closePath();
+            graphics.fillPath();
+
+            // Awning stripes on top
+            graphics.lineStyle(2, 0x8B0000, 1);
+            for (let i = 0; i < 7; i++) {
+                graphics.lineBetween(x - 70 + (i * 23), y - 130, x - 70 + (i * 23), y - 120);
+            }
+
+            // Awning edge outline
+            graphics.lineStyle(2, 0x8B0000, 1);
+            graphics.strokeRect(x - 70, y - 130, 140, 10);
+
+            // Door shadow
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
+
+            // Door (centered)
+            graphics.fillStyle(0x654321, 1);
+            graphics.fillRect(x - 20, y - 55, 40, 55);
+            graphics.lineStyle(2, 0x000000, 1);
+            graphics.strokeRect(x - 20, y - 55, 40, 55);
+
+            // Door handle with shadow
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillCircle(x + 11, y - 27, 4);
+            graphics.fillStyle(0xC0C0C0, 1);
+            graphics.fillCircle(x + 10, y - 28, 4);
+            graphics.fillStyle(0xFFFFFF, 0.6);
+            graphics.fillCircle(x + 9, y - 29, 2);
+
+            // 3D Flat roof with angular trim
+            // Roof shadow
+            graphics.fillStyle(0x000000, 0.2);
+            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
+
+            // Roof main
+            graphics.fillStyle(0x696969, 1);
+            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
+
+            // Roof edge (3D perspective)
+            graphics.fillStyle(0x505050, 1);
+            graphics.beginPath();
+            graphics.moveTo(x - building.width/2 - 5, y - building.height);
+            graphics.lineTo(x + building.width/2 + 5, y - building.height);
+            graphics.lineTo(x + building.width/2 + 10, y - building.height - 5);
+            graphics.lineTo(x - building.width/2 - 10, y - building.height - 5);
+            graphics.closePath();
+            graphics.fillPath();
+
+        } else if (type === 'restaurant') {
+            // Restaurant: Fancy with arched windows
+            const windowColor = 0xFFF8DC;
+
+            // 3 arched windows on upper floor (symmetrical)
+            for (let col = 0; col < 3; col++) {
+                const wx = x - 50 + (col * 50);
+                const wy = y - building.height + 40;
+
+                // Window shadow (depth)
+                graphics.fillStyle(0x000000, 0.3);
+                graphics.fillRect(wx - 15 + 2, wy + 2, 30, 40);
+                graphics.fillCircle(wx + 2, wy + 2, 15);
+
+                // Window rectangle
+                graphics.fillStyle(windowColor, 1);
+                graphics.fillRect(wx - 15, wy, 30, 40);
+
+                // Arched top
+                graphics.fillCircle(wx, wy, 15);
+
+                // Window reflection
+                graphics.fillStyle(0xFFFFFF, 0.25);
+                graphics.fillRect(wx - 15, wy, 30, 20);
+                graphics.fillCircle(wx, wy, 7);
+
+                // Frame
+                graphics.lineStyle(2, 0x8B4513, 1);
+                graphics.strokeRect(wx - 15, wy, 30, 40);
+                graphics.strokeCircle(wx, wy, 15);
+            }
+
+            // Large entrance shadow (3D depth)
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillRect(x - 30 + 4, y - 70 + 4, 60, 70);
+
+            // Large entrance (centered)
+            graphics.fillStyle(0x8B4513, 1);
+            graphics.fillRect(x - 30, y - 70, 60, 70);
+            graphics.lineStyle(3, 0x654321, 1);
+            graphics.strokeRect(x - 30, y - 70, 60, 70);
+
+            // Double doors
+            graphics.lineStyle(2, 0x654321, 1);
+            graphics.lineBetween(x, y - 70, x, y);
+            graphics.fillStyle(windowColor, 1);
+            graphics.fillRect(x - 20, y - 60, 15, 30);
+            graphics.fillRect(x + 5, y - 60, 15, 30);
+
+            // Door glass reflection
+            graphics.fillStyle(0xFFFFFF, 0.3);
+            graphics.fillRect(x - 20, y - 60, 15, 15);
+            graphics.fillRect(x + 5, y - 60, 15, 15);
+
+            // Door handles with shadow
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillCircle(x - 7, y - 34, 3);
+            graphics.fillCircle(x + 9, y - 34, 3);
+            graphics.fillStyle(0xFFD700, 1);
+            graphics.fillCircle(x - 8, y - 35, 3);
+            graphics.fillCircle(x + 8, y - 35, 3);
+            graphics.fillStyle(0xFFFF99, 0.5);
+            graphics.fillCircle(x - 9, y - 36, 1.5);
+            graphics.fillCircle(x + 7, y - 36, 1.5);
+
+            // 3D Restaurant sign/awning between windows and doors
+            // Sign shadow
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRect(x - 65 + 2, y - 105 + 2, 130, 20);
+
+            // Sign main
+            graphics.fillStyle(0x8B0000, 1);
+            graphics.fillRect(x - 65, y - 105, 130, 20);
+
+            // Sign 3D edge (bottom perspective)
+            graphics.fillStyle(0x660000, 1);
+            graphics.beginPath();
+            graphics.moveTo(x - 65, y - 85);
+            graphics.lineTo(x + 65, y - 85);
+            graphics.lineTo(x + 63, y - 80);
+            graphics.lineTo(x - 63, y - 80);
+            graphics.closePath();
+            graphics.fillPath();
+
+            // Sign outline
+            graphics.lineStyle(2, 0x000000, 1);
+            graphics.strokeRect(x - 65, y - 105, 130, 20);
+
+            // 3D Decorative peaked roof with angular perspective
+            // Roof shadow base
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillTriangle(
+                x - building.width/2 - 8, y - building.height,
+                x, y - building.height - 30,
+                x + building.width/2 + 8, y - building.height
+            );
+
+            // Left side of roof (lighter)
+            graphics.fillStyle(0xA0522D, 1);
+            graphics.fillTriangle(
+                x - building.width/2 - 8, y - building.height,
+                x, y - building.height - 30,
+                x, y - building.height
+            );
+
+            // Right side of roof (darker for 3D effect)
+            graphics.fillStyle(0x8B4513, 1);
+            graphics.fillTriangle(
+                x, y - building.height - 30,
+                x + building.width/2 + 8, y - building.height,
+                x, y - building.height
+            );
+
+            // Roof outline
+            graphics.lineStyle(2, 0x654321, 1);
+            graphics.strokeTriangle(
+                x - building.width/2 - 8, y - building.height,
+                x, y - building.height - 30,
+                x + building.width/2 + 8, y - building.height
+            );
+
+            // Roof ridge line (3D edge)
+            graphics.lineStyle(1, 0x000000, 0.5);
+            graphics.lineBetween(x, y - building.height, x, y - building.height - 30);
+
+            // Decorative roof trim (3D angular eaves)
+            graphics.fillStyle(0x654321, 1);
+            graphics.beginPath();
+            graphics.moveTo(x - building.width/2 - 8, y - building.height);
+            graphics.lineTo(x - building.width/2 - 15, y - building.height + 5);
+            graphics.lineTo(x + building.width/2 + 15, y - building.height + 5);
+            graphics.lineTo(x + building.width/2 + 8, y - building.height);
+            graphics.closePath();
+            graphics.fillPath();
         }
     }
 
     update() {
+        // Update game time based on real time passed and speed multiplier
+        const now = Date.now();
+        const realTimePassed = (now - this.lastRealTime) / 1000; // seconds
+        const gameTimePassed = realTimePassed * this.timeSpeed * 60; // Game minutes (1 real second = 60 game seconds at 1x speed)
+        this.gameTime += gameTimePassed;
+        this.lastRealTime = now;
+
+        // Calculate day, hour, minute
+        const totalMinutes = Math.floor(this.gameTime);
+        const day = Math.floor(totalMinutes / (24 * 60)) + 1;
+        const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minute = totalMinutes % 60;
+
+        // Update time UI
+        const timeString = `Day ${day} - ${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        const speedIndicator = this.timeSpeed === 1 ? '▶' : this.timeSpeed === 2 ? '▶▶' : '▶▶▶';
+        this.timeUI.setText(`⏰ ${timeString} ${speedIndicator}`);
+
+        // Update sky color based on time of day
+        this.updateSky();
+
+        // Update celestial body (sun/moon) position
+        this.updateCelestialBody();
+
+        // Update stars visibility and twinkling
+        const isNight = hour < 6 || hour >= 20; // Night is 8pm to 6am
+        if (this.stars) {
+            for (let star of this.stars) {
+                star.circle.setVisible(isNight);
+                if (isNight) {
+                    // Twinkling effect
+                    star.phase += star.twinkleSpeed * 0.05;
+                    const alpha = 0.5 + Math.sin(star.phase) * 0.3;
+                    star.circle.setAlpha(alpha);
+                }
+            }
+        }
+
+        // Update building window lights based on time and occupancy
+        for (let building of this.buildings) {
+            if (building.windowLights) {
+                if (building.type === 'house') {
+                    // Houses: all windows lit at night
+                    for (let light of building.windowLights) {
+                        light.setVisible(isNight);
+                    }
+                } else if (building.type === 'apartment') {
+                    // Apartments: only lit if unit is occupied (rented)
+                    for (let light of building.windowLights) {
+                        const unitIndex = light.unitIndex;
+                        const windowsPerUnit = 2;
+                        const actualUnitIndex = Math.floor(building.windowLights.indexOf(light) / windowsPerUnit);
+                        const isOccupied = building.units && building.units[actualUnitIndex] && building.units[actualUnitIndex].rented;
+                        light.setVisible(isNight && isOccupied);
+                    }
+                } else if (building.type === 'hotel') {
+                    // Hotel: only lit if room is occupied
+                    for (let light of building.windowLights) {
+                        const windowsPerRoom = 2;
+                        const roomIndex = Math.floor(building.windowLights.indexOf(light) / windowsPerRoom);
+                        const isOccupied = building.rooms && building.rooms[roomIndex] && building.rooms[roomIndex].status === 'occupied';
+                        light.setVisible(isNight && isOccupied);
+                    }
+                }
+            }
+        }
+
+        // Update street lamp lights
+        if (this.lampPosts) {
+            for (let lamp of this.lampPosts) {
+                lamp.bulb.setVisible(isNight);
+                lamp.glow.setVisible(isNight);
+            }
+        }
+
+        // Animate clouds slowly drifting
+        if (this.clouds) {
+            for (let cloud of this.clouds) {
+                cloud.container.x += cloud.speed;
+                // Wrap around when cloud goes off screen
+                if (cloud.container.x > 3000 + 100) {
+                    cloud.container.x = -100;
+                }
+            }
+        }
+
+        // Handle time speed toggle
+        if (Phaser.Input.Keyboard.JustDown(this.tKey)) {
+            this.timeSpeed = this.timeSpeed === 1 ? 2 : this.timeSpeed === 2 ? 3 : 1;
+            console.log(`Time speed: ${this.timeSpeed}x`);
+        }
+
+        // Handle creative mode toggle
+        if (Phaser.Input.Keyboard.JustDown(this.cKey) && !this.buildMode && !this.bankMenuOpen && !this.resourceBuildingMenuOpen && !this.restartConfirmShowing) {
+            this.creativeMode = !this.creativeMode;
+            console.log(`Creative mode: ${this.creativeMode ? 'ON' : 'OFF'}`);
+        }
+
+        // Update income accumulation and resource regeneration for all buildings
+        for (let building of this.buildings) {
+            const buildingType = this.buildingTypes[building.type];
+
+            // Income accumulation for houses, shops, restaurants
+            if (buildingType && buildingType.incomeRate) {
+                // Calculate time elapsed in minutes (adjusted for time speed)
+                const elapsedMinutes = ((now - building.lastIncomeTime) / 60000) * this.timeSpeed;
+                const incomeToAdd = elapsedMinutes * buildingType.incomeRate;
+
+                building.accumulatedIncome = Math.min(
+                    building.accumulatedIncome + incomeToAdd,
+                    buildingType.maxIncome
+                );
+                building.lastIncomeTime = now;
+
+                // Show $ indicator if income is ready to collect (> $5)
+                if (building.accumulatedIncome >= 5) {
+                    if (!building.incomeIndicator) {
+                        building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
+                            fontSize: '24px'
+                        }).setOrigin(0.5);
+                    } else {
+                        building.incomeIndicator.setVisible(true);
+                    }
+                } else {
+                    if (building.incomeIndicator) {
+                        building.incomeIndicator.setVisible(false);
+                    }
+                }
+            }
+
+            // Resource regeneration for lumber mills and brick factories
+            if (buildingType && buildingType.resourceType) {
+                // Calculate time elapsed in minutes (adjusted for time speed)
+                const elapsedMinutes = ((now - building.lastResourceTime) / 60000) * this.timeSpeed;
+                const resourcesToAdd = elapsedMinutes * buildingType.regenRate;
+
+                building.storedResources = Math.min(
+                    building.storedResources + resourcesToAdd,
+                    buildingType.maxStorage
+                );
+                building.lastResourceTime = now;
+
+                // Show resource indicator if resources are available (>= 1)
+                if (building.storedResources >= 1) {
+                    const icon = buildingType.resourceType === 'wood' ? '🪵' : '🧱';
+                    if (!building.resourceIndicator) {
+                        building.resourceIndicator = this.add.text(building.x, building.y - buildingType.height - 80, icon, {
+                            fontSize: '24px'
+                        }).setOrigin(0.5);
+                    } else {
+                        building.resourceIndicator.setVisible(true);
+                    }
+                } else {
+                    if (building.resourceIndicator) {
+                        building.resourceIndicator.setVisible(false);
+                    }
+                }
+            }
+
+            // Apartment unit income generation and tenant risk checking
+            if (building.type === 'apartment' && building.units) {
+                const apartmentType = this.buildingTypes.apartment;
+                const floorHeight = buildingType.height / 4; // 90px per floor
+
+                for (let unitIndex = 0; unitIndex < building.units.length; unitIndex++) {
+                    const unit = building.units[unitIndex];
+                    const floor = Math.floor(unitIndex / 2); // 0-3
+                    const unitPos = unitIndex % 2; // 0 or 1 (left or right)
+                    const unitX = building.x - 50 + (unitPos * 100);
+                    const unitY = building.y - buildingType.height + (floor * floorHeight) + 65;
+
+                    if (unit.rented && unit.tenant) {
+                        // Generate rent income
+                        const elapsedMinutes = ((now - unit.lastIncomeTime) / 60000) * this.timeSpeed;
+                        const incomeToAdd = elapsedMinutes * unit.tenant.rentOffer;
+
+                        unit.accumulatedIncome = Math.min(
+                            unit.accumulatedIncome + incomeToAdd,
+                            apartmentType.maxIncomePerUnit
+                        );
+                        unit.lastIncomeTime = now;
+
+                        // Check if tenant might skip out
+                        this.checkTenantRisk(unit);
+
+                        // Hide vacancy indicator if it exists
+                        if (unit.vacancyIndicator) {
+                            unit.vacancyIndicator.setVisible(false);
+                        }
+                    } else {
+                        // Unit is vacant - show vacancy indicator
+                        if (!unit.vacancyIndicator) {
+                            unit.vacancyIndicator = this.add.text(unitX, unitY, 'VACANT', {
+                                fontSize: '8px',
+                                color: '#FFFFFF',
+                                backgroundColor: '#FF0000',
+                                padding: { x: 3, y: 1 }
+                            }).setOrigin(0.5).setDepth(11);
+                        } else {
+                            unit.vacancyIndicator.setVisible(true);
+                            unit.vacancyIndicator.x = unitX;
+                            unit.vacancyIndicator.y = unitY;
+                        }
+                    }
+                }
+            }
+
+            // Hotel room management and nightly income
+            if (building.type === 'hotel' && building.rooms) {
+                const hotelType = this.buildingTypes.hotel;
+                const floorHeight = buildingType.height / 5; // 80px per floor
+                const currentNight = Math.floor(this.gameTime / (24 * 60)); // Current night number
+
+                // Check if we've crossed into a new night
+                const lastNight = Math.floor(building.lastNightCheck / (24 * 60));
+                if (currentNight > lastNight) {
+                    // New night has started! Process all rooms
+                    console.log(`🌙 New night at hotel! Night #${currentNight}`);
+
+                    for (let roomIndex = 0; roomIndex < building.rooms.length; roomIndex++) {
+                        const room = building.rooms[roomIndex];
+
+                        if (room.status === 'occupied') {
+                            // Guest stays one more night
+                            room.nightsOccupied++;
+
+                            // Random checkout: 33% chance each night after first night
+                            if (room.nightsOccupied >= 1 && Math.random() < 0.33) {
+                                // Guest checks out - room becomes dirty and generates income
+                                const income = hotelType.nightlyRate * room.nightsOccupied;
+                                building.accumulatedIncome += income;
+                                room.status = 'dirty';
+                                room.nightsOccupied = 0;
+                                console.log(`Guest checked out of room ${roomIndex + 1} after ${room.nightsOccupied} nights. Earned $${income}`);
+                            }
+                        } else if (room.status === 'clean') {
+                            // Room is clean - new guest checks in
+                            room.status = 'occupied';
+                            room.nightsOccupied = 0; // Will become 1 on next night check
+                            console.log(`New guest checked into room ${roomIndex + 1}`);
+                        }
+                        // Dirty rooms stay dirty until mayor cleans them
+                    }
+
+                    building.lastNightCheck = this.gameTime;
+                }
+
+                // Update dirty room indicators
+                for (let roomIndex = 0; roomIndex < building.rooms.length; roomIndex++) {
+                    const room = building.rooms[roomIndex];
+                    const floor = Math.floor(roomIndex / 2); // 0-4
+                    const roomPos = roomIndex % 2; // 0 or 1 (left or right)
+                    const roomX = building.x - 60 + (roomPos * 120);
+                    const roomY = building.y - buildingType.height + (floor * floorHeight) + 75;
+
+                    if (room.status === 'dirty') {
+                        // Show dirty indicator
+                        if (!room.dirtyIndicator) {
+                            room.dirtyIndicator = this.add.text(roomX, roomY, 'DIRTY', {
+                                fontSize: '8px',
+                                color: '#FFFFFF',
+                                backgroundColor: '#8B4513',
+                                padding: { x: 3, y: 1 }
+                            }).setOrigin(0.5).setDepth(11);
+                        } else {
+                            room.dirtyIndicator.setVisible(true);
+                            room.dirtyIndicator.x = roomX;
+                            room.dirtyIndicator.y = roomY;
+                        }
+                    } else {
+                        // Hide dirty indicator if room is clean/occupied
+                        if (room.dirtyIndicator) {
+                            room.dirtyIndicator.setVisible(false);
+                        }
+                    }
+                }
+
+                // Show income indicator if income is ready to collect
+                if (building.accumulatedIncome >= 1) {
+                    if (!building.incomeIndicator) {
+                        building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
+                            fontSize: '24px'
+                        }).setOrigin(0.5).setDepth(11);
+                    } else {
+                        building.incomeIndicator.setVisible(true);
+                    }
+                } else {
+                    if (building.incomeIndicator) {
+                        building.incomeIndicator.setVisible(false);
+                    }
+                }
+            }
+        }
+
         // Update resource UI
-        this.resourceUI.setText(`💰 $${this.money}  🪵 ${this.wood}  🧱 ${this.bricks}`);
+        let resourceText = `💰 Cash: $${this.money}  🪵 ${this.wood}  🧱 ${this.bricks}`;
+        if (this.creativeMode) resourceText += `  [CREATIVE MODE]`;
+        if (this.bankBalance > 0) resourceText += `\n🏦 Bank: $${this.bankBalance}`;
+        if (this.loanAmount > 0) resourceText += `\n💳 Debt: $${this.loanAmount}`;
+        this.resourceUI.setText(resourceText);
+
+        // Restart confirmation
+        if (!this.restartConfirmShowing && Phaser.Input.Keyboard.JustDown(this.rKey) && !this.bankMenuOpen) {
+            this.restartConfirmShowing = true;
+            this.restartConfirmUI.setText('⚠️ RESTART GAME? ⚠️\nAll progress will be lost!\n\nPress R again to confirm\nPress ESC or Enter to cancel');
+            this.restartConfirmUI.setVisible(true);
+        }
+
+        if (this.restartConfirmShowing) {
+            // If confirmation is showing, check for confirmation or cancel
+            if (Phaser.Input.Keyboard.JustDown(this.rKey)) {
+                this.resetGame();
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('ESC')) ||
+                       Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+                // ESC or Enter cancels
+                this.restartConfirmShowing = false;
+                this.restartConfirmUI.setVisible(false);
+            }
+        }
+
+        // Delete confirmation
+        if (this.deleteConfirmShowing) {
+            // If confirmation is showing, check for confirmation or cancel
+            if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+                // Confirm deletion
+                if (this.buildingToDelete) {
+                    this.deleteBuilding(this.buildingToDelete);
+                    this.buildingToDelete = null;
+                }
+                this.deleteConfirmShowing = false;
+                this.deleteConfirmUI.setVisible(false);
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('ESC'))) {
+                // Cancel deletion
+                this.deleteConfirmShowing = false;
+                this.deleteConfirmUI.setVisible(false);
+                this.buildingToDelete = null;
+            }
+        }
 
         // Toggle build mode
-        if (Phaser.Input.Keyboard.JustDown(this.bKey)) {
+        if (Phaser.Input.Keyboard.JustDown(this.bKey) && !this.restartConfirmShowing && !this.deleteConfirmShowing) {
             this.buildMode = !this.buildMode;
+            this.deleteMode = false;  // Exit delete mode if entering build mode
             if (this.buildMode) {
                 this.selectedBuilding = 'house'; // Default selection
             } else {
+                this.selectedBuilding = null;
+                if (this.buildingPreview) {
+                    this.buildingPreview.destroy();
+                    this.buildingPreview = null;
+                }
+            }
+        }
+
+        // Toggle delete mode
+        if (Phaser.Input.Keyboard.JustDown(this.xKey) && !this.restartConfirmShowing && !this.deleteConfirmShowing) {
+            this.deleteMode = !this.deleteMode;
+            this.buildMode = false;  // Exit build mode if entering delete mode
+            if (!this.deleteMode) {
                 this.selectedBuilding = null;
                 if (this.buildingPreview) {
                     this.buildingPreview.destroy();
@@ -297,16 +1956,26 @@ class MainScene extends Phaser.Scene {
         if (this.buildMode) {
             let menuText = '=== BUILD MODE ===\n';
             menuText += '1: House ($100, 🪵10, 🧱5)\n';
-            menuText += '2: Shop ($200, 🪵15, 🧱10)\n';
-            menuText += '3: Restaurant ($300, 🪵20, 🧱15)\n';
+            menuText += '2: Apartment ($400, 🪵30, 🧱35)\n';
+            menuText += '3: Shop ($200, 🪵15, 🧱10)\n';
+            menuText += '4: Restaurant ($300, 🪵20, 🧱15)\n';
+            menuText += '5: Bank ($500, 🪵25, 🧱30)\n';
+            menuText += '6: Market ($150, 🪵12, 🧱8)\n';
+            menuText += '7: Lumber Mill ($250, 🪵5, 🧱20)\n';
+            menuText += '8: Brick Factory ($250, 🪵20, 🧱5)\n';
             menuText += 'Click to place | B to exit';
             this.buildMenuUI.setText(menuText);
             this.buildMenuUI.setVisible(true);
 
             // Select building type
             if (Phaser.Input.Keyboard.JustDown(this.key1)) this.selectedBuilding = 'house';
-            if (Phaser.Input.Keyboard.JustDown(this.key2)) this.selectedBuilding = 'shop';
-            if (Phaser.Input.Keyboard.JustDown(this.key3)) this.selectedBuilding = 'restaurant';
+            if (Phaser.Input.Keyboard.JustDown(this.key2)) this.selectedBuilding = 'apartment';
+            if (Phaser.Input.Keyboard.JustDown(this.key3)) this.selectedBuilding = 'shop';
+            if (Phaser.Input.Keyboard.JustDown(this.key4)) this.selectedBuilding = 'restaurant';
+            if (Phaser.Input.Keyboard.JustDown(this.key5)) this.selectedBuilding = 'bank';
+            if (Phaser.Input.Keyboard.JustDown(this.key6)) this.selectedBuilding = 'market';
+            if (Phaser.Input.Keyboard.JustDown(this.key7)) this.selectedBuilding = 'lumbermill';
+            if (Phaser.Input.Keyboard.JustDown(this.key8)) this.selectedBuilding = 'brickfactory';
 
             // Update building preview
             this.updateBuildingPreview();
@@ -314,51 +1983,388 @@ class MainScene extends Phaser.Scene {
             this.buildMenuUI.setVisible(false);
         }
 
+        // Update delete mode UI
+        if (this.deleteMode) {
+            let deleteText = '=== DELETE MODE ===\n';
+            deleteText += 'Click on a building to delete it\n';
+            deleteText += 'X to exit';
+            this.buildMenuUI.setText(deleteText);
+            this.buildMenuUI.setVisible(true);
+
+            // Check for click on building to delete
+            if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
+                const clickX = this.input.activePointer.x + this.cameras.main.scrollX;
+                const clickY = this.input.activePointer.y + this.cameras.main.scrollY;
+
+                // Find building at click position
+                for (let building of this.buildings) {
+                    const buildingType = this.buildingTypes[building.type];
+                    const left = building.x - buildingType.width / 2;
+                    const right = building.x + buildingType.width / 2;
+                    const top = building.y - buildingType.height;
+                    const bottom = building.y;
+
+                    if (clickX >= left && clickX <= right && clickY >= top && clickY <= bottom) {
+                        // Show confirmation dialog
+                        this.buildingToDelete = building;
+                        this.deleteConfirmShowing = true;
+                        this.deleteConfirmUI.setText(`Delete ${buildingType.name}?\n\nENTER: Confirm  |  ESC: Cancel`);
+                        this.deleteConfirmUI.setVisible(true);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Hotel cleaning interaction - click hotel when NOT in build/delete mode
+        if (!this.buildMode && !this.deleteMode && !this.deleteConfirmShowing && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+            if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
+                const clickX = this.input.activePointer.x + this.cameras.main.scrollX;
+                const clickY = this.input.activePointer.y + this.cameras.main.scrollY;
+
+                // Find if click is on a hotel
+                for (let building of this.buildings) {
+                    if (building.type === 'hotel') {
+                        const buildingType = this.buildingTypes[building.type];
+                        const left = building.x - buildingType.width / 2;
+                        const right = building.x + buildingType.width / 2;
+                        const top = building.y - buildingType.height;
+                        const bottom = building.y;
+
+                        if (clickX >= left && clickX <= right && clickY >= top && clickY <= bottom) {
+                            // Count dirty rooms
+                            let dirtyCount = 0;
+                            for (let room of building.rooms) {
+                                if (room.status === 'dirty') {
+                                    dirtyCount++;
+                                }
+                            }
+
+                            if (dirtyCount > 0) {
+                                const totalCleaningCost = dirtyCount * buildingType.cleaningCost;
+
+                                // Check if mayor has enough money
+                                if (this.money >= totalCleaningCost) {
+                                    // Clean all dirty rooms
+                                    for (let room of building.rooms) {
+                                        if (room.status === 'dirty') {
+                                            room.status = 'clean';
+                                        }
+                                    }
+
+                                    // Deduct money
+                                    this.money -= totalCleaningCost;
+                                    console.log(`🧹 Cleaned ${dirtyCount} rooms for $${totalCleaningCost}. Cash remaining: $${this.money}`);
+
+                                    // Save game
+                                    this.saveGame();
+                                } else {
+                                    console.log(`❌ Not enough money to clean rooms! Need $${totalCleaningCost}, have $${this.money}`);
+                                }
+                            } else {
+                                console.log(`✨ All hotel rooms are already clean!`);
+                            }
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Check if player is near a bank
+        // Find the CLOSEST one, not just the first one
+        this.nearBank = null;
+        let closestBankDistance = 250;
+        for (let building of this.buildings) {
+            if (building.type === 'bank') {
+                const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                if (distance < closestBankDistance) {
+                    this.nearBank = building;
+                    closestBankDistance = distance;
+                }
+            }
+        }
+
+        // Bank interaction
+        if (this.nearBank && !this.bankMenuOpen && !this.buildMode && !this.restartConfirmShowing) {
+            // Show prompt above the bank building
+            const bankType = this.buildingTypes[this.nearBank.type];
+            if (!this.bankPrompt) {
+                this.bankPrompt = this.add.text(this.nearBank.x, this.nearBank.y - bankType.height - 100, 'Press E to use Bank', {
+                    fontSize: '12px',
+                    color: '#ffffff',
+                    backgroundColor: '#2E7D32',
+                    padding: { x: 5, y: 3 }
+                }).setOrigin(0.5);
+            } else {
+                this.bankPrompt.x = this.nearBank.x;
+                this.bankPrompt.y = this.nearBank.y - bankType.height - 100;
+                this.bankPrompt.setVisible(true);
+            }
+
+            // Open bank menu
+            if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                this.openBankMenu();
+            }
+        } else {
+            if (this.bankPrompt) {
+                this.bankPrompt.setVisible(false);
+            }
+        }
+
+        // Check if player is near a mailbox
+        this.nearMailbox = null;
+        let closestMailboxDistance = 80;
+        for (let mailbox of this.mailboxes) {
+            const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, mailbox.x, mailbox.y);
+            if (distance < closestMailboxDistance) {
+                this.nearMailbox = mailbox;
+                closestMailboxDistance = distance;
+            }
+        }
+
+        // Mailbox interaction
+        if (this.nearMailbox && !this.mailboxMenuOpen && !this.buildMode && !this.restartConfirmShowing) {
+            // Show prompt above mailbox if there are applications
+            if (this.pendingApplications.length > 0) {
+                if (!this.mailboxPrompt) {
+                    this.mailboxPrompt = this.add.text(this.nearMailbox.x, this.nearMailbox.y - 90, `Press E - ${this.pendingApplications.length} Application(s)`, {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#D32F2F',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.mailboxPrompt.setText(`Press E - ${this.pendingApplications.length} Application(s)`);
+                    this.mailboxPrompt.x = this.nearMailbox.x;
+                    this.mailboxPrompt.y = this.nearMailbox.y - 90;
+                    this.mailboxPrompt.setVisible(true);
+                }
+
+                // Open mailbox menu
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.openMailboxMenu();
+                }
+            }
+        } else {
+            if (this.mailboxPrompt) {
+                this.mailboxPrompt.setVisible(false);
+            }
+        }
+
+        // Handle bank menu
+        if (this.bankMenuOpen) {
+            // Close bank menu
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+                this.closeBankMenu();
+            }
+
+            // Bank operations
+            if (Phaser.Input.Keyboard.JustDown(this.key1)) {
+                this.depositMoney(100);
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.key2)) {
+                this.withdrawMoney(100);
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.key3)) {
+                this.borrowMoney(500);
+            }
+        }
+
+        // Handle mailbox menu
+        if (this.mailboxMenuOpen && this.pendingApplications.length > 0) {
+            // Close mailbox menu
+            if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                this.closeMailboxMenu();
+            }
+
+            const currentBatch = this.pendingApplications[0];
+            const numApplications = currentBatch.applications.length;
+
+            // Navigate between applications
+            if (Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.aKey)) {
+                this.currentApplicationIndex = (this.currentApplicationIndex - 1 + numApplications) % numApplications;
+                this.updateMailboxUI();
+            }
+            if (Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.dKey)) {
+                this.currentApplicationIndex = (this.currentApplicationIndex + 1) % numApplications;
+                this.updateMailboxUI();
+            }
+
+            // Accept application
+            if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+                this.acceptApplication();
+            }
+        }
+
+        // Check if player is near an income-generating building (House, Shop, Restaurant, Apartment)
+        // Find the CLOSEST one with income ready, not just the first one
+        this.nearIncomeBuilding = null;
+        let closestIncomeDistance = 250;
+        for (let building of this.buildings) {
+            const buildingType = this.buildingTypes[building.type];
+
+            // Check regular buildings (House, Shop, Restaurant)
+            if (buildingType && buildingType.incomeRate && building.accumulatedIncome >= 1) {
+                const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                if (distance < closestIncomeDistance) {
+                    this.nearIncomeBuilding = building;
+                    closestIncomeDistance = distance;
+                }
+            }
+
+            // Check apartment buildings (income from rented units)
+            if (building.type === 'apartment' && building.units) {
+                let totalApartmentIncome = 0;
+                for (let unit of building.units) {
+                    if (unit.rented && unit.accumulatedIncome) {
+                        totalApartmentIncome += unit.accumulatedIncome;
+                    }
+                }
+                if (totalApartmentIncome >= 1) {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestIncomeDistance) {
+                        this.nearIncomeBuilding = building;
+                        closestIncomeDistance = distance;
+                    }
+                }
+            }
+        }
+
+        // Check if player is near a resource building (Market, Lumber Mill, Brick Factory)
+        // Find the CLOSEST one, not just the first one
+        this.nearResourceBuilding = null;
+        let closestResourceDistance = 251; // Start at max range + 1
+        for (let building of this.buildings) {
+            if (building.type === 'market' || building.type === 'lumbermill' || building.type === 'brickfactory') {
+                const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                if (distance < 250 && distance < closestResourceDistance) {
+                    this.nearResourceBuilding = building;
+                    closestResourceDistance = distance;
+                }
+            }
+        }
+
+        // Income building interaction (prioritize over resource buildings)
+        if (this.nearIncomeBuilding && !this.buildMode && !this.bankMenuOpen && !this.resourceBuildingMenuOpen && !this.restartConfirmShowing) {
+            // Show prompt above the income building
+            const buildingType = this.buildingTypes[this.nearIncomeBuilding.type];
+
+            // Calculate income (different for apartments vs regular buildings)
+            let income = 0;
+            if (this.nearIncomeBuilding.type === 'apartment' && this.nearIncomeBuilding.units) {
+                for (let unit of this.nearIncomeBuilding.units) {
+                    if (unit.rented && unit.accumulatedIncome) {
+                        income += unit.accumulatedIncome;
+                    }
+                }
+            } else {
+                income = this.nearIncomeBuilding.accumulatedIncome;
+            }
+            income = Math.floor(income);
+
+            if (!this.incomePrompt) {
+                this.incomePrompt = this.add.text(this.nearIncomeBuilding.x, this.nearIncomeBuilding.y - buildingType.height - 100, `Press E to collect $${income}`, {
+                    fontSize: '12px',
+                    color: '#ffffff',
+                    backgroundColor: '#4CAF50',
+                    padding: { x: 5, y: 3 }
+                }).setOrigin(0.5);
+            } else {
+                this.incomePrompt.setText(`Press E to collect $${income}`);
+                this.incomePrompt.x = this.nearIncomeBuilding.x;
+                this.incomePrompt.y = this.nearIncomeBuilding.y - buildingType.height - 100;
+                this.incomePrompt.setVisible(true);
+            }
+
+            // Collect income
+            if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                this.collectIncome(this.nearIncomeBuilding);
+            }
+        } else {
+            if (this.incomePrompt) {
+                this.incomePrompt.setVisible(false);
+            }
+        }
+
+        // Resource building interaction
+        if (this.nearResourceBuilding && !this.resourceBuildingMenuOpen && !this.buildMode && !this.bankMenuOpen && !this.nearIncomeBuilding && !this.restartConfirmShowing) {
+            // Show prompt above the resource building with building name
+            const resourceType = this.buildingTypes[this.nearResourceBuilding.type];
+            const promptText = `Press E: ${resourceType.name}`;
+
+            if (!this.resourcePrompt) {
+                this.resourcePrompt = this.add.text(this.nearResourceBuilding.x, this.nearResourceBuilding.y - resourceType.height - 100, promptText, {
+                    fontSize: '12px',
+                    color: '#ffffff',
+                    backgroundColor: '#FF9800',
+                    padding: { x: 5, y: 3 }
+                }).setOrigin(0.5);
+            } else {
+                this.resourcePrompt.setText(promptText);
+                this.resourcePrompt.x = this.nearResourceBuilding.x;
+                this.resourcePrompt.y = this.nearResourceBuilding.y - resourceType.height - 100;
+                this.resourcePrompt.setVisible(true);
+            }
+
+            // Open resource building menu
+            if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                this.openResourceBuildingMenu();
+            }
+        } else {
+            if (this.resourcePrompt) {
+                this.resourcePrompt.setVisible(false);
+            }
+        }
+
+        // Handle resource building menu
+        if (this.resourceBuildingMenuOpen) {
+            // Close menu
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+                this.closeResourceBuildingMenu();
+            }
+
+            // Building-specific operations
+            if (this.nearResourceBuilding.type === 'market') {
+                if (Phaser.Input.Keyboard.JustDown(this.key1)) {
+                    this.buyWood(10, 50);
+                }
+                if (Phaser.Input.Keyboard.JustDown(this.key2)) {
+                    this.buyBricks(10, 75);
+                }
+            } else if (this.nearResourceBuilding.type === 'lumbermill') {
+                if (Phaser.Input.Keyboard.JustDown(this.key1)) {
+                    this.collectWood();
+                }
+            } else if (this.nearResourceBuilding.type === 'brickfactory') {
+                if (Phaser.Input.Keyboard.JustDown(this.key1)) {
+                    this.collectBricks();
+                }
+            }
+        }
+
         // Sync visual with player
         this.playerVisual.x = this.player.x;
         this.playerVisual.y = this.player.y;
 
-        // Check if player is on stairs
-        let onStairs = false;
-        for (let zone of this.stairZones) {
-            const bounds = zone.getBounds();
-            if (this.player.x >= bounds.left && this.player.x <= bounds.right &&
-                this.player.y >= bounds.top && this.player.y <= bounds.bottom) {
-                onStairs = true;
-                break;
+        // Movement (disabled when restart confirmation is showing)
+        if (!this.restartConfirmShowing) {
+            if (this.cursors.left.isDown || this.aKey.isDown) {
+                this.player.setVelocityX(-200);
+                this.playerVisual.scaleX = -1;
+            } else if (this.cursors.right.isDown || this.dKey.isDown) {
+                this.player.setVelocityX(200);
+                this.playerVisual.scaleX = 1;
+            } else {
+                this.player.setVelocityX(0);
             }
-        }
-
-        // Movement
-        if (this.cursors.left.isDown || this.aKey.isDown) {
-            this.player.setVelocityX(-200);
-            this.playerVisual.scaleX = -1;
-        } else if (this.cursors.right.isDown || this.dKey.isDown) {
-            this.player.setVelocityX(200);
-            this.playerVisual.scaleX = 1;
         } else {
             this.player.setVelocityX(0);
         }
 
-        // Climbing mode when on stairs
-        if (onStairs && ((this.cursors.up.isDown || this.wKey.isDown) ||
-                        (this.cursors.down.isDown || this.sKey.isDown))) {
-            this.player.body.setAllowGravity(false);
-            this.isClimbing = true;
-
-            if (this.cursors.up.isDown || this.wKey.isDown) {
-                this.player.setVelocityY(-150);
-            } else if (this.cursors.down.isDown || this.sKey.isDown) {
-                this.player.setVelocityY(150);
-            } else {
-                this.player.setVelocityY(0);
-            }
-        } else {
-            // Normal physics
-            this.player.body.setAllowGravity(true);
-            this.isClimbing = false;
-
-            // Jump - check if on ground or platform
+        // Jump - check if on ground (disabled when restart confirmation is showing)
+        if (!this.restartConfirmShowing) {
             const onGround = this.player.body.touching.down ||
                             this.player.body.blocked.down ||
                             Math.abs(this.player.body.velocity.y) < 0.5;
@@ -377,7 +2383,7 @@ class MainScene extends Phaser.Scene {
 
         // Snap to grid (every 240 pixels along the street for bigger buildings)
         const snappedX = Math.round(mouseWorldX / 240) * 240;
-        const buildingY = 500; // Ground level (matches the gray street)
+        const buildingY = this.gameHeight - 100; // Ground level (matches the gray street)
 
         // Remove old preview
         if (this.buildingPreview) {
@@ -398,63 +2404,95 @@ class MainScene extends Phaser.Scene {
         this.buildingPreview.buildingY = buildingY;
     }
 
+    deleteBuilding(building) {
+        // Destroy graphics
+        if (building.graphics) {
+            building.graphics.destroy();
+        }
+
+        // Destroy label
+        if (building.label) {
+            building.label.destroy();
+        }
+
+        // Destroy income indicator
+        if (building.incomeIndicator) {
+            building.incomeIndicator.destroy();
+        }
+
+        // Destroy resource indicator
+        if (building.resourceIndicator) {
+            building.resourceIndicator.destroy();
+        }
+
+        // Destroy vacancy indicators for apartments
+        if (building.type === 'apartment' && building.units) {
+            for (let unit of building.units) {
+                if (unit.vacancyIndicator) {
+                    unit.vacancyIndicator.destroy();
+                }
+            }
+        }
+
+        // Destroy dirty indicators for hotel rooms
+        if (building.type === 'hotel' && building.rooms) {
+            for (let room of building.rooms) {
+                if (room.dirtyIndicator) {
+                    room.dirtyIndicator.destroy();
+                }
+            }
+        }
+
+        // Destroy window lights
+        if (building.windowLights) {
+            for (let light of building.windowLights) {
+                light.destroy();
+            }
+        }
+
+        // Remove from buildings array
+        const index = this.buildings.indexOf(building);
+        if (index > -1) {
+            this.buildings.splice(index, 1);
+        }
+
+        console.log(`Deleted ${building.type}`);
+
+        // Save game
+        this.saveGame();
+    }
+
     placeBuilding() {
         if (!this.selectedBuilding || !this.buildingPreview) return;
 
         const building = this.buildingTypes[this.selectedBuilding];
 
-        // Check if player has enough resources
-        if (this.money < building.cost || this.wood < building.wood || this.bricks < building.bricks) {
-            console.log('Not enough resources!');
-            return;
-        }
+        // Check if player has enough resources (skip in creative mode)
+        if (!this.creativeMode) {
+            if (this.money < building.cost || this.wood < building.wood || this.bricks < building.bricks) {
+                console.log('Not enough resources!');
+                return;
+            }
 
-        // Deduct resources
-        this.money -= building.cost;
-        this.wood -= building.wood;
-        this.bricks -= building.bricks;
+            // Deduct resources
+            this.money -= building.cost;
+            this.wood -= building.wood;
+            this.bricks -= building.bricks;
+        }
 
         // Create permanent building
         const x = this.buildingPreview.snappedX;
         const y = this.buildingPreview.buildingY;
 
         const newBuilding = this.add.graphics();
+        newBuilding.setDepth(10); // Buildings are on top of background
         newBuilding.fillStyle(building.color, 1);
         newBuilding.fillRect(x - building.width/2, y - building.height, building.width, building.height);
         newBuilding.lineStyle(3, 0x000000, 1);
         newBuilding.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
 
-        // Add windows (scaled for bigger buildings)
-        const windowColor = 0xFFFF99;
-        const windowsPerRow = Math.floor(building.width / 50);
-        const windowRows = Math.floor(building.height / 80);
-
-        for (let row = 0; row < windowRows; row++) {
-            for (let col = 0; col < windowsPerRow; col++) {
-                newBuilding.fillStyle(windowColor, 1);
-                const wx = x - building.width/2 + 20 + col * 50;
-                const wy = y - building.height + 30 + row * 50;
-                newBuilding.fillRect(wx, wy, 30, 30);
-                // Window frame
-                newBuilding.lineStyle(2, 0x000000, 1);
-                newBuilding.strokeRect(wx, wy, 30, 30);
-            }
-        }
-
-        // Add door (bigger)
-        newBuilding.fillStyle(0x654321, 1);
-        newBuilding.fillRect(x - 30, y - 60, 60, 60);
-        // Door knob
-        newBuilding.fillStyle(0xFFD700, 1);
-        newBuilding.fillCircle(x + 15, y - 30, 5);
-
-        // Add roof (bigger)
-        newBuilding.fillStyle(0x8B4513, 1);
-        newBuilding.fillTriangle(
-            x - building.width/2 - 10, y - building.height,
-            x, y - building.height - 40,
-            x + building.width/2 + 10, y - building.height
-        );
+        // Draw detailed building features (windows, doors, roof, etc.)
+        this.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y);
 
         // Add label (bigger text for bigger buildings)
         const label = this.add.text(x, y - building.height - 55, building.name, {
@@ -462,18 +2500,637 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#000000',
             padding: { x: 8, y: 5 }
-        }).setOrigin(0.5);
+        }).setOrigin(0.5).setDepth(11);
 
-        this.buildings.push({ graphics: newBuilding, label: label, type: this.selectedBuilding });
+        // Special decorations for specific building types
+        if (this.selectedBuilding === 'bank') {
+            // Add dollar sign symbol
+            const dollarSign = this.add.text(x, y - building.height / 2, '$', {
+                fontSize: '80px',
+                color: '#FFD700',
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(11);
 
-        console.log(`Built ${building.name}! Resources: $${this.money}, Wood: ${this.wood}, Bricks: ${this.bricks}`);
+            // Add columns to make it look more like a bank
+            newBuilding.fillStyle(0xFFFFFF, 0.3);
+            newBuilding.fillRect(x - building.width/2 + 20, y - building.height + 40, 20, building.height - 80);
+            newBuilding.fillRect(x - building.width/2 + 60, y - building.height + 40, 20, building.height - 80);
+            newBuilding.fillRect(x + building.width/2 - 80, y - building.height + 40, 20, building.height - 80);
+            newBuilding.fillRect(x + building.width/2 - 40, y - building.height + 40, 20, building.height - 80);
+        } else if (this.selectedBuilding === 'shop') {
+            // Add "SHOP" text sign above awning
+            const shopSign = this.add.text(x, y - 140, 'SHOP', {
+                fontSize: '20px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (this.selectedBuilding === 'restaurant') {
+            // Add "RESTAURANT" text on the red sign
+            const restaurantSign = this.add.text(x, y - 95, 'RESTAURANT', {
+                fontSize: '16px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (this.selectedBuilding === 'hotel') {
+            // Add "HOTEL" text on the gold sign
+            const hotelSign = this.add.text(x, y - building.height + 20, 'HOTEL', {
+                fontSize: '14px',
+                color: '#000000',
+                fontStyle: 'bold',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (this.selectedBuilding === 'market') {
+            // Add market awning
+            const awning = this.add.text(x, y - building.height / 2, '🏪', {
+                fontSize: '60px'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (this.selectedBuilding === 'lumbermill') {
+            // Add tree/wood icon
+            const woodIcon = this.add.text(x, y - building.height / 2, '🌲', {
+                fontSize: '60px'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (this.selectedBuilding === 'brickfactory') {
+            // Add brick icon
+            const brickIcon = this.add.text(x, y - building.height / 2, '🧱', {
+                fontSize: '60px'
+            }).setOrigin(0.5).setDepth(11);
+        }
+
+        // Add building with income and resource tracking
+        const buildingData = {
+            graphics: newBuilding,
+            label: label,
+            type: this.selectedBuilding,
+            x: x,
+            y: y,
+            accumulatedIncome: 0,
+            lastIncomeTime: Date.now(),
+            storedResources: 0,  // For resource buildings (lumber mill, brick factory)
+            lastResourceTime: Date.now()
+        };
+
+        // Initialize apartment units if it's an apartment building
+        if (this.selectedBuilding === 'apartment') {
+            buildingData.units = [];
+            for (let i = 0; i < building.units; i++) {
+                buildingData.units.push({
+                    rented: false,  // All units start vacant
+                    tenant: null,   // Current tenant info (name, credit score, etc.)
+                    accumulatedIncome: 0,
+                    lastIncomeTime: Date.now(),
+                    lastRiskCheck: Date.now()  // For checking if tenant skips
+                });
+
+                // Generate applications for this vacant unit after a short delay
+                setTimeout(() => {
+                    this.generateApplicationsForVacantUnit(buildingData, i);
+                }, 2000 + (i * 1000)); // Stagger applications
+            }
+            buildingData.vacancySigns = [];  // Will store vacancy sign graphics
+        }
+
+        // Initialize hotel rooms if it's a hotel building
+        if (this.selectedBuilding === 'hotel') {
+            buildingData.rooms = [];
+            buildingData.lastNightCheck = this.gameTime; // Track last time we checked for night transition
+            buildingData.accumulatedIncome = 0; // Total income from all rooms
+
+            for (let i = 0; i < building.rooms; i++) {
+                buildingData.rooms.push({
+                    status: 'clean',  // clean, dirty, or occupied
+                    nightsOccupied: 0,  // How many nights has current guest stayed
+                    lastStatusChange: Date.now()
+                });
+            }
+        }
+
+        // Add window lights for nighttime
+        this.addWindowLights(buildingData, building);
+
+        this.buildings.push(buildingData);
+
+        if (this.creativeMode) {
+            console.log(`Built ${building.name} in CREATIVE MODE!`);
+        } else {
+            console.log(`Built ${building.name}! Resources: $${this.money}, Wood: ${this.wood}, Bricks: ${this.bricks}`);
+        }
+
+        // Auto-save after building
+        this.saveGame();
+    }
+
+    saveGame() {
+        const saveData = {
+            money: this.money,
+            wood: this.wood,
+            bricks: this.bricks,
+            bankBalance: this.bankBalance,
+            loanAmount: this.loanAmount,
+            gameTime: this.gameTime,
+            timeSpeed: this.timeSpeed,
+            buildings: this.buildings.map(b => ({
+                type: b.type,
+                x: b.x,
+                y: b.y,
+                accumulatedIncome: b.accumulatedIncome || 0,
+                lastIncomeTime: b.lastIncomeTime || Date.now(),
+                storedResources: b.storedResources || 0,
+                lastResourceTime: b.lastResourceTime || Date.now(),
+                // Save apartment units
+                units: b.units || undefined,
+                // Save hotel rooms
+                rooms: b.rooms || undefined,
+                lastNightCheck: b.lastNightCheck || undefined
+            }))
+        };
+        localStorage.setItem('mainstreetmayor_save', JSON.stringify(saveData));
+        console.log(`Game saved! ${this.buildings.length} buildings:`, this.buildings.map(b => `${b.type} at x=${b.x}`));
+    }
+
+    loadGame() {
+        const saveDataStr = localStorage.getItem('mainstreetmayor_save');
+        if (!saveDataStr) {
+            console.log('No save data found');
+            return false;
+        }
+
+        try {
+            const saveData = JSON.parse(saveDataStr);
+
+            // Restore resources
+            this.money = saveData.money;
+            this.wood = saveData.wood;
+            this.bricks = saveData.bricks;
+
+            // Restore bank data
+            this.bankBalance = saveData.bankBalance || 0;
+            this.loanAmount = saveData.loanAmount || 0;
+
+            // Restore time data
+            this.gameTime = saveData.gameTime || 0;
+            this.timeSpeed = saveData.timeSpeed || 1;
+            this.lastRealTime = Date.now(); // Reset to current time on load
+
+            // Restore buildings
+            if (saveData.buildings && saveData.buildings.length > 0) {
+                console.log(`Loading ${saveData.buildings.length} buildings from save:`, saveData.buildings);
+                saveData.buildings.forEach((buildingData, index) => {
+                    console.log(`Loading building ${index}: ${buildingData.type} at x=${buildingData.x}`);
+                    this.loadBuilding(
+                        buildingData.type,
+                        buildingData.x,
+                        buildingData.y,
+                        buildingData.accumulatedIncome || 0,
+                        buildingData.lastIncomeTime || Date.now(),
+                        buildingData.storedResources || 0,
+                        buildingData.lastResourceTime || Date.now(),
+                        buildingData.units,
+                        buildingData.rooms,
+                        buildingData.lastNightCheck
+                    );
+                });
+                console.log(`Successfully loaded ${this.buildings.length} buildings`);
+            }
+
+            console.log('Game loaded!');
+            return true;
+        } catch (e) {
+            console.error('Error loading save data:', e);
+            return false;
+        }
+    }
+
+    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null) {
+        const building = this.buildingTypes[type];
+        if (!building) {
+            console.error(`Building type ${type} not found!`);
+            return;
+        }
+
+        // Always use current ground level instead of saved Y coordinate
+        const buildingY = this.gameHeight - 100;
+
+        console.log(`Drawing ${type} at x=${x}, y=${buildingY}, width=${building.width}, height=${building.height}`);
+
+        const newBuilding = this.add.graphics();
+        newBuilding.setDepth(10); // Buildings are on top of background
+        newBuilding.fillStyle(building.color, 1);
+        newBuilding.fillRect(x - building.width/2, buildingY - building.height, building.width, building.height);
+        newBuilding.lineStyle(3, 0x000000, 1);
+        newBuilding.strokeRect(x - building.width/2, buildingY - building.height, building.width, building.height);
+
+        // Draw detailed building features (windows, doors, roof, etc.)
+        try {
+            this.drawBuildingDetails(newBuilding, type, x, buildingY);
+            console.log(`Successfully drew details for ${type}`);
+        } catch (error) {
+            console.error(`Error drawing details for ${type}:`, error);
+        }
+
+        // Add label (bigger text for bigger buildings)
+        const label = this.add.text(x, buildingY - building.height - 55, building.name, {
+            fontSize: '18px',
+            color: '#ffffff',
+            backgroundColor: '#000000',
+            padding: { x: 8, y: 5 }
+        }).setOrigin(0.5).setDepth(11);
+
+        // Special decorations for specific building types
+        if (type === 'bank') {
+            // Add dollar sign symbol
+            const dollarSign = this.add.text(x, buildingY - building.height / 2, '$', {
+                fontSize: '80px',
+                color: '#FFD700',
+                fontStyle: 'bold'
+            }).setOrigin(0.5).setDepth(11);
+
+            // Add columns to make it look more like a bank
+            newBuilding.fillStyle(0xFFFFFF, 0.3);
+            newBuilding.fillRect(x - building.width/2 + 20, buildingY - building.height + 40, 20, building.height - 80);
+            newBuilding.fillRect(x - building.width/2 + 60, buildingY - building.height + 40, 20, building.height - 80);
+            newBuilding.fillRect(x + building.width/2 - 80, buildingY - building.height + 40, 20, building.height - 80);
+            newBuilding.fillRect(x + building.width/2 - 40, buildingY - building.height + 40, 20, building.height - 80);
+        } else if (type === 'shop') {
+            // Add "SHOP" text sign above awning
+            const shopSign = this.add.text(x, buildingY - 140, 'SHOP', {
+                fontSize: '20px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (type === 'restaurant') {
+            // Add "RESTAURANT" text on the red sign
+            const restaurantSign = this.add.text(x, buildingY - 95, 'RESTAURANT', {
+                fontSize: '16px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (type === 'hotel') {
+            // Add "HOTEL" text on the gold sign
+            const hotelSign = this.add.text(x, buildingY - building.height + 20, 'HOTEL', {
+                fontSize: '14px',
+                color: '#000000',
+                fontStyle: 'bold',
+                fontFamily: 'Arial'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (type === 'market') {
+            // Add market awning
+            const awning = this.add.text(x, buildingY - building.height / 2, '🏪', {
+                fontSize: '60px'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (type === 'lumbermill') {
+            // Add tree/wood icon
+            const woodIcon = this.add.text(x, buildingY - building.height / 2, '🌲', {
+                fontSize: '60px'
+            }).setOrigin(0.5).setDepth(11);
+        } else if (type === 'brickfactory') {
+            // Add brick icon
+            const brickIcon = this.add.text(x, buildingY - building.height / 2, '🧱', {
+                fontSize: '60px'
+            }).setOrigin(0.5).setDepth(11);
+        }
+
+        // Add loaded building with income and resource tracking (use buildingY for current ground level)
+        const buildingData = {
+            graphics: newBuilding,
+            label: label,
+            type: type,
+            x: x,
+            y: buildingY,
+            accumulatedIncome: accumulatedIncome,
+            lastIncomeTime: lastIncomeTime,
+            storedResources: storedResources,
+            lastResourceTime: lastResourceTime
+        };
+
+        // Restore apartment units if they exist
+        if (units) {
+            buildingData.units = units;
+            buildingData.vacancySigns = [];
+        }
+
+        // Restore hotel rooms if they exist
+        if (rooms) {
+            buildingData.rooms = rooms;
+            buildingData.lastNightCheck = lastNightCheck || this.gameTime;
+        }
+
+        // Add window lights for nighttime
+        const buildingType = this.buildingTypes[type];
+        this.addWindowLights(buildingData, buildingType);
+
+        this.buildings.push(buildingData);
+    }
+
+    openBankMenu() {
+        this.bankMenuOpen = true;
+        this.updateBankUI();
+        this.bankUI.setVisible(true);
+    }
+
+    closeBankMenu() {
+        this.bankMenuOpen = false;
+        this.bankUI.setVisible(false);
+    }
+
+    openMailboxMenu() {
+        if (this.pendingApplications.length === 0) return;
+
+        this.mailboxMenuOpen = true;
+        this.currentApplicationIndex = 0;
+        this.updateMailboxUI();
+        this.mailboxUI.setVisible(true);
+    }
+
+    closeMailboxMenu() {
+        this.mailboxMenuOpen = false;
+        this.mailboxUI.setVisible(false);
+    }
+
+    updateMailboxUI() {
+        if (this.pendingApplications.length === 0) {
+            this.closeMailboxMenu();
+            return;
+        }
+
+        const currentBatch = this.pendingApplications[0];
+        const applications = currentBatch.applications;
+        const currentApp = applications[this.currentApplicationIndex];
+
+        let menuText = `=== RENTAL APPLICATION ===\n`;
+        menuText += `Unit: Apartment #${currentBatch.unitIndex + 1}\n`;
+        menuText += `Application ${this.currentApplicationIndex + 1} of ${applications.length}\n\n`;
+        menuText += `Applicant: ${currentApp.name}\n`;
+        menuText += `Occupation: ${currentApp.job}\n`;
+        menuText += `Employment: ${currentApp.employmentLength} months\n`;
+        menuText += `Credit Score: ${currentApp.creditScore}\n`;
+        menuText += `Monthly Rent Offer: $${currentApp.rentOffer}/min\n\n`;
+
+        // Credit rating
+        let rating = '';
+        if (currentApp.creditScore >= 750) rating = '⭐ Excellent (Very Low Risk)';
+        else if (currentApp.creditScore >= 650) rating = '✓ Good (Low Risk)';
+        else if (currentApp.creditScore >= 550) rating = '⚠ Fair (Moderate Risk)';
+        else rating = '❌ Poor (HIGH RISK!)';
+        menuText += `Rating: ${rating}\n\n`;
+
+        menuText += `← → : View other applications\n`;
+        menuText += `ENTER : Accept this applicant\n`;
+        menuText += `ESC : Close mailbox\n`;
+
+        this.mailboxUI.setText(menuText);
+    }
+
+    acceptApplication() {
+        if (this.pendingApplications.length === 0) return;
+
+        const currentBatch = this.pendingApplications[0];
+        const applications = currentBatch.applications;
+        const acceptedApp = applications[this.currentApplicationIndex];
+        const apartmentBuilding = currentBatch.apartmentBuilding;
+        const unitIndex = currentBatch.unitIndex;
+
+        // Find the unit
+        const unit = apartmentBuilding.units[unitIndex];
+
+        // Move tenant in
+        unit.rented = true;
+        unit.tenant = {
+            name: acceptedApp.name,
+            job: acceptedApp.job,
+            creditScore: acceptedApp.creditScore,
+            rentOffer: acceptedApp.rentOffer
+        };
+        unit.lastIncomeTime = Date.now();
+        unit.lastRiskCheck = Date.now();
+
+        console.log(`✅ Accepted ${acceptedApp.name} for Apartment #${unitIndex + 1} at $${acceptedApp.rentOffer}/min`);
+
+        // Remove this batch of applications
+        this.pendingApplications.shift();
+
+        // Close menu or show next batch
+        if (this.pendingApplications.length > 0) {
+            this.currentApplicationIndex = 0;
+            this.updateMailboxUI();
+        } else {
+            this.closeMailboxMenu();
+        }
+
+        // Save game
+        this.saveGame();
+    }
+
+    updateBankUI() {
+        let menuText = '=== MAIN STREET BANK ===\n';
+        menuText += `💰 Cash on Hand: $${this.money}\n`;
+        menuText += `🏦 Bank Balance: $${this.bankBalance}\n`;
+        menuText += `💳 Loan Debt: $${this.loanAmount}\n\n`;
+        menuText += '1: Deposit $100\n';
+        menuText += '2: Withdraw $100\n';
+        menuText += '3: Borrow $500 (10% interest)\n';
+        menuText += 'E/Enter: Close';
+        this.bankUI.setText(menuText);
+    }
+
+    depositMoney(amount) {
+        if (this.money >= amount) {
+            this.money -= amount;
+            this.bankBalance += amount;
+            console.log(`Deposited $${amount}. Bank balance: $${this.bankBalance}`);
+            this.updateBankUI();
+            this.saveGame();
+        } else {
+            console.log('Not enough cash to deposit!');
+        }
+    }
+
+    withdrawMoney(amount) {
+        if (this.bankBalance >= amount) {
+            this.bankBalance -= amount;
+            this.money += amount;
+            console.log(`Withdrew $${amount}. Bank balance: $${this.bankBalance}`);
+            this.updateBankUI();
+            this.saveGame();
+        } else {
+            console.log('Not enough money in bank!');
+        }
+    }
+
+    borrowMoney(amount) {
+        const totalLoan = Math.round(amount * (1 + this.loanInterestRate));
+        this.money += amount;
+        this.loanAmount += totalLoan;
+        console.log(`Borrowed $${amount}. You owe $${totalLoan} (including 10% interest). Total debt: $${this.loanAmount}`);
+        this.updateBankUI();
+        this.saveGame();
+    }
+
+    resetGame() {
+        // Clear save data
+        localStorage.removeItem('mainstreetmayor_save');
+        console.log('Game reset! Starting new game...');
+
+        // Restart the scene
+        this.scene.restart();
+    }
+
+    openResourceBuildingMenu() {
+        this.resourceBuildingMenuOpen = true;
+        this.updateResourceBuildingUI();
+        this.resourceBuildingUI.setVisible(true);
+    }
+
+    closeResourceBuildingMenu() {
+        this.resourceBuildingMenuOpen = false;
+        this.resourceBuildingUI.setVisible(false);
+    }
+
+    updateResourceBuildingUI() {
+        let menuText = '';
+
+        if (this.nearResourceBuilding.type === 'market') {
+            menuText = '=== MARKET ===\n';
+            menuText += `💰 Cash: $${this.money}\n`;
+            menuText += `🪵 Wood: ${this.wood}\n`;
+            menuText += `🧱 Bricks: ${this.bricks}\n\n`;
+            menuText += '1: Buy 10 Wood ($50)\n';
+            menuText += '2: Buy 10 Bricks ($75)\n';
+            menuText += 'E/Enter: Close';
+        } else if (this.nearResourceBuilding.type === 'lumbermill') {
+            const available = Math.floor(this.nearResourceBuilding.storedResources);
+            menuText = '=== LUMBER MILL ===\n';
+            menuText += `🪵 Available: ${available} wood\n`;
+            menuText += `Your Wood: ${this.wood}\n\n`;
+            if (available >= 1) {
+                menuText += `1: Collect ${available} Wood (Free!)\n`;
+            } else {
+                menuText += '⏳ Regenerating... (1 wood/min)\n';
+            }
+            menuText += 'E/Enter: Close';
+        } else if (this.nearResourceBuilding.type === 'brickfactory') {
+            const available = Math.floor(this.nearResourceBuilding.storedResources);
+            menuText = '=== BRICK FACTORY ===\n';
+            menuText += `🧱 Available: ${available} bricks\n`;
+            menuText += `Your Bricks: ${this.bricks}\n\n`;
+            if (available >= 1) {
+                menuText += `1: Collect ${available} Bricks (Free!)\n`;
+            } else {
+                menuText += '⏳ Regenerating... (1 brick/min)\n';
+            }
+            menuText += 'E/Enter: Close';
+        }
+
+        this.resourceBuildingUI.setText(menuText);
+    }
+
+    buyWood(amount, cost) {
+        if (this.money >= cost) {
+            this.money -= cost;
+            this.wood += amount;
+            console.log(`Bought ${amount} wood for $${cost}. Wood: ${this.wood}, Money: $${this.money}`);
+            this.updateResourceBuildingUI();
+            this.saveGame();
+        } else {
+            console.log('Not enough money!');
+        }
+    }
+
+    buyBricks(amount, cost) {
+        if (this.money >= cost) {
+            this.money -= cost;
+            this.bricks += amount;
+            console.log(`Bought ${amount} bricks for $${cost}. Bricks: ${this.bricks}, Money: $${this.money}`);
+            this.updateResourceBuildingUI();
+            this.saveGame();
+        } else {
+            console.log('Not enough money!');
+        }
+    }
+
+    collectWood() {
+        const available = Math.floor(this.nearResourceBuilding.storedResources);
+        if (available >= 1) {
+            this.wood += available;
+            this.nearResourceBuilding.storedResources = 0;
+            this.nearResourceBuilding.lastResourceTime = Date.now();
+            console.log(`Collected ${available} wood. Total wood: ${this.wood}`);
+
+            // Hide resource indicator
+            if (this.nearResourceBuilding.resourceIndicator) {
+                this.nearResourceBuilding.resourceIndicator.setVisible(false);
+            }
+
+            this.updateResourceBuildingUI();
+            this.saveGame();
+        } else {
+            console.log('No wood available yet. Wait for regeneration.');
+        }
+    }
+
+    collectBricks() {
+        const available = Math.floor(this.nearResourceBuilding.storedResources);
+        if (available >= 1) {
+            this.bricks += available;
+            this.nearResourceBuilding.storedResources = 0;
+            this.nearResourceBuilding.lastResourceTime = Date.now();
+            console.log(`Collected ${available} bricks. Total bricks: ${this.bricks}`);
+
+            // Hide resource indicator
+            if (this.nearResourceBuilding.resourceIndicator) {
+                this.nearResourceBuilding.resourceIndicator.setVisible(false);
+            }
+
+            this.updateResourceBuildingUI();
+            this.saveGame();
+        } else {
+            console.log('No bricks available yet. Wait for regeneration.');
+        }
+    }
+
+    collectIncome(building) {
+        let income = 0;
+
+        // For apartments, collect from all rented units
+        if (building.type === 'apartment' && building.units) {
+            for (let unit of building.units) {
+                if (unit.rented && unit.accumulatedIncome) {
+                    income += unit.accumulatedIncome;
+                    unit.accumulatedIncome = 0;
+                }
+            }
+        } else {
+            // For regular buildings (house, shop, restaurant)
+            income = building.accumulatedIncome;
+            building.accumulatedIncome = 0;
+            building.lastIncomeTime = Date.now();
+        }
+
+        income = Math.floor(income);
+
+        if (income > 0) {
+            this.money += income;
+
+            const buildingType = this.buildingTypes[building.type];
+            console.log(`Collected $${income} from ${buildingType.name}! Total money: $${this.money}`);
+
+            // Hide income indicator
+            if (building.incomeIndicator) {
+                building.incomeIndicator.setVisible(false);
+            }
+
+            this.saveGame();
+        }
     }
 }
 
 const config = {
     type: Phaser.AUTO,
-    width: 1000,
-    height: 600,
+    width: window.innerWidth,
+    height: window.innerHeight,
     parent: 'game-container',
     backgroundColor: '#1a1a1a',
     physics: {
@@ -483,7 +3140,11 @@ const config = {
             debug: false
         }
     },
-    scene: [MainScene]
+    scene: [MainScene],
+    scale: {
+        mode: Phaser.Scale.RESIZE,
+        autoCenter: Phaser.Scale.CENTER_BOTH
+    }
 };
 
 const game = new Phaser.Game(config);
