@@ -878,22 +878,31 @@ class MainScene extends Phaser.Scene {
 
         // Add click handlers
         this.residentialButton.on('pointerdown', () => {
+            console.log('Teleporting to Residential District at', this.districts.residential.centerX);
             this.player.x = this.districts.residential.centerX;
+            this.player.body.x = this.districts.residential.centerX;
             this.playerVisual.x = this.player.x;
+            this.cameras.main.scrollX = this.player.x - this.gameWidth / 2;
             this.districtTravelMenuOpen = false;
             this.districtTravelContainer.setVisible(false);
         });
 
         this.downtownButton.on('pointerdown', () => {
+            console.log('Teleporting to Downtown at', this.districts.downtown.centerX);
             this.player.x = this.districts.downtown.centerX;
+            this.player.body.x = this.districts.downtown.centerX;
             this.playerVisual.x = this.player.x;
+            this.cameras.main.scrollX = this.player.x - this.gameWidth / 2;
             this.districtTravelMenuOpen = false;
             this.districtTravelContainer.setVisible(false);
         });
 
         this.industrialButton.on('pointerdown', () => {
+            console.log('Teleporting to Industrial District at', this.districts.industrial.centerX);
             this.player.x = this.districts.industrial.centerX;
+            this.player.body.x = this.districts.industrial.centerX;
             this.playerVisual.x = this.player.x;
+            this.cameras.main.scrollX = this.player.x - this.gameWidth / 2;
             this.districtTravelMenuOpen = false;
             this.districtTravelContainer.setVisible(false);
         });
