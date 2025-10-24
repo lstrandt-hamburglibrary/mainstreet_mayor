@@ -489,6 +489,7 @@ class MainScene extends Phaser.Scene {
             this.settingsMenuOpen = false;
             this.settingsDropdown.setVisible(false);
             this.buildMode = !this.buildMode;
+            console.log('🏗️ Build mode toggled:', this.buildMode ? 'ON' : 'OFF');
             this.deleteMode = false;
             this.buildMenuContainer.setVisible(this.buildMode);
             if (this.buildMode) {
@@ -498,12 +499,14 @@ class MainScene extends Phaser.Scene {
                     this.buildingPreview.destroy();
                     this.buildingPreview = null;
                 }
+                console.log('Build mode opened, preview cleared');
             } else {
                 this.selectedBuilding = null;
                 if (this.buildingPreview) {
                     this.buildingPreview.destroy();
                     this.buildingPreview = null;
                 }
+                console.log('Build mode closed, preview cleared');
             }
         });
 
@@ -2757,10 +2760,16 @@ class MainScene extends Phaser.Scene {
 
         // Update income accumulation and resource regeneration for all buildings
         for (let building of this.buildings) {
-            const buildingType = this.buildingTypes[building.type];
+            try {
+                const buildingType = this.buildingTypes[building.type];
 
-            // Income accumulation for houses, shops, restaurants
-            if (buildingType && buildingType.incomeRate) {
+                if (!buildingType) {
+                    console.error('Building type not found:', building.type, 'at position', building.x);
+                    continue;
+                }
+
+                // Income accumulation for houses, shops, restaurants
+                if (buildingType && buildingType.incomeRate) {
                 // Calculate time elapsed in minutes (adjusted for time speed)
                 const elapsedMinutes = ((now - building.lastIncomeTime) / 60000) * this.timeSpeed;
                 const bonus = building.districtBonus || 1.0;
@@ -2993,6 +3002,11 @@ class MainScene extends Phaser.Scene {
                     }
                 }
             }
+            } catch (error) {
+                console.error('Error processing building:', building.type, 'at', building.x, error);
+                console.error('Error stack:', error.stack);
+                // Continue to next building
+            }
         }
 
         // Update resource UI
@@ -3004,12 +3018,20 @@ class MainScene extends Phaser.Scene {
 
         // Update buses
         if (!this.isPaused) {
-            this.updateBuses();
+            try {
+                this.updateBuses();
+            } catch (error) {
+                console.error('Error updating buses:', error);
+            }
         }
 
         // Update citizens
         if (!this.isPaused) {
-            this.updateCitizens();
+            try {
+                this.updateCitizens();
+            } catch (error) {
+                console.error('Error updating citizens:', error);
+            }
         }
 
         // Restart is now controlled via settings menu (mouse clicks)
@@ -3458,33 +3480,38 @@ class MainScene extends Phaser.Scene {
         }
 
         // Sync visual with player
-        this.playerVisual.x = this.player.x;
-        this.playerVisual.y = this.player.y;
+        try {
+            this.playerVisual.x = this.player.x;
+            this.playerVisual.y = this.player.y;
 
-        // Movement (disabled when restart confirmation is showing)
-        if (!this.restartConfirmShowing) {
-            if (this.cursors.left.isDown || this.aKey.isDown) {
-                this.player.setVelocityX(-200);
-                this.playerVisual.scaleX = -1;
-            } else if (this.cursors.right.isDown || this.dKey.isDown) {
-                this.player.setVelocityX(200);
-                this.playerVisual.scaleX = 1;
+            // Movement (disabled when restart confirmation is showing)
+            if (!this.restartConfirmShowing) {
+                if (this.cursors.left.isDown || this.aKey.isDown) {
+                    this.player.setVelocityX(-200);
+                    this.playerVisual.scaleX = -1;
+                } else if (this.cursors.right.isDown || this.dKey.isDown) {
+                    this.player.setVelocityX(200);
+                    this.playerVisual.scaleX = 1;
+                } else {
+                    this.player.setVelocityX(0);
+                }
             } else {
                 this.player.setVelocityX(0);
             }
-        } else {
-            this.player.setVelocityX(0);
-        }
 
-        // Jump - check if on ground (disabled when restart confirmation is showing)
-        if (!this.restartConfirmShowing) {
-            const onGround = this.player.body.touching.down ||
-                            this.player.body.blocked.down ||
-                            Math.abs(this.player.body.velocity.y) < 0.5;
+            // Jump - check if on ground (disabled when restart confirmation is showing)
+            if (!this.restartConfirmShowing) {
+                const onGround = this.player.body.touching.down ||
+                                this.player.body.blocked.down ||
+                                Math.abs(this.player.body.velocity.y) < 0.5;
 
-            if ((this.cursors.up.isDown || this.wKey.isDown || this.spaceKey.isDown) && onGround) {
-                this.player.setVelocityY(-550);
+                if ((this.cursors.up.isDown || this.wKey.isDown || this.spaceKey.isDown) && onGround) {
+                    this.player.setVelocityY(-550);
+                }
             }
+        } catch (error) {
+            console.error('Error in player movement:', error);
+            console.error('Error stack:', error.stack);
         }
     }
 
