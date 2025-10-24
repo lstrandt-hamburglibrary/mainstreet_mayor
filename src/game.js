@@ -1256,10 +1256,7 @@ class MainScene extends Phaser.Scene {
             // Redraw building details
             this.drawBuildingDetails(building.graphics, building.type, building.x, newBuildingY);
 
-            // Update label position
-            building.label.y = newBuildingY - buildingType.height - 55;
-
-            // Update building Y coordinate
+            // Update building Y coordinate (no labels to update - we use signs now)
             building.y = newBuildingY;
         }
 
@@ -3672,10 +3669,7 @@ class MainScene extends Phaser.Scene {
             building.graphics.destroy();
         }
 
-        // Destroy label
-        if (building.label) {
-            building.label.destroy();
-        }
+        // (Labels removed - we use building signs now)
 
         // Destroy income indicator
         if (building.incomeIndicator) {
