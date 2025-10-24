@@ -1778,7 +1778,7 @@ class MainScene extends Phaser.Scene {
 
     createMailbox(x, groundLevel) {
         const mailbox = this.add.graphics();
-        mailbox.setDepth(5);
+        mailbox.setDepth(11); // Above buildings (which are depth 10)
 
         // Post (brown wooden post)
         mailbox.fillStyle(0x654321, 1);
