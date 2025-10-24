@@ -531,26 +531,29 @@ class MainScene extends Phaser.Scene {
         }).setScrollFactor(0);
 
         // Build menu UI (clickable buttons at bottom of screen)
-        this.buildMenuContainer = this.add.container(this.gameWidth / 2, this.gameHeight - 60);
+        this.buildMenuContainer = this.add.container(this.gameWidth / 2, this.gameHeight - 80);
         this.buildMenuContainer.setScrollFactor(0).setDepth(9998).setVisible(false);
 
-        const buildMenuBg = this.add.rectangle(0, 0, this.gameWidth, 120, 0x000000, 0.9);
+        const buildMenuBg = this.add.rectangle(0, 0, this.gameWidth, 160, 0x000000, 0.9);
         this.buildMenuContainer.add(buildMenuBg);
 
         // Build menu title
-        this.buildMenuTitle = this.add.text(0, -40, 'SELECT BUILDING TO PLACE', {
+        this.buildMenuTitle = this.add.text(0, -60, 'SELECT BUILDING TO PLACE', {
             fontSize: '14px',
             color: '#ffffff',
             align: 'center'
         }).setOrigin(0.5);
         this.buildMenuContainer.add(this.buildMenuTitle);
 
-        // Create building buttons (2 rows of 4)
+        // Create building buttons (3 rows of 4)
         const buildings = [
             { type: 'house', label: '🏠 House\n$100', color: '#FF6B6B' },
             { type: 'apartment', label: '🏢 Apartment\n$400', color: '#FF8C94' },
             { type: 'hotel', label: '🏨 Hotel\n$600', color: '#9C27B0' },
-            { type: 'shop', label: '🛍️ Shop\n$200', color: '#4ECDC4' },
+            { type: 'clothingShop', label: '👔 Clothing\n$200', color: '#FF69B4' },
+            { type: 'electronicsShop', label: '💻 Electronics\n$250', color: '#2196F3' },
+            { type: 'groceryStore', label: '🥬 Grocery\n$180', color: '#8BC34A' },
+            { type: 'bookstore', label: '📚 Bookstore\n$150', color: '#9C27B0' },
             { type: 'restaurant', label: '🍽️ Restaurant\n$300', color: '#FFE66D' },
             { type: 'bank', label: '🏦 Bank\n$500', color: '#2E7D32' },
             { type: 'market', label: '🏪 Market\n$150', color: '#FF9800' },
@@ -562,7 +565,7 @@ class MainScene extends Phaser.Scene {
             const col = index % 4;
             const row = Math.floor(index / 4);
             const x = -300 + (col * 200);
-            const y = -5 + (row * 35);
+            const y = -40 + (row * 35);
 
             const btn = this.add.text(x, y, building.label, {
                 fontSize: '12px',
@@ -595,8 +598,8 @@ class MainScene extends Phaser.Scene {
             this.buildingButtons[building.type] = { button: btn, originalColor: building.color };
         });
 
-        // Add brick factory button
-        const brickBtn = this.add.text(100, 30, '🧱 Brick\n$250', {
+        // Add brick factory button (4th column, 3rd row)
+        const brickBtn = this.add.text(100, 60, '🧱 Brick\n$250', {
             fontSize: '12px',
             color: '#ffffff',
             backgroundColor: '#D84315',
@@ -1288,7 +1291,7 @@ class MainScene extends Phaser.Scene {
             this.settingsDropdown.x = this.gameWidth - 200;
         }
         if (this.buildMenuContainer) {
-            this.buildMenuContainer.setPosition(this.gameWidth / 2, this.gameHeight - 60);
+            this.buildMenuContainer.setPosition(this.gameWidth / 2, this.gameHeight - 80);
         }
         if (this.demolishUI) {
             this.demolishUI.setPosition(this.gameWidth / 2, this.gameHeight - 60);
