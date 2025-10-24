@@ -492,6 +492,7 @@ class MainScene extends Phaser.Scene {
             console.log('🏗️ Build mode toggled:', this.buildMode ? 'ON' : 'OFF');
             this.deleteMode = false;
             this.buildMenuContainer.setVisible(this.buildMode);
+            this.buildMenuBg.setVisible(this.buildMode);
             if (this.buildMode) {
                 // Don't auto-select a building - let user choose
                 this.selectedBuilding = null;
@@ -516,6 +517,7 @@ class MainScene extends Phaser.Scene {
             this.deleteMode = !this.deleteMode;
             this.buildMode = false;
             this.buildMenuContainer.setVisible(false);
+            this.buildMenuBg.setVisible(false);
             if (!this.deleteMode) {
                 this.selectedBuilding = null;
                 if (this.buildingPreview) {
@@ -534,11 +536,12 @@ class MainScene extends Phaser.Scene {
         }).setScrollFactor(0).setDepth(99998);
 
         // Build menu UI (clickable buttons at bottom of screen)
+        // Background separate from container to avoid blocking input
+        this.buildMenuBg = this.add.rectangle(this.gameWidth / 2, this.gameHeight - 80, this.gameWidth, 160, 0x000000, 0.9);
+        this.buildMenuBg.setScrollFactor(0).setDepth(99996).setVisible(false);
+
         this.buildMenuContainer = this.add.container(this.gameWidth / 2, this.gameHeight - 80);
         this.buildMenuContainer.setScrollFactor(0).setDepth(99997).setVisible(false);
-
-        const buildMenuBg = this.add.rectangle(0, 0, this.gameWidth, 160, 0x000000, 0.9);
-        this.buildMenuContainer.add(buildMenuBg);
 
         // Build menu title
         this.buildMenuTitle = this.add.text(0, -60, 'SELECT BUILDING TO PLACE', {
@@ -1305,6 +1308,10 @@ class MainScene extends Phaser.Scene {
         }
         if (this.buildMenuContainer) {
             this.buildMenuContainer.setPosition(this.gameWidth / 2, this.gameHeight - 80);
+        }
+        if (this.buildMenuBg) {
+            this.buildMenuBg.setPosition(this.gameWidth / 2, this.gameHeight - 80);
+            this.buildMenuBg.setSize(this.gameWidth, 160);
         }
         if (this.demolishUI) {
             this.demolishUI.setPosition(this.gameWidth / 2, this.gameHeight - 60);
