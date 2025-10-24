@@ -872,14 +872,14 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(1, 0);
         this.shopInteriorContainer.add(this.shopStatusText);
 
-        // Restock button (bottom left)
-        this.shopRestockButton = this.add.text(30, this.gameHeight - 50, 'RESTOCK ($500)', {
-            fontSize: '16px',
+        // Restock button (bottom center)
+        this.shopRestockButton = this.add.text(this.gameWidth / 2, this.gameHeight - 80, 'RESTOCK ($500)', {
+            fontSize: '18px',
             color: '#FFFFFF',
             backgroundColor: '#2E7D32',
-            padding: { x: 15, y: 8 }
-        }).setOrigin(0, 0.5).setInteractive();
-        this.shopInteriorContainer.add(this.shopRestockButton);
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5, 0.5).setInteractive();
+        this.shopRestockButton.setScrollFactor(0).setDepth(15001).setVisible(false);
 
         this.shopRestockButton.on('pointerover', () => {
             this.shopRestockButton.setStyle({ backgroundColor: '#43A047' });
@@ -891,14 +891,14 @@ class MainScene extends Phaser.Scene {
             this.restockShop();
         });
 
-        // Hire Employee button (bottom left, below restock button)
-        this.shopHireButton = this.add.text(30, this.gameHeight - 90, 'HIRE EMPLOYEE ($1000)', {
-            fontSize: '16px',
+        // Hire Employee button (bottom center, above restock button)
+        this.shopHireButton = this.add.text(this.gameWidth / 2, this.gameHeight - 140, 'HIRE EMPLOYEE ($1000)', {
+            fontSize: '18px',
             color: '#FFFFFF',
             backgroundColor: '#1976D2',
-            padding: { x: 15, y: 8 }
-        }).setOrigin(0, 0.5).setInteractive();
-        this.shopInteriorContainer.add(this.shopHireButton);
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5, 0.5).setInteractive();
+        this.shopHireButton.setScrollFactor(0).setDepth(15001).setVisible(false);
 
         this.shopHireButton.on('pointerover', () => {
             this.shopHireButton.setStyle({ backgroundColor: '#2196F3' });
@@ -910,14 +910,14 @@ class MainScene extends Phaser.Scene {
             this.hireEmployee();
         });
 
-        // Employee wage info (bottom left, below hire button)
-        this.shopWageText = this.add.text(30, this.gameHeight - 130, '', {
-            fontSize: '14px',
+        // Employee wage info (bottom center, above restock button)
+        this.shopWageText = this.add.text(this.gameWidth / 2, this.gameHeight - 140, '', {
+            fontSize: '16px',
             color: '#000000',
             backgroundColor: '#FFFFFF',
-            padding: { x: 10, y: 5 }
-        }).setOrigin(0, 0.5);
-        this.shopInteriorContainer.add(this.shopWageText);
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5, 0.5);
+        this.shopWageText.setScrollFactor(0).setDepth(15001).setVisible(false);
 
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
@@ -1324,15 +1324,15 @@ class MainScene extends Phaser.Scene {
                 interiorBg.setSize(this.gameWidth, this.gameHeight);
             }
 
-            // Update button positions (they're not in fixed positions in the list, so we use the stored references)
+            // Update button positions (they're not in the container, they're direct scene objects)
             if (this.shopRestockButton) {
-                this.shopRestockButton.setPosition(30, this.gameHeight - 50);
+                this.shopRestockButton.setPosition(this.gameWidth / 2, this.gameHeight - 80);
             }
             if (this.shopHireButton) {
-                this.shopHireButton.setPosition(30, this.gameHeight - 90);
+                this.shopHireButton.setPosition(this.gameWidth / 2, this.gameHeight - 140);
             }
             if (this.shopWageText) {
-                this.shopWageText.setPosition(30, this.gameHeight - 130);
+                this.shopWageText.setPosition(this.gameWidth / 2, this.gameHeight - 140);
             }
         }
 
@@ -4041,6 +4041,11 @@ class MainScene extends Phaser.Scene {
         // Show shop interior
         this.shopInteriorContainer.setVisible(true);
 
+        // Show shop buttons (they're not in the container)
+        this.shopRestockButton.setVisible(true);
+        this.shopHireButton.setVisible(true);
+        this.shopWageText.setVisible(true);
+
         // Update inventory display
         this.updateShopInventoryUI();
 
@@ -4061,6 +4066,11 @@ class MainScene extends Phaser.Scene {
 
         // Hide shop interior
         this.shopInteriorContainer.setVisible(false);
+
+        // Hide shop buttons (they're not in the container)
+        this.shopRestockButton.setVisible(false);
+        this.shopHireButton.setVisible(false);
+        this.shopWageText.setVisible(false);
     }
 
     updateShopInventoryUI() {
