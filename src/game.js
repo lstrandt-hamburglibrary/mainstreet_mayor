@@ -3831,6 +3831,11 @@ class MainScene extends Phaser.Scene {
             if (saveData.buildings && saveData.buildings.length > 0) {
                 console.log(`Loading ${saveData.buildings.length} buildings from save:`, saveData.buildings);
                 saveData.buildings.forEach((buildingData, index) => {
+                    // Migration: Convert old 'shop' type to 'clothingShop'
+                    if (buildingData.type === 'shop') {
+                        console.log(`Migrating old 'shop' building to 'clothingShop'`);
+                        buildingData.type = 'clothingShop';
+                    }
                     console.log(`Loading building ${index}: ${buildingData.type} at x=${buildingData.x}`);
                     this.loadBuilding(
                         buildingData.type,
