@@ -1524,7 +1524,7 @@ class MainScene extends Phaser.Scene {
                     const wx = x - spacing + (col * spacing * 2);
                     const wy = y - buildingType.height + 50 + (row * 50);
                     const light = this.add.rectangle(wx, wy + 12, 20, 25, 0xFFD700, 0.5);
-                    light.setDepth(11);
+                    light.setDepth(10.1); // Just above building graphics, below street furniture
                     light.setVisible(false);
                     buildingData.windowLights.push(light);
                 }
@@ -1541,7 +1541,7 @@ class MainScene extends Phaser.Scene {
                     for (let win = 0; win < 2; win++) {
                         const wx = unitX - 15 + (win * 30);
                         const light = this.add.rectangle(wx, unitY, 18, 20, 0xFFD700, 0.7);
-                        light.setDepth(11);
+                        light.setDepth(10.1); // Just above building graphics, below street furniture
                         light.setVisible(false);
                         light.unitIndex = unitIndex; // Tag with unit index for occupied check
                         buildingData.windowLights.push(light);
@@ -1560,7 +1560,7 @@ class MainScene extends Phaser.Scene {
                     for (let win = 0; win < 2; win++) {
                         const wx = roomX - 20 + (win * 40);
                         const light = this.add.rectangle(wx, roomY, 20, 22, 0xFFD700, 0.7);
-                        light.setDepth(11);
+                        light.setDepth(10.1); // Just above building graphics, below street furniture
                         light.setVisible(false);
                         light.roomIndex = roomIndex; // Tag with room index for occupied check
                         buildingData.windowLights.push(light);
@@ -1810,12 +1810,18 @@ class MainScene extends Phaser.Scene {
         mailbox.fillStyle(0xFFFFFF, 1);
         mailbox.fillRect(x - 12, groundLevel - 67, 24, 2);
 
+        // Mail indicator star (hidden by default)
+        const mailIndicator = this.add.text(x, groundLevel - 95, '⭐', {
+            fontSize: '20px'
+        }).setOrigin(0.5).setDepth(12).setVisible(false);
+
         // Track this mailbox for interaction
         this.mailboxes.push({
             graphics: mailbox,
             x: x,
             y: groundLevel,
-            hasApplications: false
+            hasApplications: false,
+            indicator: mailIndicator
         });
     }
 
@@ -3260,6 +3266,14 @@ class MainScene extends Phaser.Scene {
         if (this.insideShop) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
                 this.exitShop();
+            }
+        }
+
+        // Update mailbox indicators
+        const hasMail = this.pendingApplications.length > 0;
+        for (let mailbox of this.mailboxes) {
+            if (mailbox.indicator) {
+                mailbox.indicator.setVisible(hasMail);
             }
         }
 
