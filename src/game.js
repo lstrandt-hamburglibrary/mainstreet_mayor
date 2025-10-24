@@ -4866,6 +4866,11 @@ const config = {
     scale: {
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    render: {
+        pixelArt: false,  // Allow anti-aliasing for smooth text
+        antialias: true,  // Enable anti-aliasing
+        roundPixels: true // Round pixels to prevent blurry sub-pixel rendering
     }
 };
 
