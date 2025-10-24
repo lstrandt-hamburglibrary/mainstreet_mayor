@@ -493,6 +493,12 @@ class MainScene extends Phaser.Scene {
             this.deleteMode = false;
             this.buildMenuContainer.setVisible(this.buildMode);
             this.buildMenuBg.setVisible(this.buildMode);
+
+            // Show/hide all building buttons
+            for (let buildingType in this.buildingButtons) {
+                this.buildingButtons[buildingType].button.setVisible(this.buildMode);
+            }
+
             if (this.buildMode) {
                 // Don't auto-select a building - let user choose
                 this.selectedBuilding = null;
@@ -518,6 +524,12 @@ class MainScene extends Phaser.Scene {
             this.buildMode = false;
             this.buildMenuContainer.setVisible(false);
             this.buildMenuBg.setVisible(false);
+
+            // Hide all building buttons
+            for (let buildingType in this.buildingButtons) {
+                this.buildingButtons[buildingType].button.setVisible(false);
+            }
+
             if (!this.deleteMode) {
                 this.selectedBuilding = null;
                 if (this.buildingPreview) {
@@ -570,16 +582,16 @@ class MainScene extends Phaser.Scene {
         buildings.forEach((building, index) => {
             const col = index % 4;
             const row = Math.floor(index / 4);
-            const x = -300 + (col * 200);
-            const y = -40 + (row * 35);
+            const baseX = this.gameWidth / 2 - 300 + (col * 200);
+            const baseY = this.gameHeight - 120 + (row * 35);
 
-            const btn = this.add.text(x, y, building.label, {
+            const btn = this.add.text(baseX, baseY, building.label, {
                 fontSize: '12px',
                 color: '#ffffff',
                 backgroundColor: building.color,
                 padding: { x: 10, y: 5 },
                 align: 'center'
-            }).setOrigin(0.5).setInteractive();
+            }).setOrigin(0.5).setInteractive().setScrollFactor(0).setDepth(99998).setVisible(false);
 
             btn.on('pointerdown', () => {
                 console.log('Building button clicked:', building.type);
@@ -600,20 +612,20 @@ class MainScene extends Phaser.Scene {
                 }
             });
 
-            this.buildMenuContainer.add(btn);
             this.buildingButtons[building.type] = { button: btn, originalColor: building.color };
         });
 
         // Add brick factory button (4th column, 3rd row)
-        const brickBtn = this.add.text(100, 60, '🧱 Brick\n$250', {
+        const brickBtn = this.add.text(this.gameWidth / 2 + 100, this.gameHeight - 50, '🧱 Brick\n$250', {
             fontSize: '12px',
             color: '#ffffff',
             backgroundColor: '#D84315',
             padding: { x: 10, y: 5 },
             align: 'center'
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0).setDepth(99998).setVisible(false);
 
         brickBtn.on('pointerdown', () => {
+            console.log('Brick factory button clicked');
             this.selectedBuilding = 'brickfactory';
             this.updateBuildingButtonStates();
         });
@@ -630,7 +642,6 @@ class MainScene extends Phaser.Scene {
             }
         });
 
-        this.buildMenuContainer.add(brickBtn);
         this.buildingButtons['brickfactory'] = { button: brickBtn, originalColor: '#D84315' };
 
         // Demolish mode UI (simple overlay)
@@ -1312,6 +1323,23 @@ class MainScene extends Phaser.Scene {
         if (this.buildMenuBg) {
             this.buildMenuBg.setPosition(this.gameWidth / 2, this.gameHeight - 80);
             this.buildMenuBg.setSize(this.gameWidth, 160);
+        }
+        // Reposition building buttons
+        if (this.buildingButtons) {
+            let index = 0;
+            for (let buildingType in this.buildingButtons) {
+                if (buildingType === 'brickfactory') {
+                    // Special position for brick factory
+                    this.buildingButtons[buildingType].button.setPosition(this.gameWidth / 2 + 100, this.gameHeight - 50);
+                } else {
+                    const col = index % 4;
+                    const row = Math.floor(index / 4);
+                    const baseX = this.gameWidth / 2 - 300 + (col * 200);
+                    const baseY = this.gameHeight - 120 + (row * 35);
+                    this.buildingButtons[buildingType].button.setPosition(baseX, baseY);
+                    index++;
+                }
+            }
         }
         if (this.demolishUI) {
             this.demolishUI.setPosition(this.gameWidth / 2, this.gameHeight - 60);
