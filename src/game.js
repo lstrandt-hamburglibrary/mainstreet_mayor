@@ -50,6 +50,12 @@ class MainScene extends Phaser.Scene {
         this.buses = [];
         this.citizens = [];
         this.busStops = []; // Will be populated in createStreetFurniture()
+
+        // Shop interior system
+        this.insideShop = false;
+        this.currentShop = null;
+        this.nearShop = null;
+
         this.buildingTypes = {
             house: { name: 'House', cost: 100, wood: 10, bricks: 5, width: 160, height: 260, color: 0xFF6B6B,
                     incomeRate: 5, maxIncome: 50, district: 'residential' },  // Two-story house, $5/min, max $50
@@ -716,6 +722,118 @@ class MainScene extends Phaser.Scene {
         this.resourceBuildingUI.setVisible(false);
         this.resourceBuildingMenuOpen = false;
         this.nearResourceBuilding = null; // Track which resource building player is near
+
+        // Shop Interior UI (full-screen overlay)
+        this.shopInteriorContainer = this.add.container(0, 0);
+        this.shopInteriorContainer.setScrollFactor(0).setDepth(15000).setVisible(false);
+
+        // Interior background (full screen)
+        const interiorBg = this.add.rectangle(this.gameWidth / 2, this.gameHeight / 2, this.gameWidth, this.gameHeight, 0xE8D4B0, 1);
+        this.shopInteriorContainer.add(interiorBg);
+
+        // Floor
+        const floor = this.add.rectangle(this.gameWidth / 2, this.gameHeight - 100, this.gameWidth, 200, 0xB8956A, 1);
+        this.shopInteriorContainer.add(floor);
+
+        // Back wall
+        const backWall = this.add.rectangle(this.gameWidth / 2, 150, this.gameWidth, 300, 0xF5E6D3, 1);
+        this.shopInteriorContainer.add(backWall);
+
+        // Counter (checkout counter at bottom center)
+        const counter = this.add.graphics();
+        counter.fillStyle(0x8B4513, 1);
+        counter.fillRect(this.gameWidth / 2 - 150, this.gameHeight - 250, 300, 100);
+        counter.lineStyle(3, 0x654321, 1);
+        counter.strokeRect(this.gameWidth / 2 - 150, this.gameHeight - 250, 300, 100);
+        this.shopInteriorContainer.add(counter);
+
+        // Counter top (lighter wood)
+        const counterTop = this.add.rectangle(this.gameWidth / 2, this.gameHeight - 250, 300, 15, 0xA0522D);
+        this.shopInteriorContainer.add(counterTop);
+
+        // Employee behind counter (simple sprite for now)
+        const employee = this.add.container(this.gameWidth / 2, this.gameHeight - 280);
+
+        // Employee body
+        const empBody = this.add.rectangle(0, 0, 30, 40, 0x4CAF50);
+        employee.add(empBody);
+
+        // Employee head
+        const empHead = this.add.circle(0, -30, 15, 0xFFDBAC);
+        employee.add(empHead);
+
+        // Employee eyes
+        const empEyes = this.add.graphics();
+        empEyes.fillStyle(0x000000, 1);
+        empEyes.fillCircle(-5, -32, 2);
+        empEyes.fillCircle(5, -32, 2);
+        employee.add(empEyes);
+
+        // Employee smile
+        const empSmile = this.add.graphics();
+        empSmile.lineStyle(2, 0x000000, 1);
+        empSmile.arc(0, -25, 8, 0, Math.PI, false);
+        empSmile.strokePath();
+        employee.add(empSmile);
+
+        this.shopInteriorContainer.add(employee);
+
+        // Shelves on left side
+        for (let i = 0; i < 3; i++) {
+            const shelf = this.add.graphics();
+            shelf.fillStyle(0x8B4513, 1);
+            shelf.fillRect(50, 200 + (i * 120), 200, 80);
+            shelf.lineStyle(2, 0x654321, 1);
+            shelf.strokeRect(50, 200 + (i * 120), 200, 80);
+
+            // Shelf items (colored boxes representing products)
+            for (let j = 0; j < 4; j++) {
+                const colors = [0xFF6B6B, 0x4ECDC4, 0xFFE66D, 0x95E1D3];
+                shelf.fillStyle(colors[j % colors.length], 1);
+                shelf.fillRect(60 + (j * 45), 210 + (i * 120), 35, 50);
+                shelf.lineStyle(1, 0x000000, 1);
+                shelf.strokeRect(60 + (j * 45), 210 + (i * 120), 35, 50);
+            }
+
+            this.shopInteriorContainer.add(shelf);
+        }
+
+        // Shelves on right side
+        for (let i = 0; i < 3; i++) {
+            const shelf = this.add.graphics();
+            shelf.fillStyle(0x8B4513, 1);
+            shelf.fillRect(this.gameWidth - 250, 200 + (i * 120), 200, 80);
+            shelf.lineStyle(2, 0x654321, 1);
+            shelf.strokeRect(this.gameWidth - 250, 200 + (i * 120), 200, 80);
+
+            // Shelf items
+            for (let j = 0; j < 4; j++) {
+                const colors = [0xFF6B6B, 0x4ECDC4, 0xFFE66D, 0x95E1D3];
+                shelf.fillStyle(colors[(j + 2) % colors.length], 1);
+                shelf.fillRect(this.gameWidth - 240 + (j * 45), 210 + (i * 120), 35, 50);
+                shelf.lineStyle(1, 0x000000, 1);
+                shelf.strokeRect(this.gameWidth - 240 + (j * 45), 210 + (i * 120), 35, 50);
+            }
+
+            this.shopInteriorContainer.add(shelf);
+        }
+
+        // Exit prompt
+        this.shopExitPrompt = this.add.text(this.gameWidth / 2, 50, 'Press E or ESC to exit shop', {
+            fontSize: '16px',
+            color: '#000000',
+            backgroundColor: '#FFFFFF',
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0.5);
+        this.shopInteriorContainer.add(this.shopExitPrompt);
+
+        // Shop name label (will be updated when entering)
+        this.shopNameLabel = this.add.text(this.gameWidth / 2, 100, '', {
+            fontSize: '24px',
+            color: '#000000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.shopInteriorContainer.add(this.shopNameLabel);
 
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
@@ -2908,6 +3026,55 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // Check if player is near a shop (only when NOT inside a shop)
+        if (!this.insideShop) {
+            this.nearShop = null;
+            let closestShopDistance = 150;
+            for (let building of this.buildings) {
+                if (building.type === 'shop') {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestShopDistance) {
+                        this.nearShop = building;
+                        closestShopDistance = distance;
+                    }
+                }
+            }
+
+            // Shop interaction - Enter shop
+            if (this.nearShop && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+                // Show prompt above the shop building
+                const shopType = this.buildingTypes[this.nearShop.type];
+                if (!this.shopPrompt) {
+                    this.shopPrompt = this.add.text(this.nearShop.x, this.nearShop.y - shopType.height - 100, 'Press E to enter Shop', {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#4ECDC4',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.shopPrompt.x = this.nearShop.x;
+                    this.shopPrompt.y = this.nearShop.y - shopType.height - 100;
+                    this.shopPrompt.setVisible(true);
+                }
+
+                // Enter shop
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.enterShop(this.nearShop);
+                }
+            } else {
+                if (this.shopPrompt) {
+                    this.shopPrompt.setVisible(false);
+                }
+            }
+        }
+
+        // Exit shop if inside
+        if (this.insideShop) {
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
+                this.exitShop();
+            }
+        }
+
         // Check if player is near a mailbox
         this.nearMailbox = null;
         let closestMailboxDistance = 80;
@@ -3689,6 +3856,36 @@ class MainScene extends Phaser.Scene {
     closeBankMenu() {
         this.bankMenuOpen = false;
         this.bankUI.setVisible(false);
+    }
+
+    enterShop(shop) {
+        console.log('Entering shop:', shop);
+        this.insideShop = true;
+        this.currentShop = shop;
+
+        // Update shop name label
+        this.shopNameLabel.setText(shop.type.toUpperCase());
+
+        // Show shop interior
+        this.shopInteriorContainer.setVisible(true);
+
+        // Hide shop prompt
+        if (this.shopPrompt) {
+            this.shopPrompt.setVisible(false);
+        }
+
+        // Disable player movement
+        this.player.setVelocityX(0);
+        this.player.setVelocityY(0);
+    }
+
+    exitShop() {
+        console.log('Exiting shop');
+        this.insideShop = false;
+        this.currentShop = null;
+
+        // Hide shop interior
+        this.shopInteriorContainer.setVisible(false);
     }
 
     openMailboxMenu() {
