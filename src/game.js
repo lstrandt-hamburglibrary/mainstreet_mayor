@@ -847,6 +847,16 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.shopInteriorContainer.add(this.shopNameLabel);
 
+        // Player money display (top right, above inventory panel)
+        this.shopMoneyText = this.add.text(this.gameWidth - 30, 110, '', {
+            fontSize: '18px',
+            color: '#000000',
+            backgroundColor: '#4CAF50',
+            padding: { x: 10, y: 5 },
+            align: 'right'
+        }).setOrigin(1, 0);
+        this.shopInteriorContainer.add(this.shopMoneyText);
+
         // Inventory info panel (top right)
         this.shopStockText = this.add.text(this.gameWidth - 30, 150, '', {
             fontSize: '16px',
@@ -4156,6 +4166,9 @@ class MainScene extends Phaser.Scene {
         }
 
         const inv = this.currentShop.inventory;
+
+        // Update player money display
+        this.shopMoneyText.setText(`💰 Cash: $${this.money}`);
 
         // Update stock level display
         const stockPercent = Math.floor((inv.stock / inv.maxStock) * 100);
