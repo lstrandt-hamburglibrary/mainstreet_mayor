@@ -63,8 +63,14 @@ class MainScene extends Phaser.Scene {
                     units: 8, incomePerUnit: 8, maxIncomePerUnit: 80, district: 'residential' },  // 4 stories, 2 units per floor
             hotel: { name: 'Hotel', cost: 600, wood: 40, bricks: 45, width: 240, height: 400, color: 0x9C27B0,
                     rooms: 10, nightlyRate: 50, cleaningCost: 15, district: 'residential' },  // 5 stories, 2 rooms per floor, $50/night per room, $15 to clean
-            shop: { name: 'Shop', cost: 200, wood: 15, bricks: 10, width: 200, height: 240, color: 0x4ECDC4,
-                    incomeRate: 10, maxIncome: 100, district: 'downtown' },  // $10/min, max $100
+            clothingShop: { name: 'Clothing Shop', cost: 200, wood: 15, bricks: 10, width: 200, height: 240, color: 0xFF69B4,
+                    incomeRate: 10, maxIncome: 100, district: 'downtown', shopType: 'clothing' },  // Pink
+            electronicsShop: { name: 'Electronics Shop', cost: 250, wood: 15, bricks: 15, width: 200, height: 240, color: 0x2196F3,
+                    incomeRate: 15, maxIncome: 150, district: 'downtown', shopType: 'electronics' },  // Blue
+            groceryStore: { name: 'Grocery Store', cost: 180, wood: 12, bricks: 8, width: 200, height: 240, color: 0x8BC34A,
+                    incomeRate: 8, maxIncome: 80, district: 'downtown', shopType: 'grocery' },  // Green
+            bookstore: { name: 'Bookstore', cost: 150, wood: 10, bricks: 8, width: 200, height: 240, color: 0x9C27B0,
+                    incomeRate: 7, maxIncome: 70, district: 'downtown', shopType: 'bookstore' },  // Purple
             restaurant: { name: 'Restaurant', cost: 300, wood: 20, bricks: 15, width: 240, height: 220, color: 0xFFE66D,
                     incomeRate: 15, maxIncome: 150, district: 'downtown' },  // $15/min, max $150
             bank: { name: 'Bank', cost: 500, wood: 25, bricks: 30, width: 220, height: 260, color: 0x2E7D32, district: 'downtown' },
@@ -835,6 +841,81 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.shopInteriorContainer.add(this.shopNameLabel);
 
+        // Inventory info panel (top right)
+        this.shopStockText = this.add.text(this.gameWidth - 30, 150, '', {
+            fontSize: '16px',
+            color: '#000000',
+            backgroundColor: '#FFFFFF',
+            padding: { x: 10, y: 5 },
+            align: 'right'
+        }).setOrigin(1, 0);
+        this.shopInteriorContainer.add(this.shopStockText);
+
+        this.shopEmployeeText = this.add.text(this.gameWidth - 30, 190, '', {
+            fontSize: '14px',
+            color: '#000000',
+            backgroundColor: '#FFFFFF',
+            padding: { x: 10, y: 5 },
+            align: 'right'
+        }).setOrigin(1, 0);
+        this.shopInteriorContainer.add(this.shopEmployeeText);
+
+        this.shopStatusText = this.add.text(this.gameWidth - 30, 225, '', {
+            fontSize: '14px',
+            color: '#000000',
+            backgroundColor: '#FFFFFF',
+            padding: { x: 10, y: 5 },
+            align: 'right'
+        }).setOrigin(1, 0);
+        this.shopInteriorContainer.add(this.shopStatusText);
+
+        // Restock button (bottom left)
+        this.shopRestockButton = this.add.text(30, this.gameHeight - 50, 'RESTOCK ($500)', {
+            fontSize: '16px',
+            color: '#FFFFFF',
+            backgroundColor: '#2E7D32',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0, 0.5).setInteractive();
+        this.shopInteriorContainer.add(this.shopRestockButton);
+
+        this.shopRestockButton.on('pointerover', () => {
+            this.shopRestockButton.setStyle({ backgroundColor: '#43A047' });
+        });
+        this.shopRestockButton.on('pointerout', () => {
+            this.shopRestockButton.setStyle({ backgroundColor: '#2E7D32' });
+        });
+        this.shopRestockButton.on('pointerdown', () => {
+            this.restockShop();
+        });
+
+        // Hire Employee button (bottom left, below restock button)
+        this.shopHireButton = this.add.text(30, this.gameHeight - 90, 'HIRE EMPLOYEE ($1000)', {
+            fontSize: '16px',
+            color: '#FFFFFF',
+            backgroundColor: '#1976D2',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0, 0.5).setInteractive();
+        this.shopInteriorContainer.add(this.shopHireButton);
+
+        this.shopHireButton.on('pointerover', () => {
+            this.shopHireButton.setStyle({ backgroundColor: '#2196F3' });
+        });
+        this.shopHireButton.on('pointerout', () => {
+            this.shopHireButton.setStyle({ backgroundColor: '#1976D2' });
+        });
+        this.shopHireButton.on('pointerdown', () => {
+            this.hireEmployee();
+        });
+
+        // Employee wage info (bottom left, below hire button)
+        this.shopWageText = this.add.text(30, this.gameHeight - 130, '', {
+            fontSize: '14px',
+            color: '#000000',
+            backgroundColor: '#FFFFFF',
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0, 0.5);
+        this.shopInteriorContainer.add(this.shopWageText);
+
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
         this.restartConfirmContainer.setScrollFactor(0).setDepth(10000).setVisible(false);
@@ -1060,6 +1141,10 @@ class MainScene extends Phaser.Scene {
         }
         console.log('Buildings loaded into game:', this.buildings.length);
         console.log('=== END DEBUG ===');
+    }
+
+    isShop(buildingType) {
+        return ['clothingShop', 'electronicsShop', 'groceryStore', 'bookstore'].includes(buildingType);
     }
 
     handleResize(gameSize) {
@@ -2285,7 +2370,7 @@ class MainScene extends Phaser.Scene {
             graphics.fillStyle(0x696969, 1);
             graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
 
-        } else if (type === 'shop') {
+        } else if (this.isShop(type)) {
             // Shop: Commercial with large display windows
             const windowColor = 0x87CEEB;
 
@@ -2842,6 +2927,48 @@ class MainScene extends Phaser.Scene {
                     }
                 }
             }
+
+            // Shop employee wage payment (daily)
+            if (this.isShop(building.type) && building.hasEmployee && building.dailyWage > 0) {
+                const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
+                const lastDay = Math.floor((building.lastWageCheck || 0) / (24 * 60));
+
+                // Check if we've crossed into a new day
+                if (currentDay > lastDay) {
+                    // New day has started! Pay employee wage
+                    this.money -= building.dailyWage;
+                    console.log(`💵 Paid $${building.dailyWage} wage to shop employee. Day #${currentDay}`);
+
+                    building.lastWageCheck = this.gameTime;
+
+                    // Update money UI
+                    this.updateMoneyUI();
+
+                    // Update shop UI if player is viewing this shop
+                    if (this.insideShop && this.currentShop === building) {
+                        this.updateShopInventoryUI();
+                    }
+                }
+            }
+
+            // Shop opening hours (7am-9pm if has employee)
+            if (this.isShop(building.type) && building.hasEmployee) {
+                const totalMinutes = Math.floor(this.gameTime);
+                const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+
+                // Shop is open from 7am (hour 7) to 9pm (hour 21)
+                const shouldBeOpen = hour >= 7 && hour < 21;
+
+                // Update shop status
+                if (building.isOpen !== shouldBeOpen) {
+                    building.isOpen = shouldBeOpen;
+
+                    // Update shop UI if player is viewing this shop
+                    if (this.insideShop && this.currentShop === building) {
+                        this.updateShopInventoryUI();
+                    }
+                }
+            }
         }
 
         // Update resource UI
@@ -3031,7 +3158,7 @@ class MainScene extends Phaser.Scene {
             this.nearShop = null;
             let closestShopDistance = 150;
             for (let building of this.buildings) {
-                if (building.type === 'shop') {
+                if (this.isShop(building.type)) {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestShopDistance) {
                         this.nearShop = building;
@@ -3499,10 +3626,11 @@ class MainScene extends Phaser.Scene {
             newBuilding.fillRect(x - building.width/2 + 60, y - building.height + 40, 20, building.height - 80);
             newBuilding.fillRect(x + building.width/2 - 80, y - building.height + 40, 20, building.height - 80);
             newBuilding.fillRect(x + building.width/2 - 40, y - building.height + 40, 20, building.height - 80);
-        } else if (this.selectedBuilding === 'shop') {
-            // Add "SHOP" text sign above awning
-            const shopSign = this.add.text(x, y - 140, 'SHOP', {
-                fontSize: '20px',
+        } else if (this.isShop(this.selectedBuilding)) {
+            // Add shop name text sign above awning
+            const shopName = this.buildingTypes[this.selectedBuilding].name.toUpperCase();
+            const shopSign = this.add.text(x, y - 140, shopName, {
+                fontSize: '16px',
                 color: '#FFFFFF',
                 fontStyle: 'bold',
                 fontFamily: 'Arial'
@@ -3611,6 +3739,20 @@ class MainScene extends Phaser.Scene {
                     lastStatusChange: Date.now()
                 });
             }
+        }
+
+        // Initialize shop inventory if it's a shop
+        if (this.isShop(this.selectedBuilding)) {
+            buildingData.inventory = {
+                stock: 50,  // Current stock level (0-100)
+                maxStock: 100,  // Maximum stock capacity
+                restockCost: 5,  // Cost per unit to restock
+                salesPerCustomer: 5  // Stock consumed per customer visit
+            };
+            buildingData.hasEmployee = false;  // No employee until hired
+            buildingData.isOpen = false;  // Closed until employee is hired
+            buildingData.dailyWage = 0;  // No wage until employee is hired
+            buildingData.lastWageCheck = this.gameTime;  // Track last time we paid wages
         }
 
         // Add window lights for nighttime
@@ -3763,10 +3905,11 @@ class MainScene extends Phaser.Scene {
             newBuilding.fillRect(x - building.width/2 + 60, buildingY - building.height + 40, 20, building.height - 80);
             newBuilding.fillRect(x + building.width/2 - 80, buildingY - building.height + 40, 20, building.height - 80);
             newBuilding.fillRect(x + building.width/2 - 40, buildingY - building.height + 40, 20, building.height - 80);
-        } else if (type === 'shop') {
-            // Add "SHOP" text sign above awning
-            const shopSign = this.add.text(x, buildingY - 140, 'SHOP', {
-                fontSize: '20px',
+        } else if (this.isShop(type)) {
+            // Add shop name text sign above awning
+            const shopName = this.buildingTypes[type].name.toUpperCase();
+            const shopSign = this.add.text(x, buildingY - 140, shopName, {
+                fontSize: '16px',
                 color: '#FFFFFF',
                 fontStyle: 'bold',
                 fontFamily: 'Arial'
@@ -3869,6 +4012,9 @@ class MainScene extends Phaser.Scene {
         // Show shop interior
         this.shopInteriorContainer.setVisible(true);
 
+        // Update inventory display
+        this.updateShopInventoryUI();
+
         // Hide shop prompt
         if (this.shopPrompt) {
             this.shopPrompt.setVisible(false);
@@ -3886,6 +4032,148 @@ class MainScene extends Phaser.Scene {
 
         // Hide shop interior
         this.shopInteriorContainer.setVisible(false);
+    }
+
+    updateShopInventoryUI() {
+        if (!this.currentShop || !this.currentShop.inventory) {
+            console.log('No shop or inventory data');
+            return;
+        }
+
+        const inv = this.currentShop.inventory;
+
+        // Update stock level display
+        const stockPercent = Math.floor((inv.stock / inv.maxStock) * 100);
+        let stockColor = '#4CAF50'; // Green
+        if (stockPercent < 30) stockColor = '#F44336'; // Red
+        else if (stockPercent < 60) stockColor = '#FF9800'; // Orange
+
+        this.shopStockText.setText(`Stock: ${inv.stock}/${inv.maxStock} (${stockPercent}%)`);
+        this.shopStockText.setStyle({ backgroundColor: stockColor });
+
+        // Update employee status
+        const employeeStatus = this.currentShop.hasEmployee ? 'Employee: YES' : 'Employee: NO';
+        const employeeColor = this.currentShop.hasEmployee ? '#4CAF50' : '#F44336';
+        this.shopEmployeeText.setText(employeeStatus);
+        this.shopEmployeeText.setStyle({ backgroundColor: employeeColor });
+
+        // Update shop open/closed status
+        const totalMinutes = Math.floor(this.gameTime);
+        const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const openHours = '7am-9pm';
+
+        let shopStatus = this.currentShop.isOpen ? `OPEN (${openHours})` : `CLOSED (${openHours})`;
+        if (!this.currentShop.hasEmployee) {
+            shopStatus = 'CLOSED (No Employee)';
+        }
+
+        const statusColor = this.currentShop.isOpen ? '#4CAF50' : '#9E9E9E';
+        this.shopStatusText.setText(shopStatus);
+        this.shopStatusText.setStyle({ backgroundColor: statusColor });
+
+        // Update hire employee button
+        const hiringCost = 1000;
+        if (this.currentShop.hasEmployee) {
+            this.shopHireButton.setVisible(false);
+            this.shopWageText.setText(`Daily Wage: $${this.currentShop.dailyWage || 50}`);
+            this.shopWageText.setVisible(true);
+        } else {
+            this.shopWageText.setVisible(false);
+            this.shopHireButton.setVisible(true);
+            if (this.money < hiringCost) {
+                this.shopHireButton.setText(`HIRE EMPLOYEE ($${hiringCost}) - NOT ENOUGH MONEY`);
+                this.shopHireButton.setStyle({ backgroundColor: '#D32F2F' });
+                this.shopHireButton.disableInteractive();
+            } else {
+                this.shopHireButton.setText(`HIRE EMPLOYEE ($${hiringCost})`);
+                this.shopHireButton.setStyle({ backgroundColor: '#1976D2' });
+                this.shopHireButton.setInteractive();
+            }
+        }
+
+        // Update restock button
+        const restockAmount = inv.maxStock - inv.stock;
+        const restockCost = restockAmount * inv.restockCost;
+
+        if (restockAmount === 0) {
+            this.shopRestockButton.setText('FULLY STOCKED');
+            this.shopRestockButton.setStyle({ backgroundColor: '#9E9E9E' });
+            this.shopRestockButton.disableInteractive();
+        } else if (this.money < restockCost) {
+            this.shopRestockButton.setText(`RESTOCK ($${restockCost}) - NOT ENOUGH MONEY`);
+            this.shopRestockButton.setStyle({ backgroundColor: '#D32F2F' });
+            this.shopRestockButton.disableInteractive();
+        } else {
+            this.shopRestockButton.setText(`RESTOCK ${restockAmount} units ($${restockCost})`);
+            this.shopRestockButton.setStyle({ backgroundColor: '#2E7D32' });
+            this.shopRestockButton.setInteractive();
+        }
+    }
+
+    restockShop() {
+        if (!this.currentShop || !this.currentShop.inventory) {
+            console.log('No shop or inventory data');
+            return;
+        }
+
+        const inv = this.currentShop.inventory;
+        const restockAmount = inv.maxStock - inv.stock;
+        const restockCost = restockAmount * inv.restockCost;
+
+        // Check if already fully stocked
+        if (restockAmount === 0) {
+            console.log('Shop already fully stocked');
+            return;
+        }
+
+        // Check if player has enough money
+        if (this.money < restockCost) {
+            console.log('Not enough money to restock');
+            return;
+        }
+
+        // Restock the shop
+        inv.stock = inv.maxStock;
+        this.money -= restockCost;
+
+        console.log(`Restocked shop for $${restockCost}. New stock: ${inv.stock}`);
+
+        // Update UI
+        this.updateMoneyUI();
+        this.updateShopInventoryUI();
+    }
+
+    hireEmployee() {
+        if (!this.currentShop) {
+            console.log('No current shop');
+            return;
+        }
+
+        const hiringCost = 1000;
+
+        // Check if already has employee
+        if (this.currentShop.hasEmployee) {
+            console.log('Shop already has an employee');
+            return;
+        }
+
+        // Check if player has enough money
+        if (this.money < hiringCost) {
+            console.log('Not enough money to hire employee');
+            return;
+        }
+
+        // Hire the employee
+        this.currentShop.hasEmployee = true;
+        this.currentShop.isOpen = true;
+        this.currentShop.dailyWage = 50; // $50 per day
+        this.money -= hiringCost;
+
+        console.log(`Hired employee for $${hiringCost}. Shop is now open. Daily wage: $${this.currentShop.dailyWage}`);
+
+        // Update UI
+        this.updateMoneyUI();
+        this.updateShopInventoryUI();
     }
 
     openMailboxMenu() {
@@ -4299,16 +4587,35 @@ class MainScene extends Phaser.Scene {
                     citizen.direction *= -1;
                 }
 
-                // Randomly visit nearby buildings
+                // Randomly visit nearby buildings (prioritize shops)
                 if (Math.random() < 0.0005 && this.buildings.length > 0) {
-                    // Find a nearby building
-                    const nearbyBuildings = this.buildings.filter(b =>
-                        Math.abs(b.x - citizen.x) < 500
+                    // Find nearby shops that are open and have stock
+                    const nearbyShops = this.buildings.filter(b =>
+                        this.isShop(b.type) &&
+                        Math.abs(b.x - citizen.x) < 800 &&
+                        b.isOpen &&
+                        b.inventory &&
+                        b.inventory.stock >= b.inventory.salesPerCustomer
                     );
-                    if (nearbyBuildings.length > 0) {
-                        const building = nearbyBuildings[Math.floor(Math.random() * nearbyBuildings.length)];
-                        citizen.targetBuilding = building;
-                        citizen.direction = citizen.x < building.x ? 1 : -1;
+
+                    // If no shops available, visit any nearby building
+                    let targetBuilding = null;
+                    if (nearbyShops.length > 0) {
+                        targetBuilding = nearbyShops[Math.floor(Math.random() * nearbyShops.length)];
+                        citizen.isShoppingVisit = true;
+                    } else {
+                        const nearbyBuildings = this.buildings.filter(b =>
+                            Math.abs(b.x - citizen.x) < 500
+                        );
+                        if (nearbyBuildings.length > 0) {
+                            targetBuilding = nearbyBuildings[Math.floor(Math.random() * nearbyBuildings.length)];
+                            citizen.isShoppingVisit = false;
+                        }
+                    }
+
+                    if (targetBuilding) {
+                        citizen.targetBuilding = targetBuilding;
+                        citizen.direction = citizen.x < targetBuilding.x ? 1 : -1;
                     }
                 }
 
@@ -4342,6 +4649,26 @@ class MainScene extends Phaser.Scene {
                 // Citizen is inside a building
                 citizen.visitTimer -= deltaTime;
                 if (citizen.visitTimer <= 0) {
+                    // Process shop purchase if this was a shopping visit
+                    if (citizen.isShoppingVisit && citizen.targetBuilding && this.isShop(citizen.targetBuilding.type)) {
+                        const shop = citizen.targetBuilding;
+                        if (shop.inventory && shop.isOpen && shop.inventory.stock >= shop.inventory.salesPerCustomer) {
+                            // Customer makes a purchase
+                            shop.inventory.stock -= shop.inventory.salesPerCustomer;
+                            const salePrice = shop.inventory.salesPerCustomer * 15; // $15 per unit sold
+                            this.money += salePrice;
+                            this.updateMoneyUI();
+
+                            console.log(`Customer purchased from shop! Stock: ${shop.inventory.stock}, Income: $${salePrice}`);
+
+                            // Update UI if player is currently viewing this shop
+                            if (this.insideShop && this.currentShop === shop) {
+                                this.updateShopInventoryUI();
+                            }
+                        }
+                        citizen.isShoppingVisit = false;
+                    }
+
                     // Finished visiting - come back out
                     citizen.state = 'walking';
                     citizen.container.setVisible(true);
