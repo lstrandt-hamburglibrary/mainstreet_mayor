@@ -7,15 +7,15 @@ class MainScene extends Phaser.Scene {
         // Set world bounds (use window height for dynamic sizing)
         this.gameHeight = window.innerHeight;
         this.gameWidth = window.innerWidth;
-        this.physics.world.setBounds(0, 0, 3000, this.gameHeight);
+        this.physics.world.setBounds(0, 0, 12000, this.gameHeight);
 
         // Listen for resize events
         this.scale.on('resize', this.handleResize, this);
 
         // Resources (default starting values)
-        this.money = 1000;
-        this.wood = 50;
-        this.bricks = 30;
+        this.money = 5000;
+        this.wood = 200;
+        this.bricks = 150;
 
         // Rental application system
         this.pendingApplications = []; // Applications waiting in mailbox
@@ -45,6 +45,11 @@ class MainScene extends Phaser.Scene {
         this.selectedBuilding = null;
         this.buildingPreview = null;
         this.buildings = [];
+
+        // Transit system
+        this.buses = [];
+        this.citizens = [];
+        this.busStops = []; // Will be populated in createStreetFurniture()
         this.buildingTypes = {
             house: { name: 'House', cost: 100, wood: 10, bricks: 5, width: 160, height: 260, color: 0xFF6B6B,
                     incomeRate: 5, maxIncome: 50, district: 'residential' },  // Two-story house, $5/min, max $50
@@ -69,24 +74,24 @@ class MainScene extends Phaser.Scene {
             residential: {
                 name: 'Residential District',
                 startX: 0,
-                endX: 1000,
-                centerX: 500,
+                endX: 4000,
+                centerX: 2000,
                 color: 0xFF6B6B,
                 description: 'Houses, Apartments, Hotels'
             },
             downtown: {
                 name: 'Downtown',
-                startX: 1000,
-                endX: 2000,
-                centerX: 1500,
+                startX: 4000,
+                endX: 8000,
+                centerX: 6000,
                 color: 0x4ECDC4,
                 description: 'Shops, Restaurants, Banks'
             },
             industrial: {
                 name: 'Industrial District',
-                startX: 2000,
-                endX: 3000,
-                centerX: 2500,
+                startX: 8000,
+                endX: 12000,
+                centerX: 10000,
                 color: 0x8D6E63,
                 description: 'Markets, Lumber Mills, Brick Factories'
             }
@@ -125,13 +130,13 @@ class MainScene extends Phaser.Scene {
 
         // Ground (positioned at bottom of screen)
         this.groundY = this.gameHeight - 50;
-        this.ground = this.add.rectangle(1500, this.groundY, 3000, 100, 0x555555);
+        this.ground = this.add.rectangle(6000, this.groundY, 12000, 100, 0x555555);
         this.ground.setDepth(-10); // Above background, below buildings
 
         // Ground platform for physics
         this.groundPlatform = this.physics.add.staticGroup();
         this.platformY = this.gameHeight - 100;
-        this.groundPlatformBody = this.groundPlatform.create(1500, this.platformY, null).setSize(3000, 20).setVisible(false);
+        this.groundPlatformBody = this.groundPlatform.create(6000, this.platformY, null).setSize(12000, 20).setVisible(false);
         this.groundPlatformBody.refreshBody();
 
         // Add street furniture (benches, lamp posts, trash cans, mailboxes)
@@ -290,7 +295,7 @@ class MainScene extends Phaser.Scene {
         this.physics.add.collider(this.player, this.groundPlatform);
 
         // Camera follow
-        this.cameras.main.setBounds(0, 0, 3000, this.gameHeight);
+        this.cameras.main.setBounds(0, 0, 12000, this.gameHeight);
         this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
 
         // Controls
@@ -320,6 +325,10 @@ class MainScene extends Phaser.Scene {
         // Mouse input for building placement
         this.input.on('pointerdown', (pointer) => {
             if (this.buildMode && this.buildingPreview && !this.buildConfirmShowing) {
+                // Save the position where user clicked
+                this.pendingBuildingX = this.buildingPreview.snappedX;
+                this.pendingBuildingY = this.buildingPreview.buildingY;
+
                 // Show confirmation dialog instead of placing immediately
                 const buildingType = this.buildingTypes[this.selectedBuilding];
                 const cost = buildingType.cost;
@@ -471,8 +480,12 @@ class MainScene extends Phaser.Scene {
             this.deleteMode = false;
             this.buildMenuContainer.setVisible(this.buildMode);
             if (this.buildMode) {
-                this.selectedBuilding = 'house';
-                this.updateBuildingButtonStates();
+                // Don't auto-select a building - let user choose
+                this.selectedBuilding = null;
+                if (this.buildingPreview) {
+                    this.buildingPreview.destroy();
+                    this.buildingPreview = null;
+                }
             } else {
                 this.selectedBuilding = null;
                 if (this.buildingPreview) {
@@ -548,8 +561,10 @@ class MainScene extends Phaser.Scene {
             }).setOrigin(0.5).setInteractive();
 
             btn.on('pointerdown', () => {
+                console.log('Building button clicked:', building.type);
                 this.selectedBuilding = building.type;
                 this.updateBuildingButtonStates();
+                console.log('Build mode:', this.buildMode, 'Selected:', this.selectedBuilding);
             });
 
             btn.on('pointerover', () => {
@@ -641,14 +656,30 @@ class MainScene extends Phaser.Scene {
         this.buildCancelButton.on('pointerout', () => this.buildCancelButton.setStyle({ backgroundColor: '#424242' }));
 
         this.buildConfirmButton.on('pointerdown', () => {
-            this.placeBuilding();
+            const success = this.placeBuilding();
             this.buildConfirmContainer.setVisible(false);
             this.buildConfirmShowing = false;
+
+            // Only clear selection if building was successfully placed
+            if (success !== false) {
+                // Clear the preview and selection after placing so user can pick another building
+                if (this.buildingPreview) {
+                    this.buildingPreview.destroy();
+                    this.buildingPreview = null;
+                }
+                this.selectedBuilding = null;
+                this.updateBuildingButtonStates(); // Update UI to show no building selected
+                // buildMode stays ON so user can continue building
+                console.log('Building placed successfully - buildMode:', this.buildMode);
+            } else {
+                console.log('Building placement failed - keeping selection');
+            }
         });
 
         this.buildCancelButton.on('pointerdown', () => {
             this.buildConfirmContainer.setVisible(false);
             this.buildConfirmShowing = false;
+            // Preview continues to follow mouse after canceling
         });
 
         this.buildConfirmShowing = false;
@@ -732,14 +763,56 @@ class MainScene extends Phaser.Scene {
 
         this.restartConfirmShowing = false;
 
-        // Delete confirmation UI
-        this.deleteConfirmUI = this.add.text(this.gameWidth / 2, this.gameHeight / 2, '', {
+        // Delete confirmation UI (container with buttons)
+        this.deleteConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
+        this.deleteConfirmContainer.setScrollFactor(0).setDepth(10000).setVisible(false);
+
+        const deleteBg = this.add.rectangle(0, 0, 400, 180, 0xFF5722, 1);
+        this.deleteConfirmContainer.add(deleteBg);
+
+        this.deleteConfirmUI = this.add.text(0, -40, '', {
+            fontSize: '18px',
+            color: '#ffffff',
+            align: 'center'
+        }).setOrigin(0.5);
+        this.deleteConfirmContainer.add(this.deleteConfirmUI);
+
+        this.deleteConfirmButton = this.add.text(-80, 40, 'DELETE', {
             fontSize: '16px',
             color: '#ffffff',
-            backgroundColor: '#FF5722',
-            padding: { x: 15, y: 10 }
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
-        this.deleteConfirmUI.setVisible(false);
+            backgroundColor: '#D32F2F',
+            padding: { x: 20, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.deleteConfirmContainer.add(this.deleteConfirmButton);
+
+        this.deleteCancelButton = this.add.text(80, 40, 'CANCEL', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#424242',
+            padding: { x: 20, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.deleteConfirmContainer.add(this.deleteCancelButton);
+
+        this.deleteConfirmButton.on('pointerover', () => this.deleteConfirmButton.setStyle({ backgroundColor: '#EF5350' }));
+        this.deleteConfirmButton.on('pointerout', () => this.deleteConfirmButton.setStyle({ backgroundColor: '#D32F2F' }));
+        this.deleteCancelButton.on('pointerover', () => this.deleteCancelButton.setStyle({ backgroundColor: '#616161' }));
+        this.deleteCancelButton.on('pointerout', () => this.deleteCancelButton.setStyle({ backgroundColor: '#424242' }));
+
+        this.deleteConfirmButton.on('pointerdown', () => {
+            if (this.buildingToDelete) {
+                this.deleteBuilding(this.buildingToDelete);
+                this.buildingToDelete = null;
+            }
+            this.deleteConfirmShowing = false;
+            this.deleteConfirmContainer.setVisible(false);
+        });
+
+        this.deleteCancelButton.on('pointerdown', () => {
+            this.deleteConfirmShowing = false;
+            this.deleteConfirmContainer.setVisible(false);
+            this.buildingToDelete = null;
+        });
+
         this.deleteConfirmShowing = false;
         this.buildingToDelete = null;
 
@@ -838,6 +911,12 @@ class MainScene extends Phaser.Scene {
             padding: { x: 30, y: 20 }
         }).setOrigin(0.5).setScrollFactor(0).setDepth(10000);
         this.pauseUI.setVisible(false);
+
+        // Spawn initial buses
+        this.spawnBuses();
+
+        // Spawn initial citizens
+        this.spawnCitizens();
 
         // Load saved game if exists
         this.loadGame();
@@ -988,10 +1067,19 @@ class MainScene extends Phaser.Scene {
 
         // Update UI positions (time display, resource display, etc.)
         if (this.timeUI) {
-            this.timeUI.x = this.gameWidth - 220;
+            this.timeUI.x = this.gameWidth - 300;
         }
-        if (this.buildMenuUI) {
-            this.buildMenuUI.x = this.gameWidth / 2 - 200;
+        if (this.settingsButton) {
+            this.settingsButton.x = this.gameWidth - 130;
+        }
+        if (this.settingsDropdown) {
+            this.settingsDropdown.x = this.gameWidth - 200;
+        }
+        if (this.buildMenuContainer) {
+            this.buildMenuContainer.setPosition(this.gameWidth / 2, this.gameHeight - 60);
+        }
+        if (this.demolishUI) {
+            this.demolishUI.setPosition(this.gameWidth / 2, this.gameHeight - 60);
         }
         if (this.bankUI) {
             this.bankUI.setPosition(this.gameWidth / 2 - 200, this.gameHeight / 2 - 100);
@@ -999,11 +1087,17 @@ class MainScene extends Phaser.Scene {
         if (this.resourceBuildingUI) {
             this.resourceBuildingUI.setPosition(this.gameWidth / 2 - 200, this.gameHeight / 2 - 100);
         }
-        if (this.restartConfirmUI) {
-            this.restartConfirmUI.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+        if (this.restartConfirmContainer) {
+            this.restartConfirmContainer.setPosition(this.gameWidth / 2, this.gameHeight / 2);
         }
-        if (this.deleteConfirmUI) {
-            this.deleteConfirmUI.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+        if (this.buildConfirmContainer) {
+            this.buildConfirmContainer.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+        }
+        if (this.districtTravelContainer) {
+            this.districtTravelContainer.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+        }
+        if (this.deleteConfirmContainer) {
+            this.deleteConfirmContainer.setPosition(this.gameWidth / 2, this.gameHeight / 2);
         }
 
         console.log(`Resized to ${newWidth}x${newHeight}`);
@@ -1273,7 +1367,7 @@ class MainScene extends Phaser.Scene {
 
         // Place furniture at intervals along the street
         // Avoid building positions (multiples of 240)
-        for (let x = 120; x < 3000; x += 240) {
+        for (let x = 120; x < 12000; x += 240) {
             const furnitureType = Math.floor(Math.random() * 4); // 0-3 for 4 types
 
             // Randomly skip some positions for variety
@@ -1293,6 +1387,14 @@ class MainScene extends Phaser.Scene {
                     this.createMailbox(x, groundLevel);
                     break;
             }
+        }
+
+        // Create bus stops at strategic locations
+        this.busStops = [];
+        // Place a bus stop every 1500 pixels (about every 6 buildings)
+        for (let x = 750; x < 12000; x += 1500) {
+            this.createBusStop(x, groundLevel);
+            this.busStops.push({ x: x, waitingCitizens: [] });
         }
     }
 
@@ -1466,6 +1568,244 @@ class MainScene extends Phaser.Scene {
         });
     }
 
+    createBusStop(x, groundLevel) {
+        const busStop = this.add.graphics();
+        busStop.setDepth(10.5); // Above buildings (10), but behind citizens (11) and buses (12)
+
+        // Shelter roof (blue/teal metal) - sits at top of 100px tall shelter
+        busStop.fillStyle(0x0277BD, 1);
+        busStop.fillRect(x - 60, groundLevel - 100, 120, 5);
+        busStop.fillStyle(0x01579B, 1);
+        busStop.fillRect(x - 60, groundLevel - 95, 120, 3);
+
+        // Shelter back wall (transparent plexiglass - light blue)
+        busStop.fillStyle(0x81D4FA, 0.3);
+        busStop.fillRect(x - 55, groundLevel - 92, 5, 87);
+        busStop.lineStyle(2, 0x0277BD, 1);
+        busStop.strokeRect(x - 55, groundLevel - 92, 5, 87);
+
+        // Support posts (metal poles) - go all the way to ground
+        busStop.fillStyle(0x424242, 1);
+        busStop.fillRect(x - 55, groundLevel - 100, 6, 100);
+        busStop.fillRect(x + 49, groundLevel - 100, 6, 100);
+
+        // Bench inside shelter (sitting height)
+        busStop.fillStyle(0x2196F3, 1);
+        busStop.fillRect(x - 45, groundLevel - 35, 80, 8);
+        busStop.fillRect(x - 45, groundLevel - 60, 80, 3); // back rest
+
+        // Bench legs
+        busStop.fillStyle(0x424242, 1);
+        busStop.fillRect(x - 40, groundLevel - 35, 4, 30);
+        busStop.fillRect(x + 26, groundLevel - 35, 4, 30);
+
+        // Bus stop sign pole - taller, goes to ground
+        busStop.fillStyle(0x424242, 1);
+        busStop.fillRect(x + 60, groundLevel - 110, 4, 110);
+
+        // Bus stop sign (blue circle with bus icon) - at top of pole
+        busStop.fillStyle(0x1976D2, 1);
+        busStop.fillCircle(x + 62, groundLevel - 120, 18);
+        busStop.lineStyle(3, 0xFFFFFF, 1);
+        busStop.strokeCircle(x + 62, groundLevel - 120, 18);
+
+        // Simple bus icon (white rectangle)
+        busStop.fillStyle(0xFFFFFF, 1);
+        busStop.fillRoundedRect(x + 52, groundLevel - 128, 20, 12, 2);
+        busStop.fillRect(x + 50, groundLevel - 124, 4, 8); // Front windshield
+        busStop.fillCircle(x + 56, groundLevel - 114, 2); // wheel
+        busStop.fillCircle(x + 68, groundLevel - 114, 2); // wheel
+
+        // "BUS" text below sign
+        const busText = this.add.text(x + 62, groundLevel - 95, 'BUS', {
+            fontSize: '10px',
+            color: '#1976D2',
+            fontStyle: 'bold',
+            fontFamily: 'Arial'
+        }).setOrigin(0.5).setDepth(10.5);
+    }
+
+    spawnBuses() {
+        // Spawn 3 buses that travel the full route
+        const groundLevel = this.gameHeight - 100;
+
+        // Bus 1 starts at beginning - positioned at ground level
+        this.createBus(500, groundLevel - 40, 1);
+
+        // Bus 2 starts at middle
+        this.createBus(6000, groundLevel - 40, 1);
+
+        // Bus 3 starts at end
+        this.createBus(11000, groundLevel - 40, 1);
+    }
+
+    createBus(startX, startY, direction) {
+        const bus = this.add.container(startX, startY);
+        bus.setDepth(12); // Above buildings (10), below player (100)
+
+        // Bus body (big yellow/orange bus)
+        const body = this.add.graphics();
+        body.fillStyle(0xFFA726, 1); // Orange
+        body.fillRoundedRect(-80, -40, 160, 80, 8);
+        body.lineStyle(3, 0xE65100, 1); // Dark orange outline
+        body.strokeRoundedRect(-80, -40, 160, 80, 8);
+        bus.add(body);
+
+        // Windows (blue tinted)
+        const windowColor = 0x81D4FA;
+        for (let i = 0; i < 4; i++) {
+            const window = this.add.rectangle(-60 + (i * 35), -20, 25, 20, windowColor);
+            bus.add(window);
+        }
+
+        // Windshield (front)
+        const windshield = this.add.rectangle(70, -10, 15, 35, windowColor);
+        bus.add(windshield);
+
+        // Wheels
+        const wheel1 = this.add.graphics();
+        wheel1.fillStyle(0x212121, 1);
+        wheel1.fillCircle(-50, 42, 12);
+        wheel1.fillStyle(0x424242, 1);
+        wheel1.fillCircle(-50, 42, 6);
+        bus.add(wheel1);
+
+        const wheel2 = this.add.graphics();
+        wheel2.fillStyle(0x212121, 1);
+        wheel2.fillCircle(50, 42, 12);
+        wheel2.fillStyle(0x424242, 1);
+        wheel2.fillCircle(50, 42, 6);
+        bus.add(wheel2);
+
+        // Headlights
+        const headlight = this.add.circle(78, 20, 5, 0xFFEB3B);
+        bus.add(headlight);
+
+        // Door (darker rectangle on side)
+        const door = this.add.rectangle(-70, 10, 20, 50, 0xE65100);
+        bus.add(door);
+
+        // Store bus data
+        this.buses.push({
+            container: bus,
+            x: startX,
+            y: startY,
+            direction: direction, // 1 = right, -1 = left
+            speed: 100, // pixels per second
+            passengers: [],
+            currentStopIndex: 0,
+            nextStopIndex: 1,
+            isAtStop: false,
+            stopTimer: 0
+        });
+    }
+
+    spawnCitizens() {
+        // Spawn 20 initial citizens at random locations
+        const groundLevel = this.gameHeight - 100;
+
+        for (let i = 0; i < 20; i++) {
+            const x = Math.random() * 12000;
+            this.createCitizen(x, groundLevel - 30);
+        }
+    }
+
+    createCitizen(startX, startY) {
+        const citizen = this.add.container(startX, startY);
+        citizen.setDepth(11); // Above buildings (10), below buses (12)
+
+        // Randomize citizen appearance
+        const skinTones = [0xFFDBAC, 0xF1C27D, 0xE0AC69, 0xC68642, 0x8D5524, 0x5C3317];
+        const shirtColors = [0x2196F3, 0xF44336, 0x4CAF50, 0xFF9800, 0x9C27B0, 0x00BCD4, 0xE91E63];
+        const pantColors = [0x1565C0, 0x424242, 0x795548, 0x5D4037];
+
+        const skinTone = skinTones[Math.floor(Math.random() * skinTones.length)];
+        const shirtColor = shirtColors[Math.floor(Math.random() * shirtColors.length)];
+        const pantColor = pantColors[Math.floor(Math.random() * pantColors.length)];
+
+        // Shadow
+        const shadow = this.add.ellipse(0, 28, 20, 6, 0x000000, 0.3);
+        citizen.add(shadow);
+
+        // Legs
+        const leftLeg = this.add.graphics();
+        leftLeg.fillStyle(pantColor, 1);
+        leftLeg.fillRoundedRect(-6, 6, 6, 14, 2);
+        citizen.add(leftLeg);
+
+        const rightLeg = this.add.graphics();
+        rightLeg.fillStyle(pantColor, 1);
+        rightLeg.fillRoundedRect(0, 6, 6, 14, 2);
+        citizen.add(rightLeg);
+
+        // Shoes
+        const leftShoe = this.add.ellipse(-3, 22, 8, 4, 0x000000);
+        const rightShoe = this.add.ellipse(3, 22, 8, 4, 0x000000);
+        citizen.add(leftShoe);
+        citizen.add(rightShoe);
+
+        // Body (shirt)
+        const body = this.add.graphics();
+        body.fillStyle(shirtColor, 1);
+        body.fillRoundedRect(-8, -12, 16, 20, 3);
+        citizen.add(body);
+
+        // Arms
+        const leftArm = this.add.graphics();
+        leftArm.fillStyle(shirtColor, 1);
+        leftArm.fillRoundedRect(-12, -6, 4, 10, 2);
+        citizen.add(leftArm);
+
+        const rightArm = this.add.graphics();
+        rightArm.fillStyle(shirtColor, 1);
+        rightArm.fillRoundedRect(8, -6, 4, 10, 2);
+        citizen.add(rightArm);
+
+        // Hands
+        const leftHand = this.add.circle(-10, 6, 3, skinTone);
+        const rightHand = this.add.circle(10, 6, 3, skinTone);
+        citizen.add(leftHand);
+        citizen.add(rightHand);
+
+        // Neck
+        const neck = this.add.rectangle(0, -14, 4, 3, skinTone);
+        citizen.add(neck);
+
+        // Head
+        const head = this.add.circle(0, -20, 8, skinTone);
+        citizen.add(head);
+
+        // Eyes
+        const leftEye = this.add.circle(-3, -21, 1.5, 0x000000);
+        const rightEye = this.add.circle(3, -21, 1.5, 0x000000);
+        citizen.add(leftEye);
+        citizen.add(rightEye);
+
+        // Random hair color and style
+        const hairColors = [0x000000, 0x3E2723, 0x5D4037, 0xFFD700, 0xF44336];
+        const hairColor = hairColors[Math.floor(Math.random() * hairColors.length)];
+        const hair = this.add.circle(0, -24, 6, hairColor);
+        citizen.add(hair);
+
+        // Store citizen data
+        const targetBuilding = this.buildings.length > 0
+            ? this.buildings[Math.floor(Math.random() * this.buildings.length)]
+            : null;
+
+        this.citizens.push({
+            container: citizen,
+            x: startX,
+            y: startY,
+            state: 'walking', // walking, waiting, riding, visiting
+            walkSpeed: 30 + Math.random() * 20, // Random walk speed
+            direction: Math.random() > 0.5 ? 1 : -1,
+            targetBuilding: targetBuilding,
+            targetBusStop: null,
+            waitTimer: 0,
+            visitTimer: 0
+        });
+    }
+
     generateRentalApplication(apartmentBuilding, unitIndex) {
         // Random name generation
         const firstNames = ['James', 'Mary', 'John', 'Patricia', 'Robert', 'Jennifer', 'Michael', 'Linda',
@@ -1510,6 +1850,7 @@ class MainScene extends Phaser.Scene {
     }
 
     generateApplicationsForVacantUnit(apartmentBuilding, unitIndex) {
+        console.log(`generateApplicationsForVacantUnit called for unit ${unitIndex}, mailboxes:`, this.mailboxes.length);
         // Generate 3-5 applications
         const numApplications = 3 + Math.floor(Math.random() * 3);
         const applications = [];
@@ -2115,6 +2456,8 @@ class MainScene extends Phaser.Scene {
             const buildingType = this.buildingTypes[this.selectedBuilding];
             const suggestedDistrict = buildingType ? this.districts[buildingType.district].name : '';
             this.buildMenuTitle.setText(`${buildingType.name} selected\nSuggested: ${suggestedDistrict} (20% bonus!)\nClick on the map to place`);
+        } else {
+            this.buildMenuTitle.setText('SELECT A BUILDING TO PLACE');
         }
     }
 
@@ -2123,7 +2466,7 @@ class MainScene extends Phaser.Scene {
         const now = Date.now();
         if (!this.isPaused) {
             const realTimePassed = (now - this.lastRealTime) / 1000; // seconds
-            const gameTimePassed = realTimePassed * this.timeSpeed * 60; // Game minutes (1 real second = 60 game seconds at 1x speed)
+            const gameTimePassed = realTimePassed * this.timeSpeed * 15; // Game minutes (1 real second = 15 game minutes at 1x speed)
             this.gameTime += gameTimePassed;
         }
         this.lastRealTime = now;
@@ -2299,12 +2642,12 @@ class MainScene extends Phaser.Scene {
                         this.checkTenantRisk(unit);
 
                         // Hide vacancy indicator if it exists
-                        if (unit.vacancyIndicator) {
+                        if (unit.vacancyIndicator && unit.vacancyIndicator.setVisible) {
                             unit.vacancyIndicator.setVisible(false);
                         }
                     } else {
                         // Unit is vacant - show vacancy indicator
-                        if (!unit.vacancyIndicator) {
+                        if (!unit.vacancyIndicator || !unit.vacancyIndicator.setVisible) {
                             unit.vacancyIndicator = this.add.text(unitX, unitY, 'VACANT', {
                                 fontSize: '8px',
                                 color: '#FFFFFF',
@@ -2414,27 +2757,19 @@ class MainScene extends Phaser.Scene {
         if (this.loanAmount > 0) resourceText += `\n💳 Debt: $${this.loanAmount}`;
         this.resourceUI.setText(resourceText);
 
+        // Update buses
+        if (!this.isPaused) {
+            this.updateBuses();
+        }
+
+        // Update citizens
+        if (!this.isPaused) {
+            this.updateCitizens();
+        }
+
         // Restart is now controlled via settings menu (mouse clicks)
 
-        // Delete confirmation
-        if (this.deleteConfirmShowing) {
-            // If confirmation is showing, check for confirmation or cancel
-            if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
-                // Confirm deletion
-                if (this.buildingToDelete) {
-                    this.deleteBuilding(this.buildingToDelete);
-                    this.buildingToDelete = null;
-                }
-                this.deleteConfirmShowing = false;
-                this.deleteConfirmUI.setVisible(false);
-            }
-            if (Phaser.Input.Keyboard.JustDown(this.input.keyboard.addKey('ESC'))) {
-                // Cancel deletion
-                this.deleteConfirmShowing = false;
-                this.deleteConfirmUI.setVisible(false);
-                this.buildingToDelete = null;
-            }
-        }
+        // Delete confirmation is now handled by clickable buttons
 
         // Pause and travel are now controlled via settings menu (mouse clicks)
 
@@ -2452,9 +2787,18 @@ class MainScene extends Phaser.Scene {
         }
 
         // Build mode is now controlled via clickable menu at bottom of screen
-        // Update building preview if in build mode
+        // Update building preview if in build mode (freeze position during confirmation but keep visible)
         if (this.buildMode) {
-            this.updateBuildingPreview();
+            if (!this.buildConfirmShowing) {
+                this.updateBuildingPreview();
+            }
+            // Keep preview visible even during confirmation so user can see where it will be placed
+        } else {
+            // Clear preview when exiting build mode
+            if (this.buildingPreview) {
+                this.buildingPreview.destroy();
+                this.buildingPreview = null;
+            }
         }
 
         // Update delete mode UI
@@ -2483,8 +2827,8 @@ class MainScene extends Phaser.Scene {
                         // Show confirmation dialog
                         this.buildingToDelete = building;
                         this.deleteConfirmShowing = true;
-                        this.deleteConfirmUI.setText(`Delete ${buildingType.name}?\n\nENTER: Confirm  |  ESC: Cancel`);
-                        this.deleteConfirmUI.setVisible(true);
+                        this.deleteConfirmUI.setText(`Delete ${buildingType.name}?`);
+                        this.deleteConfirmContainer.setVisible(true);
                         break;
                     }
                 }
@@ -2851,7 +3195,10 @@ class MainScene extends Phaser.Scene {
     }
 
     updateBuildingPreview() {
-        if (!this.buildMode || !this.selectedBuilding) return;
+        if (!this.buildMode || !this.selectedBuilding) {
+            console.log('Preview skipped - buildMode:', this.buildMode, 'selectedBuilding:', this.selectedBuilding);
+            return;
+        }
 
         const building = this.buildingTypes[this.selectedBuilding];
         const mouseWorldX = this.input.activePointer.x + this.cameras.main.scrollX;
@@ -2865,18 +3212,33 @@ class MainScene extends Phaser.Scene {
             this.buildingPreview.destroy();
         }
 
-        // Create new preview
+        // Create new preview in WORLD coordinates
         const previewGraphics = this.add.graphics();
-        previewGraphics.fillStyle(building.color, 0.5);
+        previewGraphics.setDepth(15); // Above buildings (10) but below UI (9998+)
+        previewGraphics.setVisible(true);
+        previewGraphics.setAlpha(0.7); // Semi-transparent
+
+        // Draw the building preview at the actual world position
+        previewGraphics.fillStyle(building.color, 1);
         previewGraphics.fillRect(snappedX - building.width/2, buildingY - building.height,
                                 building.width, building.height);
-        previewGraphics.lineStyle(3, 0xFFFFFF, 0.8);
+        previewGraphics.lineStyle(3, 0x000000, 1);
+        previewGraphics.strokeRect(snappedX - building.width/2, buildingY - building.height,
+                                  building.width, building.height);
+
+        // Draw building details (windows, doors, etc.) so user can see what they're placing
+        this.drawBuildingDetails(previewGraphics, this.selectedBuilding, snappedX, buildingY);
+
+        // Add bright green outline to show it's a preview
+        previewGraphics.lineStyle(5, 0x00FF00, 0.8);
         previewGraphics.strokeRect(snappedX - building.width/2, buildingY - building.height,
                                   building.width, building.height);
 
         this.buildingPreview = previewGraphics;
         this.buildingPreview.snappedX = snappedX;
         this.buildingPreview.buildingY = buildingY;
+
+        console.log('Preview created at', snappedX, buildingY);
     }
 
     deleteBuilding(building) {
@@ -2938,15 +3300,17 @@ class MainScene extends Phaser.Scene {
     }
 
     placeBuilding() {
-        if (!this.selectedBuilding || !this.buildingPreview) return;
+        if (!this.selectedBuilding) return;
 
         const building = this.buildingTypes[this.selectedBuilding];
 
         // Check if player has enough resources (skip in creative mode)
         if (!this.creativeMode) {
             if (this.money < building.cost || this.wood < building.wood || this.bricks < building.bricks) {
-                console.log('Not enough resources!');
-                return;
+                console.log('Not enough resources! Need: $' + building.cost + ', Wood:' + building.wood + ', Bricks:' + building.bricks);
+                console.log('You have: $' + this.money + ', Wood:' + this.wood + ', Bricks:' + this.bricks);
+                alert('Not enough resources!\n\nNeed: $' + building.cost + ', 🪵' + building.wood + ', 🧱' + building.bricks + '\nYou have: $' + this.money + ', 🪵' + this.wood + ', 🧱' + this.bricks);
+                return false; // Return false to indicate failure
             }
 
             // Deduct resources
@@ -2955,9 +3319,9 @@ class MainScene extends Phaser.Scene {
             this.bricks -= building.bricks;
         }
 
-        // Create permanent building
-        const x = this.buildingPreview.snappedX;
-        const y = this.buildingPreview.buildingY;
+        // Use the saved position from when confirmation was triggered
+        const x = this.pendingBuildingX;
+        const y = this.pendingBuildingY;
 
         const newBuilding = this.add.graphics();
         newBuilding.setDepth(10); // Buildings are on top of background
@@ -3081,13 +3445,14 @@ class MainScene extends Phaser.Scene {
                     lastIncomeTime: Date.now(),
                     lastRiskCheck: Date.now()  // For checking if tenant skips
                 });
-
-                // Generate applications for this vacant unit after a short delay
-                setTimeout(() => {
-                    this.generateApplicationsForVacantUnit(buildingData, i);
-                }, 2000 + (i * 1000)); // Stagger applications
             }
             buildingData.vacancySigns = [];  // Will store vacancy sign graphics
+
+            // Generate applications for all vacant units immediately
+            console.log('Generating applications for new apartment building with', building.units, 'units');
+            for (let i = 0; i < building.units; i++) {
+                this.generateApplicationsForVacantUnit(buildingData, i);
+            }
         }
 
         // Initialize hotel rooms if it's a hotel building
@@ -3637,6 +4002,187 @@ class MainScene extends Phaser.Scene {
             }
 
             this.saveGame();
+        }
+    }
+
+    updateBuses() {
+        const deltaTime = 1/60; // Approximate 60 FPS
+
+        for (let bus of this.buses) {
+            // Update bus position
+            const distance = bus.speed * deltaTime;
+            bus.x += distance * bus.direction;
+            bus.container.x = bus.x;
+
+            // Check if at a bus stop
+            for (let i = 0; i < this.busStops.length; i++) {
+                const stop = this.busStops[i];
+                const distanceToStop = Math.abs(bus.x - stop.x);
+
+                // If bus is near a stop and moving toward it
+                if (distanceToStop < 50 && !bus.isAtStop) {
+                    bus.isAtStop = true;
+                    bus.stopTimer = 3; // Wait 3 seconds at stop
+                    bus.currentStopIndex = i;
+
+                    // Drop off passengers
+                    const droppingOff = [];
+                    for (let j = bus.passengers.length - 1; j >= 0; j--) {
+                        const passenger = bus.passengers[j];
+                        // Some passengers randomly get off at stops
+                        if (Math.random() < 0.3 || passenger.targetStopIndex === i) {
+                            // Remove from bus and place on street
+                            bus.passengers.splice(j, 1);
+                            passenger.citizen.container.setVisible(true);
+                            passenger.citizen.x = stop.x + (Math.random() * 100 - 50);
+                            passenger.citizen.container.x = passenger.citizen.x;
+                            passenger.citizen.state = 'walking';
+                        }
+                    }
+
+                    // Pick up waiting citizens
+                    const waitingCitizens = stop.waitingCitizens.slice(); // Copy array
+                    for (let citizen of waitingCitizens) {
+                        if (bus.passengers.length < 20) { // Bus capacity
+                            bus.passengers.push({
+                                citizen: citizen,
+                                targetStopIndex: Math.floor(Math.random() * this.busStops.length)
+                            });
+                            citizen.container.setVisible(false); // Hide citizen while on bus
+                            citizen.state = 'riding';
+
+                            // Remove from waiting list
+                            const index = stop.waitingCitizens.indexOf(citizen);
+                            if (index > -1) {
+                                stop.waitingCitizens.splice(index, 1);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Handle stop timer
+            if (bus.isAtStop) {
+                bus.stopTimer -= deltaTime;
+                if (bus.stopTimer <= 0) {
+                    bus.isAtStop = false;
+                }
+            }
+
+            // Reverse direction at ends of street
+            if (bus.x > 11900) {
+                bus.direction = -1;
+                bus.container.setScale(-1, 1); // Flip bus sprite
+            } else if (bus.x < 100) {
+                bus.direction = 1;
+                bus.container.setScale(1, 1); // Normal direction
+            }
+        }
+    }
+
+    updateCitizens() {
+        const deltaTime = 1/60; // Approximate 60 FPS
+
+        for (let citizen of this.citizens) {
+            if (citizen.state === 'walking') {
+                // Walk in current direction
+                const distance = citizen.walkSpeed * deltaTime;
+                citizen.x += distance * citizen.direction;
+                citizen.container.x = citizen.x;
+
+                // Randomly decide to go to a bus stop
+                if (Math.random() < 0.001) { // 0.1% chance per frame
+                    // Find nearest bus stop
+                    let nearestStop = null;
+                    let nearestDistance = Infinity;
+                    for (let stop of this.busStops) {
+                        const dist = Math.abs(citizen.x - stop.x);
+                        if (dist < nearestDistance) {
+                            nearestDistance = dist;
+                            nearestStop = stop;
+                        }
+                    }
+
+                    if (nearestStop) {
+                        citizen.targetBusStop = nearestStop;
+                        citizen.direction = citizen.x < nearestStop.x ? 1 : -1;
+                    }
+                }
+
+                // Check if reached bus stop
+                if (citizen.targetBusStop) {
+                    const distanceToStop = Math.abs(citizen.x - citizen.targetBusStop.x);
+                    if (distanceToStop < 30) {
+                        // Arrived at bus stop
+                        citizen.state = 'waiting';
+                        citizen.waitTimer = 0;
+                        citizen.targetBusStop.waitingCitizens.push(citizen);
+                        citizen.targetBusStop = null;
+                    }
+                }
+
+                // Randomly reverse direction at edges or randomly
+                if (citizen.x > 11900 || citizen.x < 100 || Math.random() < 0.002) {
+                    citizen.direction *= -1;
+                }
+
+                // Randomly visit nearby buildings
+                if (Math.random() < 0.0005 && this.buildings.length > 0) {
+                    // Find a nearby building
+                    const nearbyBuildings = this.buildings.filter(b =>
+                        Math.abs(b.x - citizen.x) < 500
+                    );
+                    if (nearbyBuildings.length > 0) {
+                        const building = nearbyBuildings[Math.floor(Math.random() * nearbyBuildings.length)];
+                        citizen.targetBuilding = building;
+                        citizen.direction = citizen.x < building.x ? 1 : -1;
+                    }
+                }
+
+                // Check if reached target building
+                if (citizen.targetBuilding) {
+                    const distanceToBuilding = Math.abs(citizen.x - citizen.targetBuilding.x);
+                    if (distanceToBuilding < 50) {
+                        // Arrived at building - start visit
+                        citizen.state = 'visiting';
+                        citizen.visitTimer = 5 + Math.random() * 10; // Visit for 5-15 seconds
+                        citizen.container.setVisible(false); // Hide while inside building
+                    }
+                }
+            } else if (citizen.state === 'waiting') {
+                // Citizen is waiting at bus stop - just stand still
+                citizen.waitTimer += deltaTime;
+
+                // Small chance to give up waiting and start walking again
+                if (citizen.waitTimer > 30 && Math.random() < 0.01) {
+                    citizen.state = 'walking';
+                    // Remove from bus stop waiting list
+                    for (let stop of this.busStops) {
+                        const index = stop.waitingCitizens.indexOf(citizen);
+                        if (index > -1) {
+                            stop.waitingCitizens.splice(index, 1);
+                            break;
+                        }
+                    }
+                }
+            } else if (citizen.state === 'visiting') {
+                // Citizen is inside a building
+                citizen.visitTimer -= deltaTime;
+                if (citizen.visitTimer <= 0) {
+                    // Finished visiting - come back out
+                    citizen.state = 'walking';
+                    citizen.container.setVisible(true);
+                    if (citizen.targetBuilding) {
+                        citizen.x = citizen.targetBuilding.x + (Math.random() * 100 - 50);
+                        citizen.container.x = citizen.x;
+                    }
+                    citizen.targetBuilding = null;
+                    citizen.direction = Math.random() > 0.5 ? 1 : -1;
+                }
+            } else if (citizen.state === 'riding') {
+                // Citizen is on a bus - already handled in updateBuses
+                // The bus will drop them off and change state back to walking
+            }
         }
     }
 }
