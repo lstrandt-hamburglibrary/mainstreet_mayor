@@ -495,9 +495,15 @@ class MainScene extends Phaser.Scene {
             this.buildMenuBg.setVisible(this.buildMode);
 
             // Show/hide all building buttons
+            let buttonCount = 0;
             for (let buildingType in this.buildingButtons) {
                 this.buildingButtons[buildingType].button.setVisible(this.buildMode);
+                buttonCount++;
+                if (this.buildMode) {
+                    console.log(`Button ${buildingType}: visible=${this.buildingButtons[buildingType].button.visible}, depth=${this.buildingButtons[buildingType].button.depth}, x=${this.buildingButtons[buildingType].button.x}, y=${this.buildingButtons[buildingType].button.y}`);
+                }
             }
+            console.log(`Toggled visibility for ${buttonCount} buttons`);
 
             if (this.buildMode) {
                 // Don't auto-select a building - let user choose
@@ -591,10 +597,14 @@ class MainScene extends Phaser.Scene {
                 backgroundColor: building.color,
                 padding: { x: 10, y: 5 },
                 align: 'center'
-            }).setOrigin(0.5).setInteractive().setScrollFactor(0).setDepth(99998).setVisible(false);
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(200000).setVisible(false);
+
+            // Explicitly set interactive with hit area
+            btn.setInteractive(new Phaser.Geom.Rectangle(-50, -15, 100, 30), Phaser.Geom.Rectangle.Contains);
+            console.log(`Created button for ${building.type} at (${baseX}, ${baseY}) depth:200000`);
 
             btn.on('pointerdown', () => {
-                console.log('Building button clicked:', building.type);
+                console.log('🎯 Building button clicked:', building.type);
                 this.selectedBuilding = building.type;
                 this.updateBuildingButtonStates();
                 console.log('Build mode:', this.buildMode, 'Selected:', this.selectedBuilding);
@@ -622,10 +632,14 @@ class MainScene extends Phaser.Scene {
             backgroundColor: '#D84315',
             padding: { x: 10, y: 5 },
             align: 'center'
-        }).setOrigin(0.5).setInteractive().setScrollFactor(0).setDepth(99998).setVisible(false);
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(200000).setVisible(false);
+
+        // Explicitly set interactive with hit area
+        brickBtn.setInteractive(new Phaser.Geom.Rectangle(-50, -15, 100, 30), Phaser.Geom.Rectangle.Contains);
+        console.log(`Created brick factory button at (${this.gameWidth / 2 + 100}, ${this.gameHeight - 50}) depth:200000`);
 
         brickBtn.on('pointerdown', () => {
-            console.log('Brick factory button clicked');
+            console.log('🎯 Brick factory button clicked');
             this.selectedBuilding = 'brickfactory';
             this.updateBuildingButtonStates();
         });
