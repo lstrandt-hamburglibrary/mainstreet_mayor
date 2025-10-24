@@ -1315,6 +1315,27 @@ class MainScene extends Phaser.Scene {
             this.deleteConfirmContainer.setPosition(this.gameWidth / 2, this.gameHeight / 2);
         }
 
+        // Update shop interior UI positions
+        if (this.shopInteriorContainer) {
+            // Update background and interior elements to fill screen
+            const interiorBg = this.shopInteriorContainer.list[0]; // First element is background
+            if (interiorBg) {
+                interiorBg.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+                interiorBg.setSize(this.gameWidth, this.gameHeight);
+            }
+
+            // Update button positions (they're not in fixed positions in the list, so we use the stored references)
+            if (this.shopRestockButton) {
+                this.shopRestockButton.setPosition(30, this.gameHeight - 50);
+            }
+            if (this.shopHireButton) {
+                this.shopHireButton.setPosition(30, this.gameHeight - 90);
+            }
+            if (this.shopWageText) {
+                this.shopWageText.setPosition(30, this.gameHeight - 130);
+            }
+        }
+
         console.log(`Resized to ${newWidth}x${newHeight}`);
     }
 
