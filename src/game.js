@@ -1277,11 +1277,13 @@ class MainScene extends Phaser.Scene {
 
         if (buildingData.type === 'house') {
             // Two-story house - 4 rows of 2 windows
+            // Match exact coordinates from drawBuildingDetails
+            const spacing = 25;
             for (let row = 0; row < 4; row++) {
                 for (let col = 0; col < 2; col++) {
-                    const wx = x - 30 + (col * 60);
-                    const wy = y - buildingType.height + 35 + (row * 55);
-                    const light = this.add.rectangle(wx, wy, 18, 20, 0xFFD700, 0.6);
+                    const wx = x - spacing + (col * spacing * 2);
+                    const wy = y - buildingType.height + 50 + (row * 50);
+                    const light = this.add.rectangle(wx, wy + 12, 20, 25, 0xFFD700, 0.5);
                     light.setDepth(11);
                     light.setVisible(false);
                     buildingData.windowLights.push(light);
