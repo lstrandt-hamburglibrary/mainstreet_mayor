@@ -702,9 +702,11 @@ class MainScene extends Phaser.Scene {
         this.buildCancelButton.on('pointerout', () => this.buildCancelButton.setStyle({ backgroundColor: '#424242' }));
 
         this.buildConfirmButton.on('pointerdown', () => {
+            console.log('✅ PLACE button clicked');
             const success = this.placeBuilding();
             this.buildConfirmContainer.setVisible(false);
             this.buildConfirmShowing = false;
+            console.log('Confirmation dialog hidden, buildConfirmShowing:', this.buildConfirmShowing);
 
             // Only clear selection if building was successfully placed
             if (success !== false) {
@@ -723,8 +725,10 @@ class MainScene extends Phaser.Scene {
         });
 
         this.buildCancelButton.on('pointerdown', () => {
+            console.log('❌ CANCEL button clicked');
             this.buildConfirmContainer.setVisible(false);
             this.buildConfirmShowing = false;
+            console.log('Confirmation dialog hidden, buildConfirmShowing:', this.buildConfirmShowing);
             // Preview continues to follow mouse after canceling
         });
 
