@@ -512,9 +512,11 @@ class MainScene extends Phaser.Scene {
         });
 
         this.demolishButton.on('pointerdown', () => {
+            console.log('🔨 Demolish button clicked!');
             this.settingsMenuOpen = false;
             this.settingsDropdown.setVisible(false);
             this.deleteMode = !this.deleteMode;
+            console.log(`🔨 Delete mode is now: ${this.deleteMode}`);
             this.buildMode = false;
             this.buildMenuContainer.setVisible(false);
 
@@ -524,6 +526,9 @@ class MainScene extends Phaser.Scene {
                     this.buildingPreview.destroy();
                     this.buildingPreview = null;
                 }
+                console.log('🔨 Delete mode turned OFF');
+            } else {
+                console.log('🔨 Delete mode turned ON - you should see the red banner');
             }
         });
 
@@ -3603,6 +3608,10 @@ class MainScene extends Phaser.Scene {
         // Update delete mode UI
         if (this.deleteMode) {
             this.demolishUI.setVisible(true);
+            // Log once per second to avoid spam
+            if (Math.floor(this.gameTime) % 60 === 0) {
+                console.log('🔨 DELETE MODE ACTIVE - waiting for click');
+            }
         } else {
             this.demolishUI.setVisible(false);
         }
