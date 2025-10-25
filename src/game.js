@@ -5165,6 +5165,11 @@ class MainScene extends Phaser.Scene {
     }
 
     updateMailboxUI() {
+        // Safety check: only update if menu exists and is visible
+        if (!this.mailboxUI || !this.mailboxUI.visible || !this.mailboxMenuOpen) {
+            return;
+        }
+
         if (this.pendingApplications.length === 0) {
             this.closeMailboxMenu();
             return;
@@ -5195,7 +5200,11 @@ class MainScene extends Phaser.Scene {
         menuText += `ENTER : Accept this applicant\n`;
         menuText += `ESC : Close mailbox\n`;
 
-        this.mailboxUI.setText(menuText);
+        try {
+            this.mailboxUI.setText(menuText);
+        } catch (error) {
+            console.error('Error updating mailbox UI:', error);
+        }
     }
 
     acceptApplication() {
