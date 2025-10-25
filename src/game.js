@@ -568,16 +568,19 @@ class MainScene extends Phaser.Scene {
 
         this.buildMenuCloseButton.on('pointerdown', () => {
             console.log('❌ Build menu close button clicked');
-            this.buildMode = false;
-            this.buildMenuContainer.setVisible(false);
 
-            // Clear any preview and selection
+            // Clear selection and preview first
+            this.selectedBuilding = null;
             if (this.buildingPreview) {
                 this.buildingPreview.destroy();
                 this.buildingPreview = null;
             }
-            this.selectedBuilding = null;
-            this.updateBuildingButtonStates();
+
+            // Then close build mode and hide menu
+            this.buildMode = false;
+            this.buildMenuContainer.setVisible(false);
+
+            // No need to call updateBuildingButtonStates() since menu is hidden
         });
 
         this.buildMenuContainer.add(this.buildMenuCloseButton);
@@ -2980,6 +2983,11 @@ class MainScene extends Phaser.Scene {
     }
 
     updateBuildingButtonStates() {
+        // Safety check: only update if menu exists and is visible
+        if (!this.buildMenuContainer || !this.buildMenuContainer.visible) {
+            return;
+        }
+
         // Update all building buttons to show which one is selected
         for (let buildingType in this.buildingButtons) {
             const btnData = this.buildingButtons[buildingType];
