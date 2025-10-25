@@ -4170,29 +4170,29 @@ class MainScene extends Phaser.Scene {
 
         // (Labels removed - we use building signs now)
 
-        // Destroy income indicator
-        if (building.incomeIndicator) {
+        // Destroy income indicator (with safety check)
+        if (building.incomeIndicator && building.incomeIndicator.destroy) {
             building.incomeIndicator.destroy();
         }
 
-        // Destroy resource indicator
-        if (building.resourceIndicator) {
+        // Destroy resource indicator (with safety check)
+        if (building.resourceIndicator && building.resourceIndicator.destroy) {
             building.resourceIndicator.destroy();
         }
 
-        // Destroy vacancy indicators for apartments
+        // Destroy vacancy indicators for apartments (with safety check)
         if (building.type === 'apartment' && building.units) {
             for (let unit of building.units) {
-                if (unit.vacancyIndicator) {
+                if (unit.vacancyIndicator && unit.vacancyIndicator.destroy) {
                     unit.vacancyIndicator.destroy();
                 }
             }
         }
 
-        // Destroy dirty indicators for hotel rooms
+        // Destroy dirty indicators for hotel rooms (with safety check)
         if (building.type === 'hotel' && building.rooms) {
             for (let room of building.rooms) {
-                if (room.dirtyIndicator) {
+                if (room.dirtyIndicator && room.dirtyIndicator.destroy) {
                     room.dirtyIndicator.destroy();
                 }
             }
@@ -4211,7 +4211,7 @@ class MainScene extends Phaser.Scene {
             this.buildings.splice(index, 1);
         }
 
-        console.log(`Deleted ${building.type}`);
+        console.log(`✅ Deleted ${building.type} - buildings array now has ${this.buildings.length} items`);
 
         // Save game
         this.saveGame();
