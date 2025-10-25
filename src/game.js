@@ -1064,33 +1064,40 @@ class MainScene extends Phaser.Scene {
         this.hotelInteriorContainer.add(deskTop);
 
         // Hotel employee (front desk clerk) - only visible when hired
-        const hotelEmployee = this.add.container(this.gameWidth / 2, this.gameHeight - 250);
+        // Position behind the desk so they appear to be standing there
+        const hotelEmployee = this.add.container(this.gameWidth / 2, this.gameHeight - 320);
 
-        // Employee body
-        const hotelEmpBody = this.add.rectangle(0, 0, 30, 40, 0x1976D2); // Blue uniform
+        // Employee body (much larger, normal proportions)
+        const hotelEmpBody = this.add.rectangle(0, 0, 60, 100, 0x1976D2); // Blue uniform
         hotelEmployee.add(hotelEmpBody);
 
-        // Employee head
-        const hotelEmpHead = this.add.circle(0, -30, 15, 0xFFDBAC);
+        // Employee head (proportional to body)
+        const hotelEmpHead = this.add.circle(0, -70, 25, 0xFFDBAC);
         hotelEmployee.add(hotelEmpHead);
 
         // Employee eyes
         const hotelEmpEyes = this.add.graphics();
         hotelEmpEyes.fillStyle(0x000000, 1);
-        hotelEmpEyes.fillCircle(-5, -30, 2);
-        hotelEmpEyes.fillCircle(5, -30, 2);
+        hotelEmpEyes.fillCircle(-8, -72, 3);
+        hotelEmpEyes.fillCircle(8, -72, 3);
         hotelEmployee.add(hotelEmpEyes);
 
         // Employee smile
         const hotelEmpSmile = this.add.graphics();
-        hotelEmpSmile.lineStyle(2, 0x000000, 1);
-        hotelEmpSmile.arc(0, -25, 6, 0, Math.PI);
+        hotelEmpSmile.lineStyle(3, 0x000000, 1);
+        hotelEmpSmile.arc(0, -62, 10, 0, Math.PI);
         hotelEmpSmile.strokePath();
         hotelEmployee.add(hotelEmpSmile);
 
-        // Employee name tag
-        const hotelNameTag = this.add.rectangle(0, 10, 20, 8, 0xFFD700);
+        // Employee name tag (larger)
+        const hotelNameTag = this.add.rectangle(0, 20, 35, 12, 0xFFD700);
         hotelEmployee.add(hotelNameTag);
+        const hotelNameTagText = this.add.text(0, 20, 'STAFF', {
+            fontSize: '8px',
+            color: '#000000',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        hotelEmployee.add(hotelNameTagText);
 
         hotelEmployee.setVisible(false); // Hidden until employee is hired
         this.hotelInteriorContainer.add(hotelEmployee);
