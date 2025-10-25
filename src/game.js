@@ -492,18 +492,6 @@ class MainScene extends Phaser.Scene {
             console.log('🏗️ Build mode toggled:', this.buildMode ? 'ON' : 'OFF');
             this.deleteMode = false;
             this.buildMenuContainer.setVisible(this.buildMode);
-            this.buildMenuBg.setVisible(this.buildMode);
-
-            // Show/hide all building buttons
-            let buttonCount = 0;
-            for (let buildingType in this.buildingButtons) {
-                this.buildingButtons[buildingType].button.setVisible(this.buildMode);
-                buttonCount++;
-                if (this.buildMode) {
-                    console.log(`Button ${buildingType}: visible=${this.buildingButtons[buildingType].button.visible}, depth=${this.buildingButtons[buildingType].button.depth}, x=${this.buildingButtons[buildingType].button.x}, y=${this.buildingButtons[buildingType].button.y}`);
-                }
-            }
-            console.log(`Toggled visibility for ${buttonCount} buttons`);
 
             if (this.buildMode) {
                 // Don't auto-select a building - let user choose
@@ -529,12 +517,6 @@ class MainScene extends Phaser.Scene {
             this.deleteMode = !this.deleteMode;
             this.buildMode = false;
             this.buildMenuContainer.setVisible(false);
-            this.buildMenuBg.setVisible(false);
-
-            // Hide all building buttons
-            for (let buildingType in this.buildingButtons) {
-                this.buildingButtons[buildingType].button.setVisible(false);
-            }
 
             if (!this.deleteMode) {
                 this.selectedBuilding = null;
@@ -553,13 +535,12 @@ class MainScene extends Phaser.Scene {
             padding: { x: 10, y: 6 }
         }).setScrollFactor(0).setDepth(99998);
 
-        // Build menu UI (clickable buttons at bottom of screen)
-        // Background separate from container to avoid blocking input
-        this.buildMenuBg = this.add.rectangle(this.gameWidth / 2, this.gameHeight - 80, this.gameWidth, 160, 0x000000, 0.9);
-        this.buildMenuBg.setScrollFactor(0).setDepth(99996).setVisible(false);
-
+        // Build menu UI (clickable buttons at bottom of screen) - RESTORED TO WORKING VERSION
         this.buildMenuContainer = this.add.container(this.gameWidth / 2, this.gameHeight - 80);
         this.buildMenuContainer.setScrollFactor(0).setDepth(99997).setVisible(false);
+
+        const buildMenuBg = this.add.rectangle(0, 0, this.gameWidth, 160, 0x000000, 0.9);
+        this.buildMenuContainer.add(buildMenuBg);
 
         // Build menu title
         this.buildMenuTitle = this.add.text(0, -60, 'SELECT BUILDING TO PLACE', {
@@ -588,57 +569,47 @@ class MainScene extends Phaser.Scene {
         buildings.forEach((building, index) => {
             const col = index % 4;
             const row = Math.floor(index / 4);
-            const baseX = this.gameWidth / 2 - 300 + (col * 200);
-            const baseY = this.gameHeight - 120 + (row * 35);
+            const x = -300 + (col * 200);
+            const y = -40 + (row * 35);
 
-            const btn = this.add.text(baseX, baseY, building.label, {
+            const btn = this.add.text(x, y, building.label, {
                 fontSize: '12px',
                 color: '#ffffff',
                 backgroundColor: building.color,
                 padding: { x: 10, y: 5 },
                 align: 'center'
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(200000).setVisible(false);
-
-            // Explicitly set interactive with hit area
-            btn.setInteractive(new Phaser.Geom.Rectangle(-50, -15, 100, 30), Phaser.Geom.Rectangle.Contains);
-            console.log(`Created button for ${building.type} at (${baseX}, ${baseY}) depth:200000`);
+            }).setOrigin(0.5).setInteractive();
 
             btn.on('pointerdown', () => {
                 console.log('🎯 Building button clicked:', building.type);
                 this.selectedBuilding = building.type;
                 this.updateBuildingButtonStates();
-                console.log('Build mode:', this.buildMode, 'Selected:', this.selectedBuilding);
             });
 
             btn.on('pointerover', () => {
-                console.log(`👆 Mouse over ${building.type} button`);
                 if (this.selectedBuilding !== building.type) {
                     btn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
                 }
             });
 
             btn.on('pointerout', () => {
-                console.log(`👋 Mouse left ${building.type} button`);
                 if (this.selectedBuilding !== building.type) {
                     btn.setStyle({ backgroundColor: building.color, color: '#ffffff' });
                 }
             });
 
+            this.buildMenuContainer.add(btn);
             this.buildingButtons[building.type] = { button: btn, originalColor: building.color };
         });
 
         // Add brick factory button (4th column, 3rd row)
-        const brickBtn = this.add.text(this.gameWidth / 2 + 100, this.gameHeight - 50, '🧱 Brick\n$250', {
+        const brickBtn = this.add.text(100, 60, '🧱 Brick\n$250', {
             fontSize: '12px',
             color: '#ffffff',
             backgroundColor: '#D84315',
             padding: { x: 10, y: 5 },
             align: 'center'
-        }).setOrigin(0.5).setScrollFactor(0).setDepth(200000).setVisible(false);
-
-        // Explicitly set interactive with hit area
-        brickBtn.setInteractive(new Phaser.Geom.Rectangle(-50, -15, 100, 30), Phaser.Geom.Rectangle.Contains);
-        console.log(`Created brick factory button at (${this.gameWidth / 2 + 100}, ${this.gameHeight - 50}) depth:200000`);
+        }).setOrigin(0.5).setInteractive();
 
         brickBtn.on('pointerdown', () => {
             console.log('🎯 Brick factory button clicked');
@@ -647,19 +618,18 @@ class MainScene extends Phaser.Scene {
         });
 
         brickBtn.on('pointerover', () => {
-            console.log(`👆 Mouse over brickfactory button`);
             if (this.selectedBuilding !== 'brickfactory') {
                 brickBtn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
             }
         });
 
         brickBtn.on('pointerout', () => {
-            console.log(`👋 Mouse left brickfactory button`);
             if (this.selectedBuilding !== 'brickfactory') {
                 brickBtn.setStyle({ backgroundColor: '#D84315', color: '#ffffff' });
             }
         });
 
+        this.buildMenuContainer.add(brickBtn);
         this.buildingButtons['brickfactory'] = { button: brickBtn, originalColor: '#D84315' };
 
         // Demolish mode UI (simple overlay)
@@ -1346,27 +1316,6 @@ class MainScene extends Phaser.Scene {
         }
         if (this.buildMenuContainer) {
             this.buildMenuContainer.setPosition(this.gameWidth / 2, this.gameHeight - 80);
-        }
-        if (this.buildMenuBg) {
-            this.buildMenuBg.setPosition(this.gameWidth / 2, this.gameHeight - 80);
-            this.buildMenuBg.setSize(this.gameWidth, 160);
-        }
-        // Reposition building buttons
-        if (this.buildingButtons) {
-            let index = 0;
-            for (let buildingType in this.buildingButtons) {
-                if (buildingType === 'brickfactory') {
-                    // Special position for brick factory
-                    this.buildingButtons[buildingType].button.setPosition(this.gameWidth / 2 + 100, this.gameHeight - 50);
-                } else {
-                    const col = index % 4;
-                    const row = Math.floor(index / 4);
-                    const baseX = this.gameWidth / 2 - 300 + (col * 200);
-                    const baseY = this.gameHeight - 120 + (row * 35);
-                    this.buildingButtons[buildingType].button.setPosition(baseX, baseY);
-                    index++;
-                }
-            }
         }
         if (this.demolishUI) {
             this.demolishUI.setPosition(this.gameWidth / 2, this.gameHeight - 60);
