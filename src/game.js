@@ -1067,30 +1067,30 @@ class MainScene extends Phaser.Scene {
         const hotelEmployee = this.add.container(this.gameWidth / 2, this.gameHeight - 250);
 
         // Employee body
-        const empBody = this.add.rectangle(0, 0, 30, 40, 0x1976D2); // Blue uniform
-        hotelEmployee.add(empBody);
+        const hotelEmpBody = this.add.rectangle(0, 0, 30, 40, 0x1976D2); // Blue uniform
+        hotelEmployee.add(hotelEmpBody);
 
         // Employee head
-        const empHead = this.add.circle(0, -30, 15, 0xFFDBAC);
-        hotelEmployee.add(empHead);
+        const hotelEmpHead = this.add.circle(0, -30, 15, 0xFFDBAC);
+        hotelEmployee.add(hotelEmpHead);
 
         // Employee eyes
-        const empEyes = this.add.graphics();
-        empEyes.fillStyle(0x000000, 1);
-        empEyes.fillCircle(-5, -30, 2);
-        empEyes.fillCircle(5, -30, 2);
-        hotelEmployee.add(empEyes);
+        const hotelEmpEyes = this.add.graphics();
+        hotelEmpEyes.fillStyle(0x000000, 1);
+        hotelEmpEyes.fillCircle(-5, -30, 2);
+        hotelEmpEyes.fillCircle(5, -30, 2);
+        hotelEmployee.add(hotelEmpEyes);
 
         // Employee smile
-        const empSmile = this.add.graphics();
-        empSmile.lineStyle(2, 0x000000, 1);
-        empSmile.arc(0, -25, 6, 0, Math.PI);
-        empSmile.strokePath();
-        hotelEmployee.add(empSmile);
+        const hotelEmpSmile = this.add.graphics();
+        hotelEmpSmile.lineStyle(2, 0x000000, 1);
+        hotelEmpSmile.arc(0, -25, 6, 0, Math.PI);
+        hotelEmpSmile.strokePath();
+        hotelEmployee.add(hotelEmpSmile);
 
         // Employee name tag
-        const nameTag = this.add.rectangle(0, 10, 20, 8, 0xFFD700);
-        hotelEmployee.add(nameTag);
+        const hotelNameTag = this.add.rectangle(0, 10, 20, 8, 0xFFD700);
+        hotelEmployee.add(hotelNameTag);
 
         hotelEmployee.setVisible(false); // Hidden until employee is hired
         this.hotelInteriorContainer.add(hotelEmployee);
