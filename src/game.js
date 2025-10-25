@@ -1752,10 +1752,10 @@ class MainScene extends Phaser.Scene {
         const y = buildingData.y;
 
         if (buildingData.type === 'house') {
-            // Two-story house - 4 rows of 2 windows
+            // Two-story house - 2 rows of 2 windows (above door)
             // Match exact coordinates from drawBuildingDetails
             const spacing = 25;
-            for (let row = 0; row < 4; row++) {
+            for (let row = 0; row < 2; row++) {
                 for (let col = 0; col < 2; col++) {
                     const wx = x - spacing + (col * spacing * 2);
                     const wy = y - buildingType.height + 50 + (row * 50);
@@ -2384,7 +2384,7 @@ class MainScene extends Phaser.Scene {
         const building = this.buildingTypes[type];
 
         if (type === 'house') {
-            // House: Two-story residential with 2x4 symmetrical windows
+            // House: Two-story residential with 2x2 symmetrical windows (above door)
             const windowColor = 0xFFFF99;
             const windowWidth = 20;
             const windowHeight = 25;
@@ -2394,8 +2394,8 @@ class MainScene extends Phaser.Scene {
             graphics.lineStyle(3, 0x654321, 1);
             graphics.lineBetween(x - building.width/2, y - building.height/2, x + building.width/2, y - building.height/2);
 
-            // 2 columns, 4 rows of windows (2 per floor)
-            for (let row = 0; row < 4; row++) {
+            // 2 columns, 2 rows of windows (keeps them above door)
+            for (let row = 0; row < 2; row++) {
                 for (let col = 0; col < 2; col++) {
                     const wx = x - spacing + (col * spacing * 2);
                     const wy = y - building.height + 50 + (row * 50);
@@ -4259,25 +4259,28 @@ class MainScene extends Phaser.Scene {
                 color: '#FFFFFF',
                 backgroundColor: '#8B4513',
                 padding: { x: 5, y: 3 },
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (this.selectedBuilding === 'apartment') {
-            // Add "APARTMENTS" sign at top
-            const signY = y - building.height + 25;
+            // Add "APARTMENTS" sign at top (above windows)
+            const signY = y - building.height + 5;
             console.log(`Adding APARTMENTS sign at (${x}, ${signY}), building top: ${y - building.height}`);
             const aptSign = this.add.text(x, signY, 'APARTMENTS', {
                 fontSize: '14px',
                 color: '#000000',
                 backgroundColor: '#FFD700',
                 padding: { x: 8, y: 4 },
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (this.selectedBuilding === 'bank') {
             // Add dollar sign symbol
             const dollarSign = this.add.text(x, y - building.height / 2, '$', {
                 fontSize: '80px',
                 color: '#FFD700',
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
 
             // Add columns to make it look more like a bank
@@ -4293,7 +4296,8 @@ class MainScene extends Phaser.Scene {
                 fontSize: '16px',
                 color: '#FFFFFF',
                 fontStyle: 'bold',
-                fontFamily: 'Arial'
+                fontFamily: 'Arial',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (this.selectedBuilding === 'restaurant') {
             // Add "RESTAURANT" text on the red sign
@@ -4301,7 +4305,8 @@ class MainScene extends Phaser.Scene {
                 fontSize: '16px',
                 color: '#FFFFFF',
                 fontStyle: 'bold',
-                fontFamily: 'Arial'
+                fontFamily: 'Arial',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (this.selectedBuilding === 'hotel') {
             // Add "HOTEL" text on the gold sign
@@ -4309,7 +4314,8 @@ class MainScene extends Phaser.Scene {
                 fontSize: '14px',
                 color: '#000000',
                 fontStyle: 'bold',
-                fontFamily: 'Arial'
+                fontFamily: 'Arial',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (this.selectedBuilding === 'market') {
             // Add market awning
@@ -4577,23 +4583,26 @@ class MainScene extends Phaser.Scene {
                 color: '#FFFFFF',
                 backgroundColor: '#8B4513',
                 padding: { x: 5, y: 3 },
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (type === 'apartment') {
-            // Add "APARTMENTS" sign at top
-            const aptSign = this.add.text(x, buildingY - building.height + 25, 'APARTMENTS', {
+            // Add "APARTMENTS" sign at top (above windows)
+            const aptSign = this.add.text(x, buildingY - building.height + 5, 'APARTMENTS', {
                 fontSize: '14px',
                 color: '#000000',
                 backgroundColor: '#FFD700',
                 padding: { x: 8, y: 4 },
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (type === 'bank') {
             // Add dollar sign symbol
             const dollarSign = this.add.text(x, buildingY - building.height / 2, '$', {
                 fontSize: '80px',
                 color: '#FFD700',
-                fontStyle: 'bold'
+                fontStyle: 'bold',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
 
             // Add columns to make it look more like a bank
@@ -4609,7 +4618,8 @@ class MainScene extends Phaser.Scene {
                 fontSize: '16px',
                 color: '#FFFFFF',
                 fontStyle: 'bold',
-                fontFamily: 'Arial'
+                fontFamily: 'Arial',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (type === 'restaurant') {
             // Add "RESTAURANT" text on the red sign
@@ -4617,7 +4627,8 @@ class MainScene extends Phaser.Scene {
                 fontSize: '16px',
                 color: '#FFFFFF',
                 fontStyle: 'bold',
-                fontFamily: 'Arial'
+                fontFamily: 'Arial',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (type === 'hotel') {
             // Add "HOTEL" text on the gold sign
@@ -4625,7 +4636,8 @@ class MainScene extends Phaser.Scene {
                 fontSize: '14px',
                 color: '#000000',
                 fontStyle: 'bold',
-                fontFamily: 'Arial'
+                fontFamily: 'Arial',
+                resolution: 2
             }).setOrigin(0.5).setDepth(11);
         } else if (type === 'market') {
             // Add market awning
