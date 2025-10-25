@@ -3613,9 +3613,22 @@ class MainScene extends Phaser.Scene {
                 const clickX = this.input.activePointer.x + this.cameras.main.scrollX;
                 const clickY = this.input.activePointer.y + this.cameras.main.scrollY;
 
+                console.log(`🔨 Delete mode click at (${clickX}, ${clickY})`);
+
                 // Find building at click position
                 for (let building of this.buildings) {
+                    // Safety check
+                    if (!building.type) {
+                        console.warn('Building has no type, skipping');
+                        continue;
+                    }
+
                     const buildingType = this.buildingTypes[building.type];
+                    if (!buildingType) {
+                        console.warn(`Building type ${building.type} not found, skipping`);
+                        continue;
+                    }
+
                     const left = building.x - buildingType.width / 2;
                     const right = building.x + buildingType.width / 2;
                     const top = building.y - buildingType.height;
@@ -3623,6 +3636,7 @@ class MainScene extends Phaser.Scene {
 
                     if (clickX >= left && clickX <= right && clickY >= top && clickY <= bottom) {
                         // Show confirmation dialog
+                        console.log(`🔨 Building clicked: ${buildingType.name} at (${building.x}, ${building.y})`);
                         this.buildingToDelete = building;
                         this.deleteConfirmShowing = true;
                         this.deleteConfirmUI.setText(`Delete ${buildingType.name}?`);
