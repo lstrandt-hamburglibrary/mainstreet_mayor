@@ -1063,6 +1063,38 @@ class MainScene extends Phaser.Scene {
         const deskTop = this.add.rectangle(this.gameWidth / 2, this.gameHeight - 300, 400, 20, 0xE0E0E0);
         this.hotelInteriorContainer.add(deskTop);
 
+        // Hotel employee (front desk clerk) - only visible when hired
+        const hotelEmployee = this.add.container(this.gameWidth / 2, this.gameHeight - 250);
+
+        // Employee body
+        const empBody = this.add.rectangle(0, 0, 30, 40, 0x1976D2); // Blue uniform
+        hotelEmployee.add(empBody);
+
+        // Employee head
+        const empHead = this.add.circle(0, -30, 15, 0xFFDBAC);
+        hotelEmployee.add(empHead);
+
+        // Employee eyes
+        const empEyes = this.add.graphics();
+        empEyes.fillStyle(0x000000, 1);
+        empEyes.fillCircle(-5, -30, 2);
+        empEyes.fillCircle(5, -30, 2);
+        hotelEmployee.add(empEyes);
+
+        // Employee smile
+        const empSmile = this.add.graphics();
+        empSmile.lineStyle(2, 0x000000, 1);
+        empSmile.arc(0, -25, 6, 0, Math.PI);
+        hotelEmployee.add(empSmile);
+
+        // Employee name tag
+        const nameTag = this.add.rectangle(0, 10, 20, 8, 0xFFD700);
+        hotelEmployee.add(nameTag);
+
+        hotelEmployee.setVisible(false); // Hidden until employee is hired
+        this.hotelInteriorContainer.add(hotelEmployee);
+        this.hotelEmployeeSprite = hotelEmployee; // Store reference
+
         // Hotel chandelier
         const chandelier = this.add.graphics();
         chandelier.fillStyle(0xFFD700, 1);
@@ -4853,6 +4885,11 @@ class MainScene extends Phaser.Scene {
             `Cleaning Cost: $${hotelType.cleaningCost} per room`
         ];
         this.hotelInfoText.setText(infoLines.join('\n'));
+
+        // Show/hide employee sprite at front desk
+        if (this.hotelEmployeeSprite) {
+            this.hotelEmployeeSprite.setVisible(this.currentHotel.hasEmployee);
+        }
 
         // Update clean button
         if (dirtyCount > 0) {
