@@ -3608,16 +3608,19 @@ class MainScene extends Phaser.Scene {
         }
 
         if (this.deleteMode) {
-
             // Check for click on building to delete
             if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
                 const clickX = this.input.activePointer.x + this.cameras.main.scrollX;
                 const clickY = this.input.activePointer.y + this.cameras.main.scrollY;
 
                 console.log(`🔨 Delete mode click at (${clickX}, ${clickY})`);
+                console.log(`🔨 Total buildings to check: ${this.buildings.length}`);
 
                 // Find building at click position
+                let checkedCount = 0;
+                let foundBuilding = false;
                 for (let building of this.buildings) {
+                    checkedCount++;
                     // Safety check
                     if (!building.type) {
                         console.warn('Building has no type, skipping');
@@ -3635,15 +3638,23 @@ class MainScene extends Phaser.Scene {
                     const top = building.y - buildingType.height;
                     const bottom = building.y;
 
+                    // Debug: log each building's bounds
+                    console.log(`🔨 Checking ${buildingType.name}: left=${left}, right=${right}, top=${top}, bottom=${bottom}`);
+
                     if (clickX >= left && clickX <= right && clickY >= top && clickY <= bottom) {
                         // Show confirmation dialog
-                        console.log(`🔨 Building clicked: ${buildingType.name} at (${building.x}, ${building.y})`);
+                        console.log(`🔨 ✓ Building clicked: ${buildingType.name} at (${building.x}, ${building.y})`);
                         this.buildingToDelete = building;
                         this.deleteConfirmShowing = true;
                         this.deleteConfirmUI.setText(`Delete ${buildingType.name}?`);
                         this.deleteConfirmContainer.setVisible(true);
+                        foundBuilding = true;
                         break;
                     }
+                }
+
+                if (!foundBuilding) {
+                    console.log(`🔨 ✗ No building found at click position. Checked ${checkedCount} buildings.`);
                 }
             }
         }
