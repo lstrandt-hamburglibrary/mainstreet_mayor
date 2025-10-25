@@ -1493,7 +1493,7 @@ class MainScene extends Phaser.Scene {
             );
 
             // Redraw building details
-            this.drawBuildingDetails(building.graphics, building.type, building.x, newBuildingY);
+            this.drawBuildingDetails(building.graphics, building.type, building.x, newBuildingY, building.facadeVariation || 0);
 
             // Update building Y coordinate (no labels to update - we use signs now)
             building.y = newBuildingY;
@@ -2420,7 +2420,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    drawBuildingDetails(graphics, type, x, y) {
+    drawBuildingDetails(graphics, type, x, y, facadeVariation = 0) {
         const building = this.buildingTypes[type];
 
         if (type === 'house') {
@@ -2609,7 +2609,16 @@ class MainScene extends Phaser.Scene {
 
         } else if (type === 'hotel') {
             // Hotel: Five-story building with 2 rooms per floor (10 rooms total)
-            const windowColor = 0xFFFF99;
+            // 4 color variations for variety
+            const colorSchemes = [
+                { doorFrame: 0xFFD700, accent: 0xFFD700, window: 0xFFFF99 },  // Gold/Yellow
+                { doorFrame: 0xC0C0C0, accent: 0xE0E0E0, window: 0xE3F2FD },  // Silver/Blue
+                { doorFrame: 0xB8860B, accent: 0xCD853F, window: 0xFFF9E6 },  // Bronze/Tan
+                { doorFrame: 0x8B4513, accent: 0xA0522D, window: 0xFFE4B5 }   // Brown/Cream
+            ];
+            const scheme = colorSchemes[facadeVariation % 4];
+
+            const windowColor = scheme.window;
             const windowWidth = 20;
             const windowHeight = 22;
             const floorHeight = building.height / 5; // 80px per floor
@@ -2662,8 +2671,8 @@ class MainScene extends Phaser.Scene {
             graphics.fillStyle(0x000000, 0.4);
             graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, entranceWidth, entranceHeight);
 
-            // Door frame (gold)
-            graphics.fillStyle(0xFFD700, 1);
+            // Door frame (uses variation color)
+            graphics.fillStyle(scheme.doorFrame, 1);
             graphics.fillRect(x - entranceWidth/2, entranceY, entranceWidth, entranceHeight);
 
             // Glass revolving door
@@ -2679,8 +2688,8 @@ class MainScene extends Phaser.Scene {
             graphics.fillRect(x - 2, entranceY + 5, 4, entranceHeight - 10); // Vertical
             graphics.fillRect(x - entranceWidth/2 + 5, entranceY + entranceHeight/2 - 2, entranceWidth - 10, 4); // Horizontal
 
-            // Hotel sign above entrance
-            graphics.fillStyle(0xFFD700, 1);
+            // Hotel sign above entrance (uses variation accent color)
+            graphics.fillStyle(scheme.accent, 1);
             graphics.fillRect(x - 40, y - building.height + 10, 80, 20);
             graphics.lineStyle(2, 0x654321, 1);
             graphics.strokeRect(x - 40, y - building.height + 10, 80, 20);
@@ -4196,7 +4205,7 @@ class MainScene extends Phaser.Scene {
 
         // Draw building details (windows, doors, etc.) so user can see what they're placing
         try {
-            this.drawBuildingDetails(previewGraphics, this.selectedBuilding, snappedX, buildingY);
+            this.drawBuildingDetails(previewGraphics, this.selectedBuilding, snappedX, buildingY, 0);
         } catch (error) {
             console.error('Error drawing building preview details:', error);
         }
@@ -4300,7 +4309,7 @@ class MainScene extends Phaser.Scene {
         newBuilding.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
 
         // Draw detailed building features (windows, doors, roof, etc.)
-        this.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y);
+        this.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y, buildingData.facadeVariation);
 
         // Add building-specific signs (no floating labels)
         if (this.selectedBuilding === 'house') {
@@ -4410,7 +4419,8 @@ class MainScene extends Phaser.Scene {
             storedResources: 0,  // For resource buildings (lumber mill, brick factory)
             lastResourceTime: Date.now(),
             placedDistrict: placedDistrict,
-            districtBonus: districtBonus
+            districtBonus: districtBonus,
+            facadeVariation: Math.floor(Math.random() * 4)  // Random 0-3 for 4 different looks
         };
 
         // Add visual indicator if building is in correct district
@@ -4511,6 +4521,7 @@ class MainScene extends Phaser.Scene {
                     lastResourceTime: b.lastResourceTime || Date.now(),
                     placedDistrict: b.placedDistrict || null,
                     districtBonus: b.districtBonus || 1.0,
+                    facadeVariation: b.facadeVariation || 0,
                     // Save apartment units
                     units: b.units || undefined,
                     // Save hotel rooms
@@ -4585,7 +4596,8 @@ class MainScene extends Phaser.Scene {
                         buildingData.isOpen,
                         buildingData.dailyWage,
                         buildingData.lastWageCheck,
-                        buildingData.lastAutoClean
+                        buildingData.lastAutoClean,
+                        buildingData.facadeVariation || 0
                     );
                 });
                 console.log(`Successfully loaded ${this.buildings.length} buildings`);
@@ -4599,7 +4611,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null) {
+    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0) {
         const building = this.buildingTypes[type];
         if (!building) {
             console.error(`Building type ${type} not found!`);
@@ -4620,7 +4632,7 @@ class MainScene extends Phaser.Scene {
 
         // Draw detailed building features (windows, doors, roof, etc.)
         try {
-            this.drawBuildingDetails(newBuilding, type, x, buildingY);
+            this.drawBuildingDetails(newBuilding, type, x, buildingY, facadeVariation);
             console.log(`Successfully drew details for ${type}`);
         } catch (error) {
             console.error(`Error drawing details for ${type}:`, error);
@@ -4718,7 +4730,8 @@ class MainScene extends Phaser.Scene {
             storedResources: storedResources,
             lastResourceTime: lastResourceTime,
             placedDistrict: placedDistrict,
-            districtBonus: districtBonus
+            districtBonus: districtBonus,
+            facadeVariation: facadeVariation
         };
 
         // Add visual indicator if building is in correct district
