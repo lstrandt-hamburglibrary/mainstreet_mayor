@@ -1085,6 +1085,38 @@ class MainScene extends Phaser.Scene {
 
         this.hotelInteriorContainer.add(this.hotelCleanButton);
 
+        // Hire Employee button
+        this.hotelHireButton = this.add.text(this.gameWidth / 2, this.gameHeight / 2 + 120, 'HIRE EMPLOYEE ($1000)', {
+            fontSize: '18px',
+            color: '#FFFFFF',
+            backgroundColor: '#1976D2',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setInteractive();
+        this.hotelHireButton.setScrollFactor(0).setDepth(15001).setVisible(false);
+
+        this.hotelHireButton.on('pointerover', () => {
+            this.hotelHireButton.setStyle({ backgroundColor: '#2196F3' });
+        });
+        this.hotelHireButton.on('pointerout', () => {
+            this.hotelHireButton.setStyle({ backgroundColor: '#1976D2' });
+        });
+        this.hotelHireButton.on('pointerdown', () => {
+            this.hireHotelEmployee();
+        });
+
+        this.hotelInteriorContainer.add(this.hotelHireButton);
+
+        // Employee wage info
+        this.hotelWageText = this.add.text(this.gameWidth / 2, this.gameHeight / 2 + 120, '', {
+            fontSize: '16px',
+            color: '#000000',
+            backgroundColor: '#FFFFFF',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5);
+        this.hotelWageText.setScrollFactor(0).setDepth(15001).setVisible(false);
+
+        this.hotelInteriorContainer.add(this.hotelWageText);
+
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
         this.restartConfirmContainer.setScrollFactor(0).setDepth(10000).setVisible(false);
@@ -3438,6 +3470,42 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
+            // Hotel employee wage payment and auto-clean (daily)
+            if (building.type === 'hotel' && building.hasEmployee && building.dailyWage > 0 && building.rooms) {
+                const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
+                const lastWageDay = Math.floor((building.lastWageCheck || 0) / (24 * 60));
+                const lastCleanDay = Math.floor((building.lastAutoClean || 0) / (24 * 60));
+
+                // Pay wage at start of new day
+                if (currentDay > lastWageDay) {
+                    this.money -= building.dailyWage;
+                    console.log(`💵 Paid $${building.dailyWage} wage to hotel employee. Day #${currentDay}`);
+                    building.lastWageCheck = this.gameTime;
+                    this.updateMoneyUI();
+
+                    // Update hotel UI if player is viewing this hotel
+                    if (this.insideHotel && this.currentHotel === building) {
+                        this.updateHotelUI();
+                    }
+                }
+
+                // Auto-clean one dirty room per day
+                if (currentDay > lastCleanDay) {
+                    // Find first dirty room
+                    const dirtyRoom = building.rooms.find(room => room.status === 'dirty');
+                    if (dirtyRoom) {
+                        dirtyRoom.status = 'clean';
+                        console.log(`🧹 Hotel employee auto-cleaned a room. Day #${currentDay}`);
+
+                        // Update hotel UI if player is viewing this hotel
+                        if (this.insideHotel && this.currentHotel === building) {
+                            this.updateHotelUI();
+                        }
+                    }
+                    building.lastAutoClean = this.gameTime;
+                }
+            }
+
             // Shop opening hours (7am-9pm if has employee)
             if (this.isShop(building.type) && building.hasEmployee) {
                 const totalMinutes = Math.floor(this.gameTime);
@@ -4257,6 +4325,10 @@ class MainScene extends Phaser.Scene {
             buildingData.rooms = [];
             buildingData.lastNightCheck = this.gameTime; // Track last time we checked for night transition
             buildingData.accumulatedIncome = 0; // Total income from all rooms
+            buildingData.hasEmployee = false;  // No employee until hired
+            buildingData.dailyWage = 0;  // No wage until employee is hired
+            buildingData.lastWageCheck = this.gameTime;  // Track last time we paid wages
+            buildingData.lastAutoClean = this.gameTime;  // Track last time employee auto-cleaned
 
             for (let i = 0; i < building.rooms; i++) {
                 buildingData.rooms.push({
@@ -4321,6 +4393,7 @@ class MainScene extends Phaser.Scene {
                     // Save hotel rooms
                     rooms: b.rooms || undefined,
                     lastNightCheck: b.lastNightCheck || undefined,
+                    lastAutoClean: b.lastAutoClean || undefined,
                     // Save shop inventory
                     inventory: b.inventory || undefined,
                     hasEmployee: b.hasEmployee,
@@ -4388,7 +4461,8 @@ class MainScene extends Phaser.Scene {
                         buildingData.hasEmployee,
                         buildingData.isOpen,
                         buildingData.dailyWage,
-                        buildingData.lastWageCheck
+                        buildingData.lastWageCheck,
+                        buildingData.lastAutoClean
                     );
                 });
                 console.log(`Successfully loaded ${this.buildings.length} buildings`);
@@ -4402,7 +4476,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null) {
+    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null) {
         const building = this.buildingTypes[type];
         if (!building) {
             console.error(`Building type ${type} not found!`);
@@ -4537,6 +4611,10 @@ class MainScene extends Phaser.Scene {
         if (rooms) {
             buildingData.rooms = rooms;
             buildingData.lastNightCheck = lastNightCheck || this.gameTime;
+            buildingData.hasEmployee = hasEmployee !== null ? hasEmployee : false;
+            buildingData.dailyWage = dailyWage !== null ? dailyWage : 0;
+            buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.gameTime;
+            buildingData.lastAutoClean = lastAutoClean !== null ? lastAutoClean : this.gameTime;
         }
 
         // Initialize shop inventory if it's a shop (use saved data or defaults)
@@ -4686,10 +4764,14 @@ class MainScene extends Phaser.Scene {
         const totalCost = dirtyCount * hotelType.cleaningCost;
 
         // Update info text
+        const employeeStatus = this.currentHotel.hasEmployee ? '✓ Employee Hired' : '✗ No Employee';
+        const autoCleanInfo = this.currentHotel.hasEmployee ? '(Auto-cleans 1 room per day)' : '';
+
         const infoLines = [
             `Total Rooms: ${this.currentHotel.rooms.length}`,
             `Occupied: ${occupiedCount} | Clean: ${cleanCount} | Dirty: ${dirtyCount}`,
             ``,
+            `${employeeStatus} ${autoCleanInfo}`,
             `Cleaning Cost: $${hotelType.cleaningCost} per room`
         ];
         this.hotelInfoText.setText(infoLines.join('\n'));
@@ -4708,6 +4790,26 @@ class MainScene extends Phaser.Scene {
             this.hotelCleanButton.setVisible(true);
         } else {
             this.hotelCleanButton.setVisible(false);
+        }
+
+        // Update hire button / wage display
+        const hiringCost = 1000;
+        if (this.currentHotel.hasEmployee) {
+            this.hotelHireButton.setVisible(false);
+            this.hotelWageText.setText(`Daily Wage: $${this.currentHotel.dailyWage || 50}`);
+            this.hotelWageText.setVisible(true);
+        } else {
+            this.hotelWageText.setVisible(false);
+            this.hotelHireButton.setVisible(true);
+            if (this.money < hiringCost) {
+                this.hotelHireButton.setText(`HIRE EMPLOYEE ($${hiringCost}) - NOT ENOUGH MONEY`);
+                this.hotelHireButton.setStyle({ backgroundColor: '#D32F2F' });
+                this.hotelHireButton.disableInteractive();
+            } else {
+                this.hotelHireButton.setText(`HIRE EMPLOYEE ($${hiringCost})`);
+                this.hotelHireButton.setStyle({ backgroundColor: '#1976D2' });
+                this.hotelHireButton.setInteractive();
+            }
         }
     }
 
@@ -4746,6 +4848,39 @@ class MainScene extends Phaser.Scene {
         // Deduct money
         this.money -= totalCost;
         console.log(`🧹 Cleaned ${dirtyCount} rooms for $${totalCost}. Cash remaining: $${this.money}`);
+
+        // Update UI
+        this.updateHotelUI();
+
+        // Save game
+        this.saveGame();
+    }
+
+    hireHotelEmployee() {
+        if (!this.currentHotel) {
+            console.log('No hotel to hire for');
+            return;
+        }
+
+        if (this.currentHotel.hasEmployee) {
+            console.log('Hotel already has an employee');
+            return;
+        }
+
+        const hiringCost = 1000;
+        if (this.money < hiringCost) {
+            console.log(`❌ Not enough money to hire! Need $${hiringCost}, have $${this.money}`);
+            return;
+        }
+
+        // Hire employee
+        this.money -= hiringCost;
+        this.currentHotel.hasEmployee = true;
+        this.currentHotel.dailyWage = 50; // $50 per game day
+        this.currentHotel.lastWageCheck = this.gameTime;
+        this.currentHotel.lastAutoClean = this.gameTime;
+
+        console.log(`✓ Hired hotel employee for $${hiringCost}. Daily wage: $${this.currentHotel.dailyWage}`);
 
         // Update UI
         this.updateHotelUI();
