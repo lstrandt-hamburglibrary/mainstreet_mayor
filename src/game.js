@@ -1085,6 +1085,7 @@ class MainScene extends Phaser.Scene {
         const empSmile = this.add.graphics();
         empSmile.lineStyle(2, 0x000000, 1);
         empSmile.arc(0, -25, 6, 0, Math.PI);
+        empSmile.strokePath();
         hotelEmployee.add(empSmile);
 
         // Employee name tag
