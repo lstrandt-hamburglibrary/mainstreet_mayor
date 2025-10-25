@@ -981,6 +981,110 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(0.5, 0.5);
         this.shopWageText.setScrollFactor(0).setDepth(15001).setVisible(false);
 
+        // Hotel Interior UI (full-screen overlay)
+        this.insideHotel = false;
+        this.currentHotel = null;
+        this.nearHotel = null;
+
+        this.hotelInteriorContainer = this.add.container(0, 0);
+        this.hotelInteriorContainer.setScrollFactor(0).setDepth(15000).setVisible(false);
+
+        // Hotel lobby background
+        const hotelBg = this.add.rectangle(this.gameWidth / 2, this.gameHeight / 2, this.gameWidth, this.gameHeight, 0x8B7355, 1);
+        this.hotelInteriorContainer.add(hotelBg);
+
+        // Fancy floor
+        const hotelFloor = this.add.rectangle(this.gameWidth / 2, this.gameHeight - 100, this.gameWidth, 200, 0x654321, 1);
+        this.hotelInteriorContainer.add(hotelFloor);
+
+        // Reception desk
+        const desk = this.add.graphics();
+        desk.fillStyle(0x5D4037, 1);
+        desk.fillRect(this.gameWidth / 2 - 200, this.gameHeight - 300, 400, 120);
+        desk.lineStyle(3, 0x3E2723, 1);
+        desk.strokeRect(this.gameWidth / 2 - 200, this.gameHeight - 300, 400, 120);
+        this.hotelInteriorContainer.add(desk);
+
+        // Desk top (marble)
+        const deskTop = this.add.rectangle(this.gameWidth / 2, this.gameHeight - 300, 400, 20, 0xE0E0E0);
+        this.hotelInteriorContainer.add(deskTop);
+
+        // Hotel chandelier
+        const chandelier = this.add.graphics();
+        chandelier.fillStyle(0xFFD700, 1);
+        chandelier.fillCircle(this.gameWidth / 2, 100, 30);
+        chandelier.lineStyle(2, 0xB8860B, 1);
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const x = this.gameWidth / 2 + Math.cos(angle) * 25;
+            const y = 100 + Math.sin(angle) * 25;
+            chandelier.lineBetween(this.gameWidth / 2, 100, x, y);
+        }
+        this.hotelInteriorContainer.add(chandelier);
+
+        // Potted plants
+        const plant1 = this.add.graphics();
+        plant1.fillStyle(0x8B4513, 1);
+        plant1.fillRect(100, this.gameHeight - 220, 40, 60);
+        plant1.fillStyle(0x2E7D32, 1);
+        plant1.fillCircle(120, this.gameHeight - 230, 40);
+        this.hotelInteriorContainer.add(plant1);
+
+        const plant2 = this.add.graphics();
+        plant2.fillStyle(0x8B4513, 1);
+        plant2.fillRect(this.gameWidth - 140, this.gameHeight - 220, 40, 60);
+        plant2.fillStyle(0x2E7D32, 1);
+        plant2.fillCircle(this.gameWidth - 120, this.gameHeight - 230, 40);
+        this.hotelInteriorContainer.add(plant2);
+
+        // Exit prompt
+        this.hotelExitPrompt = this.add.text(this.gameWidth / 2, 50, 'Press E or ESC to exit hotel', {
+            fontSize: '16px',
+            color: '#FFFFFF',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0.5);
+        this.hotelInteriorContainer.add(this.hotelExitPrompt);
+
+        // Hotel name label
+        this.hotelNameLabel = this.add.text(this.gameWidth / 2, 150, 'HOTEL LOBBY', {
+            fontSize: '28px',
+            color: '#FFD700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.hotelInteriorContainer.add(this.hotelNameLabel);
+
+        // Hotel info panel
+        this.hotelInfoText = this.add.text(this.gameWidth / 2, 220, '', {
+            fontSize: '16px',
+            color: '#FFFFFF',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            padding: { x: 15, y: 10 },
+            align: 'center'
+        }).setOrigin(0.5);
+        this.hotelInteriorContainer.add(this.hotelInfoText);
+
+        // Clean All Rooms button
+        this.hotelCleanButton = this.add.text(this.gameWidth / 2, this.gameHeight / 2 + 50, '🧹 CLEAN ALL DIRTY ROOMS', {
+            fontSize: '20px',
+            color: '#FFFFFF',
+            backgroundColor: '#E91E63',
+            padding: { x: 25, y: 15 }
+        }).setOrigin(0.5).setInteractive();
+        this.hotelCleanButton.setScrollFactor(0).setDepth(15001).setVisible(false);
+
+        this.hotelCleanButton.on('pointerover', () => {
+            this.hotelCleanButton.setStyle({ backgroundColor: '#F06292' });
+        });
+        this.hotelCleanButton.on('pointerout', () => {
+            this.hotelCleanButton.setStyle({ backgroundColor: '#E91E63' });
+        });
+        this.hotelCleanButton.on('pointerdown', () => {
+            this.cleanHotelRooms();
+        });
+
+        this.hotelInteriorContainer.add(this.hotelCleanButton);
+
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
         this.restartConfirmContainer.setScrollFactor(0).setDepth(10000).setVisible(false);
@@ -3448,110 +3552,6 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // Hotel cleaning prompts - show above dirty hotels (only when not in menus)
-        if (!this.buildMode && !this.deleteMode && !this.insideShop && !this.bankMenuOpen && !this.mailboxMenuOpen && !this.resourceBuildingMenuOpen) {
-            for (let building of this.buildings) {
-                if (building.type === 'hotel' && building.rooms) {
-                    // Count dirty rooms
-                    let dirtyCount = 0;
-                    for (let room of building.rooms) {
-                        if (room.status === 'dirty') {
-                            dirtyCount++;
-                        }
-                    }
-
-                    // Create or update prompt for this hotel
-                    if (!building.cleaningPrompt) {
-                        building.cleaningPrompt = this.add.text(0, 0, '', {
-                            fontSize: '11px',
-                            color: '#ffffff',
-                            backgroundColor: '#E91E63',
-                            padding: { x: 5, y: 3 }
-                        }).setOrigin(0.5).setDepth(100);
-                    }
-
-                    if (dirtyCount > 0) {
-                        const buildingType = this.buildingTypes[building.type];
-                        const totalCost = dirtyCount * buildingType.cleaningCost;
-                        building.cleaningPrompt.setText(`🧹 ${dirtyCount} Dirty Room${dirtyCount > 1 ? 's' : ''} - Click to Clean ($${totalCost})`);
-                        building.cleaningPrompt.x = building.x;
-                        building.cleaningPrompt.y = building.y - buildingType.height - 110;
-                        building.cleaningPrompt.setVisible(true);
-                    } else {
-                        building.cleaningPrompt.setVisible(false);
-                    }
-                }
-            }
-        } else {
-            // Hide all cleaning prompts when in menus
-            for (let building of this.buildings) {
-                if (building.type === 'hotel' && building.cleaningPrompt) {
-                    building.cleaningPrompt.setVisible(false);
-                }
-            }
-        }
-
-        // Hotel cleaning interaction - click hotel when NOT in build/delete mode
-        if (!this.buildMode && !this.deleteMode && !this.deleteConfirmShowing && !this.bankMenuOpen && !this.mailboxMenuOpen && !this.insideShop && !this.resourceBuildingMenuOpen && !this.restartConfirmShowing) {
-            if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
-                const clickX = this.input.activePointer.x + this.cameras.main.scrollX;
-                const clickY = this.input.activePointer.y + this.cameras.main.scrollY;
-
-                // Find if click is on a hotel
-                for (let building of this.buildings) {
-                    if (building.type === 'hotel' && building.rooms) {
-                        const buildingType = this.buildingTypes[building.type];
-                        const left = building.x - buildingType.width / 2;
-                        const right = building.x + buildingType.width / 2;
-                        const top = building.y - buildingType.height;
-                        const bottom = building.y;
-
-                        if (clickX >= left && clickX <= right && clickY >= top && clickY <= bottom) {
-                            console.log('🏨 Hotel clicked! Checking for dirty rooms...');
-                            // Count dirty rooms
-                            let dirtyCount = 0;
-                            for (let room of building.rooms) {
-                                if (room.status === 'dirty') {
-                                    dirtyCount++;
-                                }
-                            }
-
-                            if (dirtyCount > 0) {
-                                const totalCleaningCost = dirtyCount * buildingType.cleaningCost;
-
-                                // Check if mayor has enough money
-                                if (this.money >= totalCleaningCost) {
-                                    // Clean all dirty rooms
-                                    for (let room of building.rooms) {
-                                        if (room.status === 'dirty') {
-                                            room.status = 'clean';
-                                        }
-                                    }
-
-                                    // Deduct money
-                                    this.money -= totalCleaningCost;
-                                    console.log(`🧹 Cleaned ${dirtyCount} rooms for $${totalCleaningCost}. Cash remaining: $${this.money}`);
-
-                                    // Show success message
-                                    this.showFloatingMessage(building.x, building.y - buildingType.height - 80, `Cleaned ${dirtyCount} room${dirtyCount > 1 ? 's' : ''}!`, '#4CAF50');
-
-                                    // Save game
-                                    this.saveGame();
-                                } else {
-                                    console.log(`❌ Not enough money to clean rooms! Need $${totalCleaningCost}, have $${this.money}`);
-                                    // Show error message
-                                    this.showFloatingMessage(building.x, building.y - buildingType.height - 80, `Need $${totalCleaningCost}!`, '#F44336');
-                                }
-                            } else {
-                                console.log(`✨ All hotel rooms are already clean!`);
-                            }
-
-                            break;
-                        }
-                    }
-                }
-            }
-        }
 
         // Check if player is near a bank
         // Find the CLOSEST one, not just the first one
@@ -3636,10 +3636,59 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // Check if player is near a hotel (only when NOT inside a hotel or shop)
+        if (!this.insideHotel && !this.insideShop) {
+            this.nearHotel = null;
+            let closestHotelDistance = 150;
+            for (let building of this.buildings) {
+                if (building.type === 'hotel') {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestHotelDistance) {
+                        this.nearHotel = building;
+                        closestHotelDistance = distance;
+                    }
+                }
+            }
+
+            // Hotel interaction - Enter hotel
+            if (this.nearHotel && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+                // Show prompt above the hotel building
+                const hotelType = this.buildingTypes[this.nearHotel.type];
+                if (!this.hotelPrompt) {
+                    this.hotelPrompt = this.add.text(this.nearHotel.x, this.nearHotel.y - hotelType.height - 100, 'Press E to enter Hotel', {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#9C27B0',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.hotelPrompt.x = this.nearHotel.x;
+                    this.hotelPrompt.y = this.nearHotel.y - hotelType.height - 100;
+                    this.hotelPrompt.setVisible(true);
+                }
+
+                // Enter hotel
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.enterHotel(this.nearHotel);
+                }
+            } else {
+                if (this.hotelPrompt) {
+                    this.hotelPrompt.setVisible(false);
+                }
+            }
+        }
+
         // Exit shop if inside
         if (this.insideShop) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
                 this.exitShop();
+            }
+        }
+
+        // Exit hotel if inside
+        if (this.insideHotel) {
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
+                this.exitHotel();
             }
         }
 
@@ -4584,6 +4633,125 @@ class MainScene extends Phaser.Scene {
         this.shopRestockButton.setVisible(false);
         this.shopHireButton.setVisible(false);
         this.shopWageText.setVisible(false);
+    }
+
+    enterHotel(hotel) {
+        console.log('Entering hotel:', hotel);
+        this.insideHotel = true;
+        this.currentHotel = hotel;
+
+        // Show hotel interior
+        this.hotelInteriorContainer.setVisible(true);
+
+        // Update hotel info
+        this.updateHotelUI();
+
+        // Hide hotel prompt
+        if (this.hotelPrompt) {
+            this.hotelPrompt.setVisible(false);
+        }
+
+        // Disable player movement
+        this.player.setVelocityX(0);
+        this.player.setVelocityY(0);
+    }
+
+    exitHotel() {
+        console.log('Exiting hotel');
+        this.insideHotel = false;
+        this.currentHotel = null;
+
+        // Hide hotel interior
+        this.hotelInteriorContainer.setVisible(false);
+    }
+
+    updateHotelUI() {
+        if (!this.currentHotel || !this.currentHotel.rooms) {
+            console.log('No hotel or rooms data');
+            return;
+        }
+
+        // Count dirty and clean rooms
+        let dirtyCount = 0;
+        let cleanCount = 0;
+        let occupiedCount = 0;
+
+        for (let room of this.currentHotel.rooms) {
+            if (room.status === 'dirty') dirtyCount++;
+            else if (room.status === 'clean') cleanCount++;
+            else if (room.status === 'occupied') occupiedCount++;
+        }
+
+        const hotelType = this.buildingTypes.hotel;
+        const totalCost = dirtyCount * hotelType.cleaningCost;
+
+        // Update info text
+        const infoLines = [
+            `Total Rooms: ${this.currentHotel.rooms.length}`,
+            `Occupied: ${occupiedCount} | Clean: ${cleanCount} | Dirty: ${dirtyCount}`,
+            ``,
+            `Cleaning Cost: $${hotelType.cleaningCost} per room`
+        ];
+        this.hotelInfoText.setText(infoLines.join('\n'));
+
+        // Update clean button
+        if (dirtyCount > 0) {
+            this.hotelCleanButton.setText(`🧹 CLEAN ALL DIRTY ROOMS ($${totalCost})`);
+            if (this.money >= totalCost) {
+                this.hotelCleanButton.setStyle({ backgroundColor: '#E91E63' });
+                this.hotelCleanButton.setInteractive();
+            } else {
+                this.hotelCleanButton.setText(`🧹 CLEAN ALL DIRTY ROOMS ($${totalCost}) - NOT ENOUGH MONEY`);
+                this.hotelCleanButton.setStyle({ backgroundColor: '#D32F2F' });
+                this.hotelCleanButton.disableInteractive();
+            }
+            this.hotelCleanButton.setVisible(true);
+        } else {
+            this.hotelCleanButton.setVisible(false);
+        }
+    }
+
+    cleanHotelRooms() {
+        if (!this.currentHotel || !this.currentHotel.rooms) {
+            console.log('No hotel to clean');
+            return;
+        }
+
+        // Count dirty rooms
+        let dirtyCount = 0;
+        for (let room of this.currentHotel.rooms) {
+            if (room.status === 'dirty') dirtyCount++;
+        }
+
+        if (dirtyCount === 0) {
+            console.log('No dirty rooms to clean');
+            return;
+        }
+
+        const hotelType = this.buildingTypes.hotel;
+        const totalCost = dirtyCount * hotelType.cleaningCost;
+
+        if (this.money < totalCost) {
+            console.log(`❌ Not enough money! Need $${totalCost}, have $${this.money}`);
+            return;
+        }
+
+        // Clean all dirty rooms
+        for (let room of this.currentHotel.rooms) {
+            if (room.status === 'dirty') {
+                room.status = 'clean';
+            }
+        }
+
+        // Deduct money
+        this.money -= totalCost;
+        console.log(`🧹 Cleaned ${dirtyCount} rooms for $${totalCost}. Cash remaining: $${this.money}`);
+
+        // Update UI
+        this.updateHotelUI();
+
+        // Save game
+        this.saveGame();
     }
 
     updateShopInventoryUI() {
