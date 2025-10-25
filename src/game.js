@@ -1752,10 +1752,10 @@ class MainScene extends Phaser.Scene {
         const y = buildingData.y;
 
         if (buildingData.type === 'house') {
-            // Two-story house - 4 rows of 2 windows
+            // Two-story house - 3 rows of 2 windows (bottom row removed to avoid door overlap)
             // Match exact coordinates from drawBuildingDetails
             const spacing = 25;
-            for (let row = 0; row < 4; row++) {
+            for (let row = 0; row < 3; row++) {
                 for (let col = 0; col < 2; col++) {
                     const wx = x - spacing + (col * spacing * 2);
                     const wy = y - buildingType.height + 50 + (row * 50);
@@ -2384,7 +2384,7 @@ class MainScene extends Phaser.Scene {
         const building = this.buildingTypes[type];
 
         if (type === 'house') {
-            // House: Two-story residential with 2x4 symmetrical windows (flanking door on first floor)
+            // House: Two-story residential with 2x3 symmetrical windows (bottom row removed to avoid door overlap)
             const windowColor = 0xFFFF99;
             const windowWidth = 20;
             const windowHeight = 25;
@@ -2394,8 +2394,8 @@ class MainScene extends Phaser.Scene {
             graphics.lineStyle(3, 0x654321, 1);
             graphics.lineBetween(x - building.width/2, y - building.height/2, x + building.width/2, y - building.height/2);
 
-            // 2 columns, 4 rows of windows (windows flank the door on first floor)
-            for (let row = 0; row < 4; row++) {
+            // 2 columns, 3 rows of windows (bottom row removed to avoid door overlap)
+            for (let row = 0; row < 3; row++) {
                 for (let col = 0; col < 2; col++) {
                     const wx = x - spacing + (col * spacing * 2);
                     const wy = y - building.height + 50 + (row * 50);
