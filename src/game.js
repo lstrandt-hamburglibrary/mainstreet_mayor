@@ -3440,49 +3440,58 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // Hotel cleaning prompts - show above dirty hotels
-        for (let building of this.buildings) {
-            if (building.type === 'hotel' && building.rooms) {
-                // Count dirty rooms
-                let dirtyCount = 0;
-                for (let room of building.rooms) {
-                    if (room.status === 'dirty') {
-                        dirtyCount++;
+        // Hotel cleaning prompts - show above dirty hotels (only when not in menus)
+        if (!this.buildMode && !this.deleteMode && !this.insideShop && !this.bankMenuOpen && !this.mailboxMenuOpen && !this.resourceBuildingMenuOpen) {
+            for (let building of this.buildings) {
+                if (building.type === 'hotel' && building.rooms) {
+                    // Count dirty rooms
+                    let dirtyCount = 0;
+                    for (let room of building.rooms) {
+                        if (room.status === 'dirty') {
+                            dirtyCount++;
+                        }
+                    }
+
+                    // Create or update prompt for this hotel
+                    if (!building.cleaningPrompt) {
+                        building.cleaningPrompt = this.add.text(0, 0, '', {
+                            fontSize: '11px',
+                            color: '#ffffff',
+                            backgroundColor: '#E91E63',
+                            padding: { x: 5, y: 3 }
+                        }).setOrigin(0.5).setDepth(100);
+                    }
+
+                    if (dirtyCount > 0) {
+                        const buildingType = this.buildingTypes[building.type];
+                        const totalCost = dirtyCount * buildingType.cleaningCost;
+                        building.cleaningPrompt.setText(`🧹 ${dirtyCount} Dirty Room${dirtyCount > 1 ? 's' : ''} - Click to Clean ($${totalCost})`);
+                        building.cleaningPrompt.x = building.x;
+                        building.cleaningPrompt.y = building.y - buildingType.height - 110;
+                        building.cleaningPrompt.setVisible(true);
+                    } else {
+                        building.cleaningPrompt.setVisible(false);
                     }
                 }
-
-                // Create or update prompt for this hotel
-                if (!building.cleaningPrompt) {
-                    building.cleaningPrompt = this.add.text(0, 0, '', {
-                        fontSize: '11px',
-                        color: '#ffffff',
-                        backgroundColor: '#E91E63',
-                        padding: { x: 5, y: 3 }
-                    }).setOrigin(0.5).setDepth(100);
-                }
-
-                if (dirtyCount > 0) {
-                    const buildingType = this.buildingTypes[building.type];
-                    const totalCost = dirtyCount * buildingType.cleaningCost;
-                    building.cleaningPrompt.setText(`🧹 ${dirtyCount} Dirty Room${dirtyCount > 1 ? 's' : ''} - Click to Clean ($${totalCost})`);
-                    building.cleaningPrompt.x = building.x;
-                    building.cleaningPrompt.y = building.y - buildingType.height - 110;
-                    building.cleaningPrompt.setVisible(true);
-                } else {
+            }
+        } else {
+            // Hide all cleaning prompts when in menus
+            for (let building of this.buildings) {
+                if (building.type === 'hotel' && building.cleaningPrompt) {
                     building.cleaningPrompt.setVisible(false);
                 }
             }
         }
 
         // Hotel cleaning interaction - click hotel when NOT in build/delete mode
-        if (!this.buildMode && !this.deleteMode && !this.deleteConfirmShowing && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+        if (!this.buildMode && !this.deleteMode && !this.deleteConfirmShowing && !this.bankMenuOpen && !this.mailboxMenuOpen && !this.insideShop && !this.resourceBuildingMenuOpen && !this.restartConfirmShowing) {
             if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
                 const clickX = this.input.activePointer.x + this.cameras.main.scrollX;
                 const clickY = this.input.activePointer.y + this.cameras.main.scrollY;
 
                 // Find if click is on a hotel
                 for (let building of this.buildings) {
-                    if (building.type === 'hotel') {
+                    if (building.type === 'hotel' && building.rooms) {
                         const buildingType = this.buildingTypes[building.type];
                         const left = building.x - buildingType.width / 2;
                         const right = building.x + buildingType.width / 2;
@@ -3490,6 +3499,7 @@ class MainScene extends Phaser.Scene {
                         const bottom = building.y;
 
                         if (clickX >= left && clickX <= right && clickY >= top && clickY <= bottom) {
+                            console.log('🏨 Hotel clicked! Checking for dirty rooms...');
                             // Count dirty rooms
                             let dirtyCount = 0;
                             for (let room of building.rooms) {
