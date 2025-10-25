@@ -3617,8 +3617,14 @@ class MainScene extends Phaser.Scene {
         }
 
         if (this.deleteMode) {
+            // Debug: Check if pointer is being detected
+            if (this.input.activePointer.isDown) {
+                console.log(`🔨 Pointer is DOWN - justDown: ${this.input.activePointer.justDown}`);
+            }
+
             // Check for click on building to delete
             if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
+                console.log('🔨 CLICK DETECTED IN DELETE MODE!');
                 const clickX = this.input.activePointer.x + this.cameras.main.scrollX;
                 const clickY = this.input.activePointer.y + this.cameras.main.scrollY;
 
