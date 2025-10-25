@@ -451,49 +451,49 @@ class MainScene extends Phaser.Scene {
         this.pauseButton = this.add.text(10, 10, '⏸️ Pause', {
             fontSize: '14px',
             color: '#ffffff'
-        }).setInteractive();
+        }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.pauseButton);
 
         // Restart button
         this.restartButton = this.add.text(10, 40, '🔄 Restart', {
             fontSize: '14px',
             color: '#ffffff'
-        }).setInteractive();
+        }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.restartButton);
 
         // Speed button
         this.speedButton = this.add.text(10, 70, '⏩ Speed: 1x', {
             fontSize: '14px',
             color: '#ffffff'
-        }).setInteractive();
+        }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.speedButton);
 
         // Creative mode button
         this.creativeButton = this.add.text(10, 100, '🎨 Creative: OFF', {
             fontSize: '14px',
             color: '#ffffff'
-        }).setInteractive();
+        }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.creativeButton);
 
         // Travel button
         this.travelButton = this.add.text(10, 130, '🚌 Fast Travel', {
             fontSize: '14px',
             color: '#ffffff'
-        }).setInteractive();
+        }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.travelButton);
 
         // Build button
         this.buildButton = this.add.text(10, 160, '🏗️ Build Mode', {
             fontSize: '14px',
             color: '#ffffff'
-        }).setInteractive();
+        }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.buildButton);
 
         // Demolish button
         this.demolishButton = this.add.text(10, 190, '💥 Demolish Mode', {
             fontSize: '14px',
             color: '#ffffff'
-        }).setInteractive();
+        }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.demolishButton);
 
         // Add hover effects to all dropdown buttons
@@ -610,7 +610,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#D32F2F',
             padding: { x: 8, y: 2 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
 
         this.buildMenuCloseButton.on('pointerover', () => {
             this.buildMenuCloseButton.setStyle({ backgroundColor: '#F44336', color: '#FFD700' });
@@ -667,7 +667,7 @@ class MainScene extends Phaser.Scene {
                 backgroundColor: building.color,
                 padding: { x: 10, y: 5 },
                 align: 'center'
-            }).setOrigin(0.5).setInteractive();
+            }).setOrigin(0.5).setInteractive().setScrollFactor(0);
 
             btn.on('pointerdown', () => {
                 console.log('🎯 Building button clicked:', building.type);
@@ -698,7 +698,7 @@ class MainScene extends Phaser.Scene {
             backgroundColor: '#D84315',
             padding: { x: 10, y: 5 },
             align: 'center'
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
 
         brickBtn.on('pointerdown', () => {
             console.log('🎯 Brick factory button clicked');
@@ -748,7 +748,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#2E7D32',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.buildConfirmContainer.add(this.buildConfirmButton);
 
         this.buildCancelButton = this.add.text(80, 40, 'CANCEL', {
@@ -756,7 +756,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#424242',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.buildConfirmContainer.add(this.buildCancelButton);
 
         this.buildConfirmButton.on('pointerover', () => this.buildConfirmButton.setStyle({ backgroundColor: '#4CAF50' }));
@@ -1190,7 +1190,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#D32F2F',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.restartConfirmContainer.add(this.restartConfirmButton);
 
         this.restartCancelButton = this.add.text(80, 40, 'CANCEL', {
@@ -1198,7 +1198,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#424242',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.restartConfirmContainer.add(this.restartCancelButton);
 
         this.restartConfirmButton.on('pointerover', () => this.restartConfirmButton.setStyle({ backgroundColor: '#EF5350' }));
@@ -1236,7 +1236,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#D32F2F',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.deleteConfirmContainer.add(this.deleteConfirmButton);
 
         this.deleteCancelButton = this.add.text(80, 40, 'CANCEL', {
@@ -1244,7 +1244,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#424242',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.deleteConfirmContainer.add(this.deleteCancelButton);
 
         this.deleteConfirmButton.on('pointerover', () => this.deleteConfirmButton.setStyle({ backgroundColor: '#EF5350' }));
@@ -1290,7 +1290,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#FF6B6B',
             padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.districtTravelContainer.add(this.residentialButton);
 
         // Downtown button
@@ -1299,7 +1299,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#4ECDC4',
             padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.districtTravelContainer.add(this.downtownButton);
 
         // Industrial button
@@ -1308,7 +1308,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#8D6E63',
             padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.districtTravelContainer.add(this.industrialButton);
 
         // Close button
@@ -1317,7 +1317,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#424242',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.districtTravelContainer.add(this.travelCloseButton);
 
         // Add hover effects
