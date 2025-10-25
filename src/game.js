@@ -550,6 +550,38 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.buildMenuContainer.add(this.buildMenuTitle);
 
+        // Close button (X) for build menu
+        this.buildMenuCloseButton = this.add.text(this.gameWidth / 2 - 40, -60, '✕', {
+            fontSize: '24px',
+            color: '#ffffff',
+            backgroundColor: '#D32F2F',
+            padding: { x: 8, y: 2 }
+        }).setOrigin(0.5).setInteractive();
+
+        this.buildMenuCloseButton.on('pointerover', () => {
+            this.buildMenuCloseButton.setStyle({ backgroundColor: '#F44336', color: '#FFD700' });
+        });
+
+        this.buildMenuCloseButton.on('pointerout', () => {
+            this.buildMenuCloseButton.setStyle({ backgroundColor: '#D32F2F', color: '#ffffff' });
+        });
+
+        this.buildMenuCloseButton.on('pointerdown', () => {
+            console.log('❌ Build menu close button clicked');
+            this.buildMode = false;
+            this.buildMenuContainer.setVisible(false);
+
+            // Clear any preview and selection
+            if (this.buildingPreview) {
+                this.buildingPreview.destroy();
+                this.buildingPreview = null;
+            }
+            this.selectedBuilding = null;
+            this.updateBuildingButtonStates();
+        });
+
+        this.buildMenuContainer.add(this.buildMenuCloseButton);
+
         // Create building buttons (3 rows of 4)
         const buildings = [
             { type: 'house', label: '🏠 House\n$100', color: '#FF6B6B' },
@@ -2424,117 +2456,391 @@ class MainScene extends Phaser.Scene {
             graphics.fillStyle(0x696969, 1);
             graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
 
-        } else if (this.isShop(type)) {
-            // Shop: Commercial with large display windows
-            const windowColor = 0x87CEEB;
+        } else if (type === 'clothingShop') {
+            // CLOTHING SHOP: Elegant boutique with tall windows and mannequin displays
+            const windowColor = 0xF0E6FF; // Light purple tint
 
-            // Large storefront window shadow (depth)
+            // Large elegant storefront window (taller and more upscale)
             graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 60 + 3, y - 120 + 3, 120, 60);
+            graphics.fillRect(x - 70 + 3, y - 140 + 3, 140, 80);
 
-            // Large storefront window (centered)
             graphics.fillStyle(windowColor, 1);
-            graphics.fillRect(x - 60, y - 120, 120, 60);
+            graphics.fillRect(x - 70, y - 140, 140, 80);
 
             // Window reflection
-            graphics.fillStyle(0xFFFFFF, 0.2);
-            graphics.fillRect(x - 60, y - 120, 120, 30);
+            graphics.fillStyle(0xFFFFFF, 0.3);
+            graphics.fillRect(x - 70, y - 140, 140, 40);
 
             graphics.lineStyle(3, 0x000000, 1);
-            graphics.strokeRect(x - 60, y - 120, 120, 60);
+            graphics.strokeRect(x - 70, y - 140, 140, 80);
 
-            // Window panes
+            // Elegant window dividers (vertical only)
             graphics.lineStyle(2, 0x000000, 1);
-            graphics.lineBetween(x - 60, y - 90, x + 60, y - 90);
-            graphics.lineBetween(x - 30, y - 120, x - 30, y - 60);
-            graphics.lineBetween(x + 30, y - 120, x + 30, y - 60);
+            graphics.lineBetween(x - 35, y - 140, x - 35, y - 60);
+            graphics.lineBetween(x + 35, y - 140, x + 35, y - 60);
 
-            // Upper floor windows (2 windows, symmetrical)
+            // Mannequin silhouettes in window
+            graphics.fillStyle(0xC0C0C0, 0.6);
+            graphics.fillCircle(x - 40, y - 115, 8); // Head
+            graphics.fillRect(x - 46, y - 105, 12, 20); // Body
+            graphics.fillRect(x - 48, y - 85, 16, 20); // Dress
+
+            graphics.fillCircle(x + 40, y - 115, 8); // Head 2
+            graphics.fillRect(x + 34, y - 105, 12, 20); // Body 2
+            graphics.fillRect(x + 32, y - 85, 16, 20); // Dress 2
+
+            // Upper windows (3 narrow elegant windows)
+            for (let col = 0; col < 3; col++) {
+                const wx = x - 50 + (col * 50);
+                const wy = y - building.height + 25;
+
+                graphics.fillStyle(0x000000, 0.3);
+                graphics.fillRect(wx - 10 + 2, wy + 2, 20, 40);
+
+                graphics.fillStyle(windowColor, 1);
+                graphics.fillRect(wx - 10, wy, 20, 40);
+
+                graphics.fillStyle(0xFFFFFF, 0.2);
+                graphics.fillRect(wx - 10, wy, 20, 20);
+
+                graphics.lineStyle(2, 0x000000, 1);
+                graphics.strokeRect(wx - 10, wy, 20, 40);
+            }
+
+            // Purple/Pink elegant awning
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRect(x - 75, y - 140, 150, 8);
+
+            graphics.fillStyle(0xE91E63, 1); // Hot pink
+            graphics.fillRect(x - 75, y - 148, 150, 8);
+
+            graphics.fillStyle(0xC2185B, 1); // Darker pink
+            graphics.beginPath();
+            graphics.moveTo(x - 75, y - 140);
+            graphics.lineTo(x + 75, y - 140);
+            graphics.lineTo(x + 70, y - 135);
+            graphics.lineTo(x - 70, y - 135);
+            graphics.closePath();
+            graphics.fillPath();
+
+            // Glass door
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
+
+            graphics.fillStyle(0x87CEEB, 0.4);
+            graphics.fillRect(x - 20, y - 55, 40, 55);
+
+            graphics.fillStyle(0xFFFFFF, 0.3);
+            graphics.fillRect(x - 20, y - 55, 40, 27);
+
+            graphics.lineStyle(2, 0xC0C0C0, 1);
+            graphics.strokeRect(x - 20, y - 55, 40, 55);
+
+            // Door handle
+            graphics.fillStyle(0xFFD700, 1);
+            graphics.fillCircle(x + 10, y - 28, 4);
+
+            // Roof
+            graphics.fillStyle(0x696969, 1);
+            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
+
+        } else if (type === 'electronicsShop') {
+            // ELECTRONICS SHOP: Modern tech store with grid windows and neon accents
+            const windowColor = 0xE3F2FD; // Light tech blue
+
+            // Modern grid display window (multiple screens look)
+            for (let row = 0; row < 2; row++) {
+                for (let col = 0; col < 3; col++) {
+                    const wx = x - 50 + (col * 40);
+                    const wy = y - 130 + (row * 35);
+
+                    graphics.fillStyle(0x000000, 0.4);
+                    graphics.fillRect(wx + 2, wy + 2, 35, 30);
+
+                    graphics.fillStyle(windowColor, 1);
+                    graphics.fillRect(wx, wy, 35, 30);
+
+                    // Screen glow effect
+                    graphics.fillStyle(0x2196F3, 0.3);
+                    graphics.fillRect(wx + 2, wy + 2, 31, 26);
+
+                    graphics.lineStyle(2, 0x000000, 1);
+                    graphics.strokeRect(wx, wy, 35, 30);
+                }
+            }
+
+            // Neon accent strip
+            graphics.fillStyle(0x00E5FF, 0.8);
+            graphics.fillRect(x - 70, y - 135, 140, 3);
+
+            // Upper windows (modern square style)
             for (let col = 0; col < 2; col++) {
                 const wx = x - 35 + (col * 70);
                 const wy = y - building.height + 30;
 
-                // Window shadow
+                graphics.fillStyle(0x000000, 0.3);
+                graphics.fillRect(wx - 15 + 2, wy + 2, 30, 30);
+
+                graphics.fillStyle(windowColor, 1);
+                graphics.fillRect(wx - 15, wy, 30, 30);
+
+                graphics.fillStyle(0x2196F3, 0.2);
+                graphics.fillRect(wx - 15, wy, 30, 15);
+
+                graphics.lineStyle(2, 0x000000, 1);
+                graphics.strokeRect(wx - 15, wy, 30, 30);
+            }
+
+            // Modern blue awning
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRect(x - 70, y - 140, 140, 8);
+
+            graphics.fillStyle(0x1976D2, 1);
+            graphics.fillRect(x - 70, y - 148, 140, 8);
+
+            graphics.fillStyle(0x1565C0, 1);
+            graphics.beginPath();
+            graphics.moveTo(x - 70, y - 140);
+            graphics.lineTo(x + 70, y - 140);
+            graphics.lineTo(x + 65, y - 135);
+            graphics.lineTo(x - 65, y - 135);
+            graphics.closePath();
+            graphics.fillPath();
+
+            // Modern glass door
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
+
+            graphics.fillStyle(0x87CEEB, 0.3);
+            graphics.fillRect(x - 20, y - 55, 40, 55);
+
+            graphics.lineStyle(2, 0x424242, 1);
+            graphics.strokeRect(x - 20, y - 55, 40, 55);
+            graphics.lineBetween(x, y - 55, x, y);
+
+            // Door handle
+            graphics.fillStyle(0xC0C0C0, 1);
+            graphics.fillRect(x + 8, y - 30, 3, 15);
+
+            // Roof
+            graphics.fillStyle(0x616161, 1);
+            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
+
+        } else if (type === 'groceryStore') {
+            // GROCERY STORE: Market style with produce crates outside and multiple windows
+            const windowColor = 0xE8F5E9; // Light green tint
+
+            // Multiple small market-style windows
+            for (let col = 0; col < 4; col++) {
+                const wx = x - 60 + (col * 40);
+                const wy = y - 125;
+
+                graphics.fillStyle(0x000000, 0.3);
+                graphics.fillRect(wx + 2, wy + 2, 30, 40);
+
+                graphics.fillStyle(windowColor, 1);
+                graphics.fillRect(wx, wy, 30, 40);
+
+                graphics.fillStyle(0xFFFFFF, 0.2);
+                graphics.fillRect(wx, wy, 30, 20);
+
+                graphics.lineStyle(2, 0x000000, 1);
+                graphics.strokeRect(wx, wy, 30, 40);
+                graphics.lineBetween(wx, wy + 20, wx + 30, wy + 20);
+            }
+
+            // Produce crates outside (left side)
+            graphics.fillStyle(0x8D6E63, 1); // Wood crate
+            graphics.strokeStyle(0x5D4037, 1);
+            graphics.lineStyle(2, 0x5D4037, 1);
+            graphics.strokeRect(x - 85, y - 30, 20, 25);
+            graphics.strokeRect(x - 85, y - 25, 20, 20);
+
+            // Produce in crate (red apples)
+            graphics.fillStyle(0xF44336, 1);
+            graphics.fillCircle(x - 80, y - 18, 5);
+            graphics.fillCircle(x - 72, y - 18, 5);
+            graphics.fillCircle(x - 76, y - 24, 5);
+
+            // Another crate (right side)
+            graphics.lineStyle(2, 0x5D4037, 1);
+            graphics.strokeRect(x + 65, y - 30, 20, 25);
+            graphics.strokeRect(x + 65, y - 25, 20, 20);
+
+            // Produce in crate (oranges)
+            graphics.fillStyle(0xFF9800, 1);
+            graphics.fillCircle(x + 70, y - 18, 5);
+            graphics.fillCircle(x + 78, y - 18, 5);
+            graphics.fillCircle(x + 74, y - 24, 5);
+
+            // Upper windows (3 windows)
+            for (let col = 0; col < 3; col++) {
+                const wx = x - 45 + (col * 45);
+                const wy = y - building.height + 30;
+
+                graphics.fillStyle(0x000000, 0.3);
+                graphics.fillRect(wx - 12 + 2, wy + 2, 24, 30);
+
+                graphics.fillStyle(windowColor, 1);
+                graphics.fillRect(wx - 12, wy, 24, 30);
+
+                graphics.fillStyle(0xFFFFFF, 0.2);
+                graphics.fillRect(wx - 12, wy, 24, 15);
+
+                graphics.lineStyle(2, 0x000000, 1);
+                graphics.strokeRect(wx - 12, wy, 24, 30);
+            }
+
+            // Green striped market awning
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRect(x - 70, y - 125, 140, 8);
+
+            graphics.fillStyle(0x66BB6A, 1); // Bright green
+            graphics.fillRect(x - 70, y - 133, 140, 8);
+
+            graphics.fillStyle(0x4CAF50, 1); // Darker green
+            graphics.beginPath();
+            graphics.moveTo(x - 70, y - 125);
+            graphics.lineTo(x + 70, y - 125);
+            graphics.lineTo(x + 65, y - 120);
+            graphics.lineTo(x - 65, y - 120);
+            graphics.closePath();
+            graphics.fillPath();
+
+            // Awning stripes
+            graphics.lineStyle(2, 0x2E7D32, 1);
+            for (let i = 0; i < 7; i++) {
+                graphics.lineBetween(x - 70 + (i * 23), y - 133, x - 70 + (i * 23), y - 125);
+            }
+
+            // Wood door
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
+
+            graphics.fillStyle(0x8D6E63, 1);
+            graphics.fillRect(x - 20, y - 55, 40, 55);
+
+            graphics.lineStyle(2, 0x5D4037, 1);
+            graphics.strokeRect(x - 20, y - 55, 40, 55);
+
+            // Door handle
+            graphics.fillStyle(0xFFD700, 1);
+            graphics.fillCircle(x + 10, y - 28, 4);
+
+            // Roof
+            graphics.fillStyle(0x795548, 1);
+            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
+
+        } else if (type === 'bookstore') {
+            // BOOKSTORE: Cozy vintage shop with shutters and book displays
+            const windowColor = 0xFFF9E6; // Warm paper color
+
+            // Large storefront window with book display
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRect(x - 65 + 3, y - 125 + 3, 130, 65);
+
+            graphics.fillStyle(windowColor, 1);
+            graphics.fillRect(x - 65, y - 125, 130, 65);
+
+            // Window reflection
+            graphics.fillStyle(0xFFFFFF, 0.15);
+            graphics.fillRect(x - 65, y - 125, 130, 32);
+
+            graphics.lineStyle(3, 0x4E342E, 1); // Brown frame
+            graphics.strokeRect(x - 65, y - 125, 130, 65);
+
+            // Window panes (6 panes)
+            graphics.lineStyle(2, 0x4E342E, 1);
+            graphics.lineBetween(x - 65, y - 103, x + 65, y - 103);
+            graphics.lineBetween(x - 22, y - 125, x - 22, y - 60);
+            graphics.lineBetween(x + 22, y - 125, x + 22, y - 60);
+
+            // Book stacks in window
+            graphics.fillStyle(0x8B4513, 0.6); // Books
+            graphics.fillRect(x - 50, y - 85, 8, 20);
+            graphics.fillRect(x - 40, y - 80, 8, 15);
+            graphics.fillRect(x - 30, y - 88, 8, 23);
+
+            graphics.fillRect(x + 25, y - 85, 8, 20);
+            graphics.fillRect(x + 35, y - 80, 8, 15);
+            graphics.fillRect(x + 45, y - 88, 8, 23);
+
+            // Upper windows with shutters (2 windows)
+            for (let col = 0; col < 2; col++) {
+                const wx = x - 35 + (col * 70);
+                const wy = y - building.height + 30;
+
+                // Shutters (left side)
+                graphics.fillStyle(0x6D4C41, 1);
+                graphics.fillRect(wx - 30, wy, 10, 35);
+                graphics.lineStyle(1, 0x4E342E, 1);
+                graphics.strokeRect(wx - 30, wy, 10, 35);
+                for (let i = 0; i < 7; i++) {
+                    graphics.lineBetween(wx - 30, wy + (i * 5), wx - 20, wy + (i * 5));
+                }
+
+                // Window
                 graphics.fillStyle(0x000000, 0.3);
                 graphics.fillRect(wx - 15 + 2, wy + 2, 30, 35);
 
                 graphics.fillStyle(windowColor, 1);
                 graphics.fillRect(wx - 15, wy, 30, 35);
 
-                // Window reflection
-                graphics.fillStyle(0xFFFFFF, 0.2);
+                graphics.fillStyle(0xFFFFFF, 0.15);
                 graphics.fillRect(wx - 15, wy, 30, 17);
 
-                graphics.lineStyle(2, 0x000000, 1);
+                graphics.lineStyle(2, 0x4E342E, 1);
                 graphics.strokeRect(wx - 15, wy, 30, 35);
                 graphics.lineBetween(wx, wy, wx, wy + 35);
+
+                // Shutters (right side)
+                graphics.fillStyle(0x6D4C41, 1);
+                graphics.fillRect(wx + 20, wy, 10, 35);
+                graphics.lineStyle(1, 0x4E342E, 1);
+                graphics.strokeRect(wx + 20, wy, 10, 35);
+                for (let i = 0; i < 7; i++) {
+                    graphics.lineBetween(wx + 20, wy + (i * 5), wx + 30, wy + (i * 5));
+                }
             }
 
-            // 3D Angular Awning with perspective
-            // Awning shadow underneath
+            // Brown cozy awning
             graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 70, y - 120, 140, 8);
+            graphics.fillRect(x - 70, y - 125, 140, 8);
 
-            // Awning top (flat part)
-            graphics.fillStyle(0xFF6347, 1);
-            graphics.fillRect(x - 70, y - 130, 140, 10);
+            graphics.fillStyle(0x8D6E63, 1);
+            graphics.fillRect(x - 70, y - 133, 140, 8);
 
-            // Awning front face (3D perspective - angled)
-            graphics.fillStyle(0xDC143C, 1);
+            graphics.fillStyle(0x6D4C41, 1);
             graphics.beginPath();
-            graphics.moveTo(x - 70, y - 120);
-            graphics.lineTo(x + 70, y - 120);
-            graphics.lineTo(x + 65, y - 115);
-            graphics.lineTo(x - 65, y - 115);
+            graphics.moveTo(x - 70, y - 125);
+            graphics.lineTo(x + 70, y - 125);
+            graphics.lineTo(x + 65, y - 120);
+            graphics.lineTo(x - 65, y - 120);
             graphics.closePath();
             graphics.fillPath();
 
-            // Awning stripes on top
-            graphics.lineStyle(2, 0x8B0000, 1);
-            for (let i = 0; i < 7; i++) {
-                graphics.lineBetween(x - 70 + (i * 23), y - 130, x - 70 + (i * 23), y - 120);
-            }
-
-            // Awning edge outline
-            graphics.lineStyle(2, 0x8B0000, 1);
-            graphics.strokeRect(x - 70, y - 130, 140, 10);
-
-            // Door shadow
+            // Vintage wood door
             graphics.fillStyle(0x000000, 0.4);
             graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
 
-            // Door (centered)
-            graphics.fillStyle(0x654321, 1);
+            graphics.fillStyle(0x5D4037, 1);
             graphics.fillRect(x - 20, y - 55, 40, 55);
-            graphics.lineStyle(2, 0x000000, 1);
-            graphics.strokeRect(x - 20, y - 55, 40, 55);
 
-            // Door handle with shadow
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillCircle(x + 11, y - 27, 4);
-            graphics.fillStyle(0xC0C0C0, 1);
+            // Door panels
+            graphics.lineStyle(2, 0x4E342E, 1);
+            graphics.strokeRect(x - 20, y - 55, 40, 55);
+            graphics.strokeRect(x - 15, y - 48, 30, 20);
+            graphics.strokeRect(x - 15, y - 25, 30, 20);
+
+            // Brass door handle
+            graphics.fillStyle(0xB8860B, 1);
             graphics.fillCircle(x + 10, y - 28, 4);
-            graphics.fillStyle(0xFFFFFF, 0.6);
+            graphics.fillStyle(0xFFD700, 0.6);
             graphics.fillCircle(x + 9, y - 29, 2);
 
-            // 3D Flat roof with angular trim
-            // Roof shadow
-            graphics.fillStyle(0x000000, 0.2);
+            // Roof
+            graphics.fillStyle(0x5D4037, 1);
             graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
-
-            // Roof main
-            graphics.fillStyle(0x696969, 1);
-            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
-
-            // Roof edge (3D perspective)
-            graphics.fillStyle(0x505050, 1);
-            graphics.beginPath();
-            graphics.moveTo(x - building.width/2 - 5, y - building.height);
-            graphics.lineTo(x + building.width/2 + 5, y - building.height);
-            graphics.lineTo(x + building.width/2 + 10, y - building.height - 5);
-            graphics.lineTo(x - building.width/2 - 10, y - building.height - 5);
-            graphics.closePath();
-            graphics.fillPath();
 
         } else if (type === 'restaurant') {
             // Restaurant: Fancy with arched windows
@@ -3134,6 +3440,40 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // Hotel cleaning prompts - show above dirty hotels
+        for (let building of this.buildings) {
+            if (building.type === 'hotel' && building.rooms) {
+                // Count dirty rooms
+                let dirtyCount = 0;
+                for (let room of building.rooms) {
+                    if (room.status === 'dirty') {
+                        dirtyCount++;
+                    }
+                }
+
+                // Create or update prompt for this hotel
+                if (!building.cleaningPrompt) {
+                    building.cleaningPrompt = this.add.text(0, 0, '', {
+                        fontSize: '11px',
+                        color: '#ffffff',
+                        backgroundColor: '#E91E63',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(100);
+                }
+
+                if (dirtyCount > 0) {
+                    const buildingType = this.buildingTypes[building.type];
+                    const totalCost = dirtyCount * buildingType.cleaningCost;
+                    building.cleaningPrompt.setText(`🧹 ${dirtyCount} Dirty Room${dirtyCount > 1 ? 's' : ''} - Click to Clean ($${totalCost})`);
+                    building.cleaningPrompt.x = building.x;
+                    building.cleaningPrompt.y = building.y - buildingType.height - 110;
+                    building.cleaningPrompt.setVisible(true);
+                } else {
+                    building.cleaningPrompt.setVisible(false);
+                }
+            }
+        }
+
         // Hotel cleaning interaction - click hotel when NOT in build/delete mode
         if (!this.buildMode && !this.deleteMode && !this.deleteConfirmShowing && !this.bankMenuOpen && !this.mailboxMenuOpen) {
             if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
@@ -3174,10 +3514,15 @@ class MainScene extends Phaser.Scene {
                                     this.money -= totalCleaningCost;
                                     console.log(`🧹 Cleaned ${dirtyCount} rooms for $${totalCleaningCost}. Cash remaining: $${this.money}`);
 
+                                    // Show success message
+                                    this.showFloatingMessage(building.x, building.y - buildingType.height - 80, `Cleaned ${dirtyCount} room${dirtyCount > 1 ? 's' : ''}!`, '#4CAF50');
+
                                     // Save game
                                     this.saveGame();
                                 } else {
                                     console.log(`❌ Not enough money to clean rooms! Need $${totalCleaningCost}, have $${this.money}`);
+                                    // Show error message
+                                    this.showFloatingMessage(building.x, building.y - buildingType.height - 80, `Need $${totalCleaningCost}!`, '#F44336');
                                 }
                             } else {
                                 console.log(`✨ All hotel rooms are already clean!`);
@@ -4157,6 +4502,27 @@ class MainScene extends Phaser.Scene {
     closeBankMenu() {
         this.bankMenuOpen = false;
         this.bankUI.setVisible(false);
+    }
+
+    showFloatingMessage(x, y, text, color) {
+        const message = this.add.text(x, y, text, {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: color,
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0.5).setDepth(10000);
+
+        // Animate the message floating up and fading out
+        this.tweens.add({
+            targets: message,
+            y: y - 50,
+            alpha: 0,
+            duration: 2000,
+            ease: 'Power2',
+            onComplete: () => {
+                message.destroy();
+            }
+        });
     }
 
     enterShop(shop) {
