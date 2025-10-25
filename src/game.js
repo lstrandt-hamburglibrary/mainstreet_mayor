@@ -3453,9 +3453,20 @@ class MainScene extends Phaser.Scene {
                                 padding: { x: 3, y: 1 }
                             }).setOrigin(0.5).setDepth(11);
                         } else {
-                            unit.vacancyIndicator.setVisible(true);
-                            unit.vacancyIndicator.x = unitX;
-                            unit.vacancyIndicator.y = unitY;
+                            try {
+                                unit.vacancyIndicator.setVisible(true);
+                                unit.vacancyIndicator.x = unitX;
+                                unit.vacancyIndicator.y = unitY;
+                            } catch (error) {
+                                // If updating fails, recreate the indicator
+                                console.warn('Recreating vacancy indicator due to error');
+                                unit.vacancyIndicator = this.add.text(unitX, unitY, 'VACANT', {
+                                    fontSize: '8px',
+                                    color: '#FFFFFF',
+                                    backgroundColor: '#FF0000',
+                                    padding: { x: 3, y: 1 }
+                                }).setOrigin(0.5).setDepth(11);
+                            }
                         }
                     }
                 }
