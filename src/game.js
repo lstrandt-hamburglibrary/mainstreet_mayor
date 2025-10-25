@@ -334,8 +334,9 @@ class MainScene extends Phaser.Scene {
         this.cKey = this.input.keyboard.addKey('C');
         this.pKey = this.input.keyboard.addKey('P');
 
-        // Mouse input for building placement
+        // Mouse input for building placement and demolish mode
         this.input.on('pointerdown', (pointer) => {
+            // Handle build mode
             if (this.buildMode && this.buildingPreview && !this.buildConfirmShowing) {
                 // Save the position where user clicked
                 this.pendingBuildingX = this.buildingPreview.snappedX;
@@ -350,6 +351,54 @@ class MainScene extends Phaser.Scene {
                 this.buildConfirmUI.setText(`Place ${buildingType.name}?\n\nCost: $${cost}, 🪵${wood}, 🧱${bricks}`);
                 this.buildConfirmContainer.setVisible(true);
                 this.buildConfirmShowing = true;
+            }
+
+            // Handle delete mode
+            if (this.deleteMode && !this.deleteConfirmShowing) {
+                console.log('🔨 CLICK DETECTED IN DELETE MODE! (via event)');
+                const clickX = pointer.x + this.cameras.main.scrollX;
+                const clickY = pointer.y + this.cameras.main.scrollY;
+
+                console.log(`🔨 Delete mode click at (${clickX}, ${clickY})`);
+                console.log(`🔨 Total buildings to check: ${this.buildings.length}`);
+
+                // Find building at click position
+                let foundBuilding = false;
+                for (let building of this.buildings) {
+                    // Safety check
+                    if (!building.type) {
+                        console.warn('Building has no type, skipping');
+                        continue;
+                    }
+
+                    const buildingType = this.buildingTypes[building.type];
+                    if (!buildingType) {
+                        console.warn(`Building type ${building.type} not found, skipping`);
+                        continue;
+                    }
+
+                    const left = building.x - buildingType.width / 2;
+                    const right = building.x + buildingType.width / 2;
+                    const top = building.y - buildingType.height;
+                    const bottom = building.y;
+
+                    console.log(`🔨 Checking ${buildingType.name}: left=${left}, right=${right}, top=${top}, bottom=${bottom}`);
+
+                    if (clickX >= left && clickX <= right && clickY >= top && clickY <= bottom) {
+                        // Show confirmation dialog
+                        console.log(`🔨 ✓ Building clicked: ${buildingType.name} at (${building.x}, ${building.y})`);
+                        this.buildingToDelete = building;
+                        this.deleteConfirmShowing = true;
+                        this.deleteConfirmUI.setText(`Delete ${buildingType.name}?`);
+                        this.deleteConfirmContainer.setVisible(true);
+                        foundBuilding = true;
+                        break;
+                    }
+                }
+
+                if (!foundBuilding) {
+                    console.log(`🔨 ✗ No building found at click position.`);
+                }
             }
         });
 
@@ -3608,71 +3657,12 @@ class MainScene extends Phaser.Scene {
         // Update delete mode UI
         if (this.deleteMode) {
             this.demolishUI.setVisible(true);
-            // Log once per second to avoid spam
-            if (Math.floor(this.gameTime) % 60 === 0) {
-                console.log('🔨 DELETE MODE ACTIVE - waiting for click');
-            }
         } else {
             this.demolishUI.setVisible(false);
         }
 
-        if (this.deleteMode) {
-            // Debug: Check if pointer is being detected
-            if (this.input.activePointer.isDown) {
-                console.log(`🔨 Pointer is DOWN - justDown: ${this.input.activePointer.justDown}`);
-            }
-
-            // Check for click on building to delete
-            if (this.input.activePointer.isDown && this.input.activePointer.justDown) {
-                console.log('🔨 CLICK DETECTED IN DELETE MODE!');
-                const clickX = this.input.activePointer.x + this.cameras.main.scrollX;
-                const clickY = this.input.activePointer.y + this.cameras.main.scrollY;
-
-                console.log(`🔨 Delete mode click at (${clickX}, ${clickY})`);
-                console.log(`🔨 Total buildings to check: ${this.buildings.length}`);
-
-                // Find building at click position
-                let checkedCount = 0;
-                let foundBuilding = false;
-                for (let building of this.buildings) {
-                    checkedCount++;
-                    // Safety check
-                    if (!building.type) {
-                        console.warn('Building has no type, skipping');
-                        continue;
-                    }
-
-                    const buildingType = this.buildingTypes[building.type];
-                    if (!buildingType) {
-                        console.warn(`Building type ${building.type} not found, skipping`);
-                        continue;
-                    }
-
-                    const left = building.x - buildingType.width / 2;
-                    const right = building.x + buildingType.width / 2;
-                    const top = building.y - buildingType.height;
-                    const bottom = building.y;
-
-                    // Debug: log each building's bounds
-                    console.log(`🔨 Checking ${buildingType.name}: left=${left}, right=${right}, top=${top}, bottom=${bottom}`);
-
-                    if (clickX >= left && clickX <= right && clickY >= top && clickY <= bottom) {
-                        // Show confirmation dialog
-                        console.log(`🔨 ✓ Building clicked: ${buildingType.name} at (${building.x}, ${building.y})`);
-                        this.buildingToDelete = building;
-                        this.deleteConfirmShowing = true;
-                        this.deleteConfirmUI.setText(`Delete ${buildingType.name}?`);
-                        this.deleteConfirmContainer.setVisible(true);
-                        foundBuilding = true;
-                        break;
-                    }
-                }
-
-                if (!foundBuilding) {
-                    console.log(`🔨 ✗ No building found at click position. Checked ${checkedCount} buildings.`);
-                }
-            }
-        }
+        // Delete mode click detection is now handled in the pointerdown event listener above
+        // (removed old polling-based code that didn't work)
 
 
         // Check if player is near a bank
