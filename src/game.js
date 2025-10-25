@@ -3311,7 +3311,7 @@ class MainScene extends Phaser.Scene {
                 // Show resource indicator if resources are available (>= 1)
                 if (building.storedResources >= 1) {
                     const icon = buildingType.resourceType === 'wood' ? '🪵' : '🧱';
-                    if (!building.resourceIndicator) {
+                    if (!building.resourceIndicator || !building.resourceIndicator.scene) {
                         building.resourceIndicator = this.add.text(building.x, building.y - buildingType.height - 80, icon, {
                             fontSize: '24px'
                         }).setOrigin(0.5);
@@ -3319,7 +3319,7 @@ class MainScene extends Phaser.Scene {
                         building.resourceIndicator.setVisible(true);
                     }
                 } else {
-                    if (building.resourceIndicator) {
+                    if (building.resourceIndicator && building.resourceIndicator.scene) {
                         building.resourceIndicator.setVisible(false);
                     }
                 }
@@ -3353,12 +3353,12 @@ class MainScene extends Phaser.Scene {
                         this.checkTenantRisk(unit);
 
                         // Hide vacancy indicator if it exists
-                        if (unit.vacancyIndicator && unit.vacancyIndicator.setVisible) {
+                        if (unit.vacancyIndicator && unit.vacancyIndicator.scene) {
                             unit.vacancyIndicator.setVisible(false);
                         }
                     } else {
                         // Unit is vacant - show vacancy indicator
-                        if (!unit.vacancyIndicator || !unit.vacancyIndicator.setVisible) {
+                        if (!unit.vacancyIndicator || !unit.vacancyIndicator.scene) {
                             unit.vacancyIndicator = this.add.text(unitX, unitY, 'VACANT', {
                                 fontSize: '8px',
                                 color: '#FFFFFF',
@@ -3424,7 +3424,8 @@ class MainScene extends Phaser.Scene {
 
                     if (room.status === 'dirty') {
                         // Show dirty indicator
-                        if (!room.dirtyIndicator) {
+                        if (!room.dirtyIndicator || !room.dirtyIndicator.scene) {
+                            // Create new indicator if it doesn't exist or was destroyed
                             room.dirtyIndicator = this.add.text(roomX, roomY, 'DIRTY', {
                                 fontSize: '8px',
                                 color: '#FFFFFF',
@@ -3438,7 +3439,7 @@ class MainScene extends Phaser.Scene {
                         }
                     } else {
                         // Hide dirty indicator if room is clean/occupied
-                        if (room.dirtyIndicator) {
+                        if (room.dirtyIndicator && room.dirtyIndicator.scene) {
                             room.dirtyIndicator.setVisible(false);
                         }
                     }
@@ -3446,7 +3447,7 @@ class MainScene extends Phaser.Scene {
 
                 // Show income indicator if income is ready to collect
                 if (building.accumulatedIncome >= 1) {
-                    if (!building.incomeIndicator) {
+                    if (!building.incomeIndicator || !building.incomeIndicator.scene) {
                         building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
                             fontSize: '24px'
                         }).setOrigin(0.5).setDepth(11);
@@ -3454,7 +3455,7 @@ class MainScene extends Phaser.Scene {
                         building.incomeIndicator.setVisible(true);
                     }
                 } else {
-                    if (building.incomeIndicator) {
+                    if (building.incomeIndicator && building.incomeIndicator.scene) {
                         building.incomeIndicator.setVisible(false);
                     }
                 }
@@ -5307,7 +5308,7 @@ class MainScene extends Phaser.Scene {
             console.log(`Collected ${available} wood. Total wood: ${this.wood}`);
 
             // Hide resource indicator
-            if (this.nearResourceBuilding.resourceIndicator) {
+            if (this.nearResourceBuilding.resourceIndicator && this.nearResourceBuilding.resourceIndicator.scene) {
                 this.nearResourceBuilding.resourceIndicator.setVisible(false);
             }
 
@@ -5327,7 +5328,7 @@ class MainScene extends Phaser.Scene {
             console.log(`Collected ${available} bricks. Total bricks: ${this.bricks}`);
 
             // Hide resource indicator
-            if (this.nearResourceBuilding.resourceIndicator) {
+            if (this.nearResourceBuilding.resourceIndicator && this.nearResourceBuilding.resourceIndicator.scene) {
                 this.nearResourceBuilding.resourceIndicator.setVisible(false);
             }
 
@@ -5365,7 +5366,7 @@ class MainScene extends Phaser.Scene {
             console.log(`Collected $${income} from ${buildingType.name}! Total money: $${this.money}`);
 
             // Hide income indicator
-            if (building.incomeIndicator) {
+            if (building.incomeIndicator && building.incomeIndicator.scene) {
                 building.incomeIndicator.setVisible(false);
             }
 
