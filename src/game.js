@@ -611,12 +611,14 @@ class MainScene extends Phaser.Scene {
             });
 
             btn.on('pointerover', () => {
+                console.log(`👆 Mouse over ${building.type} button`);
                 if (this.selectedBuilding !== building.type) {
                     btn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
                 }
             });
 
             btn.on('pointerout', () => {
+                console.log(`👋 Mouse left ${building.type} button`);
                 if (this.selectedBuilding !== building.type) {
                     btn.setStyle({ backgroundColor: building.color, color: '#ffffff' });
                 }
@@ -645,12 +647,14 @@ class MainScene extends Phaser.Scene {
         });
 
         brickBtn.on('pointerover', () => {
+            console.log(`👆 Mouse over brickfactory button`);
             if (this.selectedBuilding !== 'brickfactory') {
                 brickBtn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
             }
         });
 
         brickBtn.on('pointerout', () => {
+            console.log(`👋 Mouse left brickfactory button`);
             if (this.selectedBuilding !== 'brickfactory') {
                 brickBtn.setStyle({ backgroundColor: '#D84315', color: '#ffffff' });
             }
