@@ -1799,7 +1799,7 @@ class MainScene extends Phaser.Scene {
 
     createMailbox(x, groundLevel) {
         const mailbox = this.add.graphics();
-        mailbox.setDepth(11); // Above buildings (which are depth 10)
+        mailbox.setDepth(15); // Well above buildings (which are depth 10)
 
         // Post (brown wooden post)
         mailbox.fillStyle(0x654321, 1);
@@ -1824,7 +1824,7 @@ class MainScene extends Phaser.Scene {
         // Mail indicator star (hidden by default)
         const mailIndicator = this.add.text(x, groundLevel - 95, '⭐', {
             fontSize: '20px'
-        }).setOrigin(0.5).setDepth(12).setVisible(false);
+        }).setOrigin(0.5).setDepth(16).setVisible(false);
 
         // Track this mailbox for interaction
         this.mailboxes.push({
