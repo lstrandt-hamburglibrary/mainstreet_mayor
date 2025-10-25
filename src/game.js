@@ -3120,27 +3120,40 @@ class MainScene extends Phaser.Scene {
 
     updateBuildingButtonStates() {
         // Safety check: only update if menu exists and is visible
-        if (!this.buildMenuContainer || !this.buildMenuContainer.visible) {
+        if (!this.buildMenuContainer || !this.buildMenuContainer.visible || !this.buildMode) {
+            return;
+        }
+
+        // Safety check: make sure title exists
+        if (!this.buildMenuTitle) {
             return;
         }
 
         // Update all building buttons to show which one is selected
         for (let buildingType in this.buildingButtons) {
             const btnData = this.buildingButtons[buildingType];
-            if (buildingType === this.selectedBuilding) {
-                btnData.button.setStyle({ backgroundColor: '#00FF00', color: '#000000' });
-            } else {
-                btnData.button.setStyle({ backgroundColor: btnData.originalColor, color: '#ffffff' });
+            if (btnData && btnData.button) {
+                if (buildingType === this.selectedBuilding) {
+                    btnData.button.setStyle({ backgroundColor: '#00FF00', color: '#000000' });
+                } else {
+                    btnData.button.setStyle({ backgroundColor: btnData.originalColor, color: '#ffffff' });
+                }
             }
         }
 
         // Update build menu title
-        if (this.selectedBuilding) {
-            const buildingType = this.buildingTypes[this.selectedBuilding];
-            const suggestedDistrict = buildingType ? this.districts[buildingType.district].name : '';
-            this.buildMenuTitle.setText(`${buildingType.name} selected\nSuggested: ${suggestedDistrict} (20% bonus!)\nClick on the map to place`);
-        } else {
-            this.buildMenuTitle.setText('SELECT A BUILDING TO PLACE');
+        try {
+            if (this.selectedBuilding) {
+                const buildingType = this.buildingTypes[this.selectedBuilding];
+                if (buildingType && buildingType.district && this.districts[buildingType.district]) {
+                    const suggestedDistrict = this.districts[buildingType.district].name;
+                    this.buildMenuTitle.setText(`${buildingType.name} selected\nSuggested: ${suggestedDistrict} (20% bonus!)\nClick on the map to place`);
+                }
+            } else {
+                this.buildMenuTitle.setText('SELECT A BUILDING TO PLACE');
+            }
+        } catch (error) {
+            console.error('Error updating build menu title:', error);
         }
     }
 
@@ -3858,10 +3871,20 @@ class MainScene extends Phaser.Scene {
         this.nearIncomeBuilding = null;
         let closestIncomeDistance = 250;
         for (let building of this.buildings) {
+            // Skip if building type doesn't exist
+            if (!building.type) continue;
+
             const buildingType = this.buildingTypes[building.type];
+            if (!buildingType) {
+                console.warn(`Building type ${building.type} not found in buildingTypes`);
+                continue;
+            }
+
+            // Skip hotels - they use checkout system, not income collection
+            if (building.type === 'hotel') continue;
 
             // Check regular buildings (House, Shop, Restaurant)
-            if (buildingType && buildingType.incomeRate && building.accumulatedIncome >= 1) {
+            if (buildingType.incomeRate && building.accumulatedIncome >= 1) {
                 const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                 if (distance < closestIncomeDistance) {
                     this.nearIncomeBuilding = building;
@@ -3903,39 +3926,51 @@ class MainScene extends Phaser.Scene {
 
         // Income building interaction (prioritize over resource buildings)
         if (this.nearIncomeBuilding && !this.buildMode && !this.bankMenuOpen && !this.resourceBuildingMenuOpen && !this.restartConfirmShowing) {
-            // Show prompt above the income building
-            const buildingType = this.buildingTypes[this.nearIncomeBuilding.type];
+            // Validate building before showing prompt
+            if (!this.nearIncomeBuilding.type) {
+                console.error('nearIncomeBuilding has no type');
+                this.nearIncomeBuilding = null;
+                if (this.incomePrompt) this.incomePrompt.setVisible(false);
+            } else {
+                const buildingType = this.buildingTypes[this.nearIncomeBuilding.type];
 
-            // Calculate income (different for apartments vs regular buildings)
-            let income = 0;
-            if (this.nearIncomeBuilding.type === 'apartment' && this.nearIncomeBuilding.units) {
-                for (let unit of this.nearIncomeBuilding.units) {
-                    if (unit.rented && unit.accumulatedIncome) {
-                        income += unit.accumulatedIncome;
+                if (!buildingType) {
+                    console.error(`Building type ${this.nearIncomeBuilding.type} not found`);
+                    this.nearIncomeBuilding = null;
+                    if (this.incomePrompt) this.incomePrompt.setVisible(false);
+                } else {
+                    // Calculate income (different for apartments vs regular buildings)
+                    let income = 0;
+                    if (this.nearIncomeBuilding.type === 'apartment' && this.nearIncomeBuilding.units) {
+                        for (let unit of this.nearIncomeBuilding.units) {
+                            if (unit.rented && unit.accumulatedIncome) {
+                                income += unit.accumulatedIncome;
+                            }
+                        }
+                    } else {
+                        income = this.nearIncomeBuilding.accumulatedIncome || 0;
+                    }
+                    income = Math.floor(income);
+
+                    if (!this.incomePrompt) {
+                        this.incomePrompt = this.add.text(this.nearIncomeBuilding.x, this.nearIncomeBuilding.y - buildingType.height - 100, `Press E to collect $${income}`, {
+                            fontSize: '12px',
+                            color: '#ffffff',
+                            backgroundColor: '#4CAF50',
+                            padding: { x: 5, y: 3 }
+                        }).setOrigin(0.5);
+                    } else {
+                        this.incomePrompt.setText(`Press E to collect $${income}`);
+                        this.incomePrompt.x = this.nearIncomeBuilding.x;
+                        this.incomePrompt.y = this.nearIncomeBuilding.y - buildingType.height - 100;
+                        this.incomePrompt.setVisible(true);
+                    }
+
+                    // Collect income
+                    if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                        this.collectIncome(this.nearIncomeBuilding);
                     }
                 }
-            } else {
-                income = this.nearIncomeBuilding.accumulatedIncome;
-            }
-            income = Math.floor(income);
-
-            if (!this.incomePrompt) {
-                this.incomePrompt = this.add.text(this.nearIncomeBuilding.x, this.nearIncomeBuilding.y - buildingType.height - 100, `Press E to collect $${income}`, {
-                    fontSize: '12px',
-                    color: '#ffffff',
-                    backgroundColor: '#4CAF50',
-                    padding: { x: 5, y: 3 }
-                }).setOrigin(0.5);
-            } else {
-                this.incomePrompt.setText(`Press E to collect $${income}`);
-                this.incomePrompt.x = this.nearIncomeBuilding.x;
-                this.incomePrompt.y = this.nearIncomeBuilding.y - buildingType.height - 100;
-                this.incomePrompt.setVisible(true);
-            }
-
-            // Collect income
-            if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                this.collectIncome(this.nearIncomeBuilding);
             }
         } else {
             if (this.incomePrompt) {
