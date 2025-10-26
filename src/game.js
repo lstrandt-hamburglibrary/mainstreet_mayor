@@ -51,6 +51,12 @@ class MainScene extends Phaser.Scene {
         this.citizens = [];
         this.busStops = []; // Will be populated in createStreetFurniture()
 
+        // Population tracking
+        this.population = 20; // Start with initial 20 citizens
+        this.populationCapacity = 20; // Increases with residential buildings
+        this.pendingCitizens = 0; // Citizens waiting to spawn
+        this.lastCitizenSpawnTime = Date.now();
+
         // Shop interior system
         this.insideShop = false;
         this.currentShop = null;
@@ -2328,6 +2334,42 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    spawnNewCitizen() {
+        // Spawn a new citizen near a random residential building
+        const groundLevel = this.gameHeight - 100;
+
+        // Find all residential buildings
+        const residentialBuildings = this.buildings.filter(b =>
+            this.buildingTypes[b.type]?.district === 'residential'
+        );
+
+        let spawnX;
+        if (residentialBuildings.length > 0) {
+            // Spawn near a random residential building
+            const randomBuilding = residentialBuildings[Math.floor(Math.random() * residentialBuildings.length)];
+            spawnX = randomBuilding.x + (Math.random() * 400 - 200); // Within 200px of building
+        } else {
+            // No residential buildings yet, spawn randomly
+            spawnX = Math.random() * 12000;
+        }
+
+        this.createCitizen(spawnX, groundLevel - 30);
+    }
+
+    spawnTourist(x) {
+        // Spawn a tourist (temporary visitor) at a bus stop
+        const groundLevel = this.gameHeight - 100;
+        const spawnX = x + (Math.random() * 100 - 50); // Near bus stop
+
+        this.createCitizen(spawnX, groundLevel - 30);
+
+        // Mark the last spawned citizen as a tourist
+        const tourist = this.citizens[this.citizens.length - 1];
+        tourist.isTourist = true;
+        tourist.touristTimer = 180 + Math.random() * 120; // Stay for 3-5 minutes (game time)
+        tourist.spawnedAtStop = x; // Remember where they arrived
+    }
+
     createCitizen(startX, startY) {
         const citizen = this.add.container(startX, startY);
         citizen.setDepth(11); // Above buildings (10), below buses (12)
@@ -3481,7 +3523,7 @@ class MainScene extends Phaser.Scene {
 
     updateMoneyUI() {
         // Update resource UI with current money, wood, bricks
-        let resourceText = `💰 Cash: $${this.money}  🪵 ${this.wood}  🧱 ${this.bricks}`;
+        let resourceText = `💰 Cash: $${this.money}  🪵 ${this.wood}  🧱 ${this.bricks}  👥 ${this.population}/${this.populationCapacity}`;
         if (this.creativeMode) resourceText += `  [CREATIVE MODE]`;
         if (this.bankBalance > 0) resourceText += `\n🏦 Bank: $${this.bankBalance}`;
         if (this.loanAmount > 0) resourceText += `\n💳 Debt: $${this.loanAmount}`;
@@ -3945,6 +3987,19 @@ class MainScene extends Phaser.Scene {
                 this.updateCitizens();
             } catch (error) {
                 console.error('Error updating citizens:', error);
+            }
+
+            // Spawn pending citizens gradually (one every 5 seconds)
+            if (this.pendingCitizens > 0) {
+                const now = Date.now();
+                if (now - this.lastCitizenSpawnTime >= 5000) {
+                    this.spawnNewCitizen();
+                    this.pendingCitizens--;
+                    this.population++;
+                    this.lastCitizenSpawnTime = now;
+                    this.updateMoneyUI();
+                    console.log(`👤 New citizen arrived! Population: ${this.population}/${this.populationCapacity}`);
+                }
             }
         }
 
@@ -4765,6 +4820,11 @@ class MainScene extends Phaser.Scene {
 
         this.buildings.push(buildingData);
 
+        // Increase population capacity for residential buildings
+        if (building.district === 'residential') {
+            this.addPopulationCapacity(this.selectedBuilding);
+        }
+
         if (this.creativeMode) {
             console.log(`Built ${building.name} in CREATIVE MODE!`);
         } else {
@@ -4773,6 +4833,23 @@ class MainScene extends Phaser.Scene {
 
         // Auto-save after building
         this.saveGame();
+    }
+
+    addPopulationCapacity(buildingType) {
+        // Each residential building attracts new citizens
+        let newCitizens = 0;
+        if (buildingType === 'house') {
+            newCitizens = 2 + Math.floor(Math.random() * 2); // 2-3 citizens
+        } else if (buildingType === 'apartment') {
+            newCitizens = 4 + Math.floor(Math.random() * 3); // 4-6 citizens
+        } else if (buildingType === 'hotel') {
+            newCitizens = 3 + Math.floor(Math.random() * 3); // 3-5 citizens
+        }
+
+        this.populationCapacity += newCitizens;
+        this.pendingCitizens += newCitizens;
+        console.log(`📈 Population capacity increased! +${newCitizens} citizens (${this.population}/${this.populationCapacity})`);
+        this.updateMoneyUI();
     }
 
     saveGame() {
@@ -4812,7 +4889,10 @@ class MainScene extends Phaser.Scene {
                     isOpen: b.isOpen,
                     dailyWage: b.dailyWage,
                     lastWageCheck: b.lastWageCheck
-                }))
+                })),
+                population: this.population,
+                populationCapacity: this.populationCapacity,
+                pendingCitizens: this.pendingCitizens
             };
             localStorage.setItem('mainstreetmayor_save', JSON.stringify(saveData));
             console.log(`Game saved! ${this.buildings.length} buildings:`, this.buildings.map(b => `${b.type} at x=${b.x}`));
@@ -4840,6 +4920,11 @@ class MainScene extends Phaser.Scene {
             // Restore bank data
             this.bankBalance = saveData.bankBalance || 0;
             this.loanAmount = saveData.loanAmount || 0;
+
+            // Restore population data
+            this.population = saveData.population || 20;
+            this.populationCapacity = saveData.populationCapacity || 20;
+            this.pendingCitizens = saveData.pendingCitizens || 0;
 
             // Restore time data
             this.gameTime = saveData.gameTime || 0;
@@ -5958,6 +6043,15 @@ class MainScene extends Phaser.Scene {
                         }
                     }
 
+                    // Spawn tourists from out of town (20% chance per bus stop)
+                    if (Math.random() < 0.2) {
+                        const touristCount = 1 + Math.floor(Math.random() * 3); // 1-3 tourists
+                        for (let t = 0; t < touristCount; t++) {
+                            this.spawnTourist(stop.x);
+                        }
+                        console.log(`🚌 ${touristCount} tourist(s) arrived from out of town!`);
+                    }
+
                     // Pick up waiting citizens
                     const waitingCitizens = stop.waitingCitizens.slice(); // Copy array
                     for (let citizen of waitingCitizens) {
@@ -6002,6 +6096,29 @@ class MainScene extends Phaser.Scene {
         const deltaTime = 1/60; // Approximate 60 FPS
 
         for (let citizen of this.citizens) {
+            // Handle tourist timer - tourists leave after their time is up
+            if (citizen.isTourist && citizen.touristTimer !== undefined) {
+                citizen.touristTimer -= deltaTime;
+                if (citizen.touristTimer <= 0 && citizen.state === 'walking') {
+                    // Time to leave - head to nearest bus stop
+                    let nearestStop = null;
+                    let nearestDistance = Infinity;
+                    for (let stop of this.busStops) {
+                        const dist = Math.abs(citizen.x - stop.x);
+                        if (dist < nearestDistance) {
+                            nearestDistance = dist;
+                            nearestStop = stop;
+                        }
+                    }
+
+                    if (nearestStop) {
+                        citizen.targetBusStop = nearestStop;
+                        citizen.state = 'walking';
+                        console.log('👋 Tourist heading to bus stop to leave town');
+                    }
+                }
+            }
+
             if (citizen.state === 'walking') {
                 // Walk in current direction
                 const distance = citizen.walkSpeed * deltaTime;
