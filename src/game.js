@@ -4234,11 +4234,17 @@ class MainScene extends Phaser.Scene {
                 continue;
             }
 
-            // Skip hotels - they use checkout system, not income collection
-            if (building.type === 'hotel') continue;
-
             // Check regular buildings (House, Shop, Restaurant)
             if (buildingType.incomeRate && building.accumulatedIncome >= 1) {
+                const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                if (distance < closestIncomeDistance) {
+                    this.nearIncomeBuilding = building;
+                    closestIncomeDistance = distance;
+                }
+            }
+
+            // Check hotel buildings (income from guest checkouts)
+            if (building.type === 'hotel' && building.accumulatedIncome >= 1) {
                 const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                 if (distance < closestIncomeDistance) {
                     this.nearIncomeBuilding = building;
