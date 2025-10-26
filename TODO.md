@@ -36,6 +36,13 @@
 - [ ] **Building Info Tooltips** - Hover over buildings to see income, customers, status
 - [ ] **Time Controls** - Fast forward time, or pause to plan
 
+## 🗺️ Map & Navigation
+
+- [ ] **Bird's Eye View** - Button to view your entire street from above, see the full layout
+- [ ] **Adjacent Streets** - Create multiple streets with different names (Main St, Oak Ave, etc.)
+- [ ] **Street Map/Minimap** - Click on map to teleport to different streets instantly
+- [ ] **Street Selector** - Quick-switch between your different streets
+
 ## 🎨 Visual Improvements
 
 - [ ] **Day/Night Cycle Improvements** - Street lamps that turn on at night, darker sky

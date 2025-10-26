@@ -219,10 +219,10 @@ export const ColorSchemes = {
         { building: 0xD4A5A5, balcony: 0xA87777, door: 0x654321, window: 0xE3F2FD }   // Mauve
     ],
     hotel: [
-        { building: 0x9C27B0, trim: 0x7B1FA2, balcony: 0x6A1B9A, window: 0xF3E5F5 },  // Purple
-        { building: 0x1976D2, trim: 0x1565C0, balcony: 0x0D47A1, window: 0xE3F2FD },  // Blue
-        { building: 0xD32F2F, trim: 0xC62828, balcony: 0xB71C1C, window: 0xFFEBEE },  // Red
-        { building: 0x388E3C, trim: 0x2E7D32, balcony: 0x1B5E20, window: 0xE8F5E9 }   // Green
+        { building: 0x9C27B0, trim: 0x7B1FA2, balcony: 0x6A1B9A, window: 0xF3E5F5, accent: 0xFFD700 },  // Purple with gold sign
+        { building: 0x1976D2, trim: 0x1565C0, balcony: 0x0D47A1, window: 0xE3F2FD, accent: 0xFFD700 },  // Blue with gold sign
+        { building: 0xD32F2F, trim: 0xC62828, balcony: 0xB71C1C, window: 0xFFEBEE, accent: 0xFFD700 },  // Red with gold sign
+        { building: 0x388E3C, trim: 0x2E7D32, balcony: 0x1B5E20, window: 0xE8F5E9, accent: 0xFFD700 }   // Green with gold sign
     ],
     clothingShop: [
         { building: 0xFF69B4, awning: 0xFF1493, window: 0xFFE4E1 },  // Hot Pink

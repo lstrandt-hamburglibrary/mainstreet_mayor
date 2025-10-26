@@ -341,6 +341,7 @@ class MainScene extends Phaser.Scene {
         this.key8 = this.input.keyboard.addKey('EIGHT');
         this.enterKey = this.input.keyboard.addKey('ENTER');
         this.eKey = this.input.keyboard.addKey('E');
+        this.escKey = this.input.keyboard.addKey('ESC');
         this.rKey = this.input.keyboard.addKey('R');
         this.tKey = this.input.keyboard.addKey('T');
         this.cKey = this.input.keyboard.addKey('C');
@@ -451,87 +452,62 @@ class MainScene extends Phaser.Scene {
             this.settingsButton.setStyle({ backgroundColor: '#424242' });
         });
 
-        // Settings dropdown menu
+        // Settings dropdown menu (Pause & Speed moved to bottom-left buttons)
         this.settingsDropdown = this.add.container(this.gameWidth - 200, 55);
         this.settingsDropdown.setScrollFactor(0).setDepth(100000).setVisible(false);
 
-        const dropdownBg = this.add.rectangle(0, 0, 200, 240, 0x424242, 1);
+        const dropdownBg = this.add.rectangle(0, 0, 200, 180, 0x424242, 1);
         dropdownBg.setOrigin(0, 0);
         this.settingsDropdown.add(dropdownBg);
 
-        // Pause button
-        this.pauseButton = this.add.text(10, 10, '⏸️ Pause', {
-            fontSize: '14px',
-            color: '#ffffff'
-        }).setInteractive().setScrollFactor(0);
-        this.settingsDropdown.add(this.pauseButton);
-
         // Restart button
-        this.restartButton = this.add.text(10, 40, '🔄 Restart', {
+        this.restartButton = this.add.text(10, 10, '🔄 Restart', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.restartButton);
 
-        // Speed button
-        this.speedButton = this.add.text(10, 70, '⏩ Speed: 1x', {
-            fontSize: '14px',
-            color: '#ffffff'
-        }).setInteractive().setScrollFactor(0);
-        this.settingsDropdown.add(this.speedButton);
-
         // Creative mode button
-        this.creativeButton = this.add.text(10, 100, '🎨 Creative: OFF', {
+        this.creativeButton = this.add.text(10, 40, '🎨 Creative: OFF', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.creativeButton);
 
         // Travel button
-        this.travelButton = this.add.text(10, 130, '🚌 Fast Travel', {
+        this.travelButton = this.add.text(10, 70, '🚌 Fast Travel', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.travelButton);
 
         // Build button
-        this.buildButton = this.add.text(10, 160, '🏗️ Build Mode', {
+        this.buildButton = this.add.text(10, 100, '🏗️ Build Mode', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.buildButton);
 
         // Demolish button
-        this.demolishButton = this.add.text(10, 190, '💥 Demolish Mode', {
+        this.demolishButton = this.add.text(10, 130, '💥 Demolish Mode', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.demolishButton);
 
         // Add hover effects to all dropdown buttons
-        [this.pauseButton, this.restartButton, this.speedButton, this.creativeButton, this.travelButton, this.buildButton, this.demolishButton].forEach(btn => {
+        [this.restartButton, this.creativeButton, this.travelButton, this.buildButton, this.demolishButton].forEach(btn => {
             btn.on('pointerover', () => btn.setStyle({ color: '#FFD700' }));
             btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
         });
 
         // Add click handlers for dropdown buttons
-        this.pauseButton.on('pointerdown', () => {
-            this.isPaused = !this.isPaused;
-            this.pauseButton.setText(this.isPaused ? '▶️ Resume' : '⏸️ Pause');
-            // No overlay - just pause time, allow building/interaction
-        });
-
         this.restartButton.on('pointerdown', () => {
             this.settingsMenuOpen = false;
             this.settingsDropdown.setVisible(false);
             this.restartConfirmShowing = true;
             this.restartConfirmUI.setText('⚠️ RESTART GAME? ⚠️\nAll progress will be lost!');
             this.restartConfirmContainer.setVisible(true);
-        });
-
-        this.speedButton.on('pointerdown', () => {
-            this.timeSpeed = this.timeSpeed === 1 ? 2 : this.timeSpeed === 2 ? 3 : 1;
-            this.speedButton.setText(`⏩ Speed: ${this.timeSpeed}x`);
         });
 
         this.creativeButton.on('pointerdown', () => {
@@ -597,9 +573,78 @@ class MainScene extends Phaser.Scene {
         this.timeUI = this.add.text(this.gameWidth - 300, 20, '', {
             fontSize: '16px',
             color: '#ffffff',
-            backgroundColor: '#1976D2',
+            backgroundColor: '#000000',
             padding: { x: 10, y: 6 }
         }).setScrollFactor(0).setDepth(99998);
+
+        // Speed Control Buttons (upper right, beneath time display, always visible)
+        const speedButtonY = 55;  // Below time UI (which is at y: 20)
+        const speedButtonSpacing = 45;  // Smaller spacing for compact layout
+        const speedButtonStartX = this.gameWidth - 300;  // Align with time UI
+
+        // Pause button (using simple text symbols instead of emoji)
+        this.speedPauseButton = this.add.text(speedButtonStartX, speedButtonY, '||', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#424242',
+            padding: { x: 8, y: 4 },
+            fontFamily: 'Arial',
+            fontStyle: 'bold'
+        }).setOrigin(0, 0).setScrollFactor(0).setDepth(99999).setInteractive();
+
+        this.speedPauseButton.on('pointerdown', () => {
+            this.isPaused = !this.isPaused;
+            this.speedPauseButton.setText(this.isPaused ? '▶' : '||');
+            this.updateSpeedButtons();
+        });
+
+        // 1x speed button
+        this.speed1xButton = this.add.text(speedButtonStartX + speedButtonSpacing, speedButtonY, '▶', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#2E7D32',
+            padding: { x: 8, y: 4 }
+        }).setOrigin(0, 0).setScrollFactor(0).setDepth(99999).setInteractive();
+
+        this.speed1xButton.on('pointerdown', () => {
+            this.timeSpeed = 1;
+            this.updateSpeedButtons();
+        });
+
+        // 2x speed button
+        this.speed2xButton = this.add.text(speedButtonStartX + speedButtonSpacing * 2, speedButtonY, '▶▶', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#424242',
+            padding: { x: 8, y: 4 }
+        }).setOrigin(0, 0).setScrollFactor(0).setDepth(99999).setInteractive();
+
+        this.speed2xButton.on('pointerdown', () => {
+            this.timeSpeed = 2;
+            this.updateSpeedButtons();
+        });
+
+        // 3x speed button
+        this.speed3xButton = this.add.text(speedButtonStartX + speedButtonSpacing * 3, speedButtonY, '▶▶▶', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#424242',
+            padding: { x: 8, y: 4 }
+        }).setOrigin(0, 0).setScrollFactor(0).setDepth(99999).setInteractive();
+
+        this.speed3xButton.on('pointerdown', () => {
+            this.timeSpeed = 3;
+            this.updateSpeedButtons();
+        });
+
+        // Add hover effects
+        [this.speedPauseButton, this.speed1xButton, this.speed2xButton, this.speed3xButton].forEach(btn => {
+            btn.on('pointerover', () => btn.setStyle({ color: '#FFD700' }));
+            btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
+        });
+
+        // Initialize speed button states
+        this.updateSpeedButtons();
 
         // Build menu UI (clickable buttons at bottom of screen) - RESTORED TO WORKING VERSION
         this.buildMenuContainer = this.add.container(this.gameWidth / 2, this.gameHeight - 80);
@@ -1343,6 +1388,181 @@ class MainScene extends Phaser.Scene {
 
         this.hotelInteriorContainer.add(this.hotelMaidWageText);
 
+        // Restaurant Interior UI (full-screen overlay)
+        this.insideRestaurant = false;
+        this.currentRestaurant = null;
+        this.nearRestaurant = null;
+
+        this.restaurantInteriorContainer = this.add.container(0, 0);
+        this.restaurantInteriorContainer.setScrollFactor(0).setDepth(15000).setVisible(false);
+
+        // Restaurant background (warm dining atmosphere)
+        const restaurantBg = this.add.rectangle(this.gameWidth / 2, this.gameHeight / 2, this.gameWidth, this.gameHeight, 0xD2691E, 1);
+        this.restaurantInteriorContainer.add(restaurantBg);
+
+        // Floor
+        const restaurantFloor = this.add.rectangle(this.gameWidth / 2, this.gameHeight - 100, this.gameWidth, 200, 0x8B4513, 1);
+        this.restaurantInteriorContainer.add(restaurantFloor);
+
+        // Bar/counter on the left side
+        const bar = this.add.graphics();
+        bar.fillStyle(0x654321, 1);
+        bar.fillRect(50, this.gameHeight - 250, 150, 100);
+        bar.lineStyle(3, 0x3E2723, 1);
+        bar.strokeRect(50, this.gameHeight - 250, 150, 100);
+        this.restaurantInteriorContainer.add(bar);
+
+        // Bar top (polished wood)
+        const barTop = this.add.rectangle(125, this.gameHeight - 250, 150, 15, 0x8B7355);
+        this.restaurantInteriorContainer.add(barTop);
+
+        // Waiter/Waitress sprite (only visible when hired)
+        const waiter = this.add.container(150, this.gameHeight - 100);
+
+        // Waiter legs
+        const waiterLegs = this.add.graphics();
+        waiterLegs.fillStyle(0x000000, 1);
+        waiterLegs.fillRect(-12, -50, 10, 50);
+        waiterLegs.fillRect(2, -50, 10, 50);
+        waiter.add(waiterLegs);
+
+        // Waiter shoes
+        const waiterShoes = this.add.graphics();
+        waiterShoes.fillStyle(0x000000, 1);
+        waiterShoes.fillEllipse(-7, -2, 12, 6);
+        waiterShoes.fillEllipse(7, -2, 12, 6);
+        waiter.add(waiterShoes);
+
+        // Waiter body (white shirt, black vest)
+        const waiterBody = this.add.rectangle(0, -95, 60, 90, 0xFFFFFF);
+        waiter.add(waiterBody);
+
+        // Black vest
+        const vest = this.add.rectangle(0, -95, 50, 80, 0x1a1a1a);
+        waiter.add(vest);
+
+        // Waiter head
+        const waiterHead = this.add.circle(0, -160, 25, 0xFFDBAC);
+        waiter.add(waiterHead);
+
+        // Waiter eyes
+        const waiterEyes = this.add.graphics();
+        waiterEyes.fillStyle(0x000000, 1);
+        waiterEyes.fillCircle(-8, -162, 3);
+        waiterEyes.fillCircle(8, -162, 3);
+        waiter.add(waiterEyes);
+
+        // Waiter smile
+        const waiterSmile = this.add.graphics();
+        waiterSmile.lineStyle(3, 0x000000, 1);
+        waiterSmile.arc(0, -152, 10, 0, Math.PI);
+        waiterSmile.strokePath();
+        waiter.add(waiterSmile);
+
+        // Bow tie
+        const bowTie = this.add.graphics();
+        bowTie.fillStyle(0xFF0000, 1);
+        bowTie.fillTriangle(-15, -135, 0, -140, -7, -145);
+        bowTie.fillTriangle(15, -135, 0, -140, 7, -145);
+        waiter.add(bowTie);
+
+        waiter.setVisible(false);
+        this.restaurantInteriorContainer.add(waiter);
+        this.restaurantWaiterSprite = waiter;
+
+        // Chandelier
+        const restaurantLight = this.add.graphics();
+        restaurantLight.fillStyle(0xFFD700, 1);
+        restaurantLight.fillCircle(this.gameWidth / 2, 80, 25);
+        restaurantLight.lineStyle(2, 0xB8860B, 1);
+        for (let i = 0; i < 6; i++) {
+            const angle = (i / 6) * Math.PI * 2;
+            const x = this.gameWidth / 2 + Math.cos(angle) * 20;
+            const y = 80 + Math.sin(angle) * 20;
+            restaurantLight.lineBetween(this.gameWidth / 2, 80, x, y);
+        }
+        this.restaurantInteriorContainer.add(restaurantLight);
+
+        // Exit prompt
+        this.restaurantExitPrompt = this.add.text(this.gameWidth / 2, 50, 'Press E or ESC to exit restaurant', {
+            fontSize: '16px',
+            color: '#FFFFFF',
+            backgroundColor: '#000000',
+            padding: { x: 10, y: 5 }
+        }).setOrigin(0.5);
+        this.restaurantInteriorContainer.add(this.restaurantExitPrompt);
+
+        // Restaurant name label
+        this.restaurantNameLabel = this.add.text(this.gameWidth / 2, 130, 'RESTAURANT', {
+            fontSize: '28px',
+            color: '#FFD700',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        this.restaurantInteriorContainer.add(this.restaurantNameLabel);
+
+        // Restaurant info panel
+        this.restaurantInfoText = this.add.text(this.gameWidth / 2, 200, '', {
+            fontSize: '16px',
+            color: '#FFFFFF',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            padding: { x: 15, y: 10 },
+            align: 'center'
+        }).setOrigin(0.5);
+        this.restaurantInteriorContainer.add(this.restaurantInfoText);
+
+        // Hire Day Waiter button
+        this.restaurantHireDayButton = this.add.text(this.gameWidth / 2 - 150, this.gameHeight / 2 + 100, 'HIRE DAY WAITER ($800)', {
+            fontSize: '16px',
+            color: '#FFFFFF',
+            backgroundColor: '#1976D2',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.restaurantHireDayButton.setScrollFactor(0).setDepth(15001).setVisible(false);
+
+        this.restaurantHireDayButton.on('pointerover', () => {
+            this.restaurantHireDayButton.setStyle({ backgroundColor: '#2196F3' });
+        });
+        this.restaurantHireDayButton.on('pointerout', () => {
+            this.restaurantHireDayButton.setStyle({ backgroundColor: '#1976D2' });
+        });
+        this.restaurantHireDayButton.on('pointerdown', () => {
+            this.hireRestaurantWaiter('day');
+        });
+
+        this.restaurantInteriorContainer.add(this.restaurantHireDayButton);
+
+        // Hire Night Waiter button
+        this.restaurantHireNightButton = this.add.text(this.gameWidth / 2 + 150, this.gameHeight / 2 + 100, 'HIRE NIGHT WAITER ($800)', {
+            fontSize: '16px',
+            color: '#FFFFFF',
+            backgroundColor: '#7B1FA2',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5).setInteractive();
+        this.restaurantHireNightButton.setScrollFactor(0).setDepth(15001).setVisible(false);
+
+        this.restaurantHireNightButton.on('pointerover', () => {
+            this.restaurantHireNightButton.setStyle({ backgroundColor: '#9C27B0' });
+        });
+        this.restaurantHireNightButton.on('pointerout', () => {
+            this.restaurantHireNightButton.setStyle({ backgroundColor: '#7B1FA2' });
+        });
+        this.restaurantHireNightButton.on('pointerdown', () => {
+            this.hireRestaurantWaiter('night');
+        });
+
+        this.restaurantInteriorContainer.add(this.restaurantHireNightButton);
+
+        // Waiter wage text
+        this.restaurantWageText = this.add.text(this.gameWidth / 2, this.gameHeight / 2 + 160, '', {
+            fontSize: '14px',
+            color: '#000000',
+            backgroundColor: '#FFFFFF',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5);
+        this.restaurantWageText.setScrollFactor(0).setDepth(15001).setVisible(false);
+
+        this.restaurantInteriorContainer.add(this.restaurantWageText);
+
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
         this.restartConfirmContainer.setScrollFactor(0).setDepth(10000).setVisible(false);
@@ -2024,10 +2244,15 @@ class MainScene extends Phaser.Scene {
     createStreetFurniture() {
         const groundLevel = this.gameHeight - 100;
 
+        // Add mailboxes at the start of each district (not random - strategic placement!)
+        this.createMailbox(100, groundLevel);      // Start of Residential District
+        this.createMailbox(4000, groundLevel);     // Start of Downtown
+        this.createMailbox(8000, groundLevel);     // Start of Industrial District
+
         // Place furniture at intervals along the street
         // Avoid building positions (multiples of 240)
         for (let x = 120; x < 12000; x += 240) {
-            const furnitureType = Math.floor(Math.random() * 4); // 0-3 for 4 types
+            const furnitureType = Math.floor(Math.random() * 3); // 0-2 for 3 types (lamp, bench, trash)
 
             // Randomly skip some positions for variety
             if (Math.random() > 0.6) continue;
@@ -2041,9 +2266,6 @@ class MainScene extends Phaser.Scene {
                     break;
                 case 2:
                     this.createTrashCan(x, groundLevel);
-                    break;
-                case 3:
-                    this.createMailbox(x, groundLevel);
                     break;
             }
         }
@@ -3541,12 +3763,38 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    updateSpeedButtons() {
+        // Update speed button styles to highlight active speed
+        const activeColor = '#2E7D32';  // Green for active
+        const inactiveColor = '#424242'; // Gray for inactive
+
+        // Update speed buttons
+        this.speed1xButton.setStyle({ backgroundColor: this.timeSpeed === 1 ? activeColor : inactiveColor });
+        this.speed2xButton.setStyle({ backgroundColor: this.timeSpeed === 2 ? activeColor : inactiveColor });
+        this.speed3xButton.setStyle({ backgroundColor: this.timeSpeed === 3 ? activeColor : inactiveColor });
+
+        // Dim all buttons if paused
+        if (this.isPaused) {
+            this.speed1xButton.setStyle({ backgroundColor: inactiveColor });
+            this.speed2xButton.setStyle({ backgroundColor: inactiveColor });
+            this.speed3xButton.setStyle({ backgroundColor: inactiveColor });
+        }
+    }
+
     update() {
         // Update game time based on real time passed and speed multiplier (only if not paused)
         const now = Date.now();
         if (!this.isPaused) {
             const realTimePassed = (now - this.lastRealTime) / 1000; // seconds
-            const gameTimePassed = realTimePassed * this.timeSpeed * 15; // Game minutes (1 real second = 15 game minutes at 1x speed)
+
+            // Calculate current hour to determine day vs night
+            const totalMinutes = Math.floor(this.gameTime);
+            const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+            const isNight = hour < 6 || hour >= 20; // Night is 8pm to 6am
+
+            // Night goes double speed: 4 game minutes per real second vs 2 for day
+            const timeMultiplier = isNight ? 4 : 2;
+            const gameTimePassed = realTimePassed * this.timeSpeed * timeMultiplier;
             this.gameTime += gameTimePassed;
         }
         this.lastRealTime = now;
@@ -3787,6 +4035,17 @@ class MainScene extends Phaser.Scene {
                                 room.status = 'dirty';
                                 room.nightsOccupied = 0;
                                 console.log(`Guest checked out of room ${roomIndex + 1} after ${room.nightsOccupied} nights. Earned $${income}`);
+
+                                // If maid is hired, clean the room immediately
+                                if (building.hasMaid) {
+                                    room.status = 'clean';
+                                    console.log(`🧹 Maid immediately cleaned room ${roomIndex + 1} after checkout!`);
+
+                                    // Update hotel UI if player is viewing this hotel
+                                    if (this.insideHotel && this.currentHotel === building) {
+                                        this.updateHotelUI();
+                                    }
+                                }
                             }
                         } else if (room.status === 'clean') {
                             // Room is clean - new guest checks in
@@ -3924,27 +4183,38 @@ class MainScene extends Phaser.Scene {
                     }
                 }
 
-                // Maid progressive cleaning - cleans all rooms throughout the day
-                // Count total dirty rooms
-                const dirtyRooms = building.rooms.filter(room => room.status === 'dirty');
-                if (dirtyRooms.length > 0) {
-                    // Calculate time elapsed since last maid clean
-                    const timeSinceLastClean = this.gameTime - building.lastMaidClean;
+                // Maid now cleans rooms immediately when guests check out (see checkout logic above)
+                // No need for time-interval cleaning anymore!
+            }
 
-                    // Calculate cleaning interval based on number of dirty rooms
-                    // Spread cleaning over the full day (1440 minutes) so all rooms are clean by check-in time
-                    const cleaningInterval = (24 * 60) / dirtyRooms.length;
+            // Restaurant waiter wage payment
+            if (building.type === 'restaurant' && building.tables) {
+                const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
+                const lastWageDay = Math.floor((building.lastWageCheck || 0) / (24 * 60));
 
-                    // Check if it's time to clean another room
-                    if (timeSinceLastClean >= cleaningInterval) {
-                        // Clean the first dirty room
-                        dirtyRooms[0].status = 'clean';
-                        building.lastMaidClean = this.gameTime;
-                        console.log(`🧹 Hotel maid cleaned a room. ${dirtyRooms.length - 1} dirty rooms remaining.`);
+                // Pay wages at start of new day
+                if (currentDay > lastWageDay) {
+                    let totalWages = 0;
 
-                        // Update hotel UI if player is viewing this hotel
-                        if (this.insideHotel && this.currentHotel === building) {
-                            this.updateHotelUI();
+                    if (building.hasDayWaiter && building.dayWaiterWage > 0) {
+                        this.money -= building.dayWaiterWage;
+                        totalWages += building.dayWaiterWage;
+                        console.log(`💵 Paid $${building.dayWaiterWage} wage to day waiter. Day #${currentDay}`);
+                    }
+
+                    if (building.hasNightWaiter && building.nightWaiterWage > 0) {
+                        this.money -= building.nightWaiterWage;
+                        totalWages += building.nightWaiterWage;
+                        console.log(`💵 Paid $${building.nightWaiterWage} wage to night waiter. Day #${currentDay}`);
+                    }
+
+                    if (totalWages > 0) {
+                        building.lastWageCheck = this.gameTime;
+                        this.updateMoneyUI();
+
+                        // Update restaurant UI if player is viewing this restaurant
+                        if (this.insideRestaurant && this.currentRestaurant === building) {
+                            this.updateRestaurantUI();
                         }
                     }
                 }
@@ -3965,6 +4235,42 @@ class MainScene extends Phaser.Scene {
                     // Update shop UI if player is viewing this shop
                     if (this.insideShop && this.currentShop === building) {
                         this.updateShopInventoryUI();
+                    }
+                }
+            }
+
+            // Restaurant waiter cleaning (clean dirty tables when on duty)
+            if (building.type === 'restaurant' && building.tables) {
+                const totalMinutes = Math.floor(this.gameTime);
+                const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+                const isDayTime = hour >= 6 && hour < 20; // 6am-8pm is day shift
+
+                // Check if appropriate waiter is on duty
+                const waiterOnDuty = (isDayTime && building.hasDayWaiter) || (!isDayTime && building.hasNightWaiter);
+
+                if (waiterOnDuty) {
+                    // Clean dirty tables (one at a time, periodically)
+                    const dirtyTables = building.tables.filter(t => t.status === 'dirty');
+                    if (dirtyTables.length > 0) {
+                        // Initialize last clean time if not set
+                        if (!building.lastTableClean) {
+                            building.lastTableClean = this.gameTime;
+                        }
+
+                        const timeSinceLastClean = this.gameTime - building.lastTableClean;
+                        const cleaningInterval = 5; // Clean one table every 5 game minutes
+
+                        if (timeSinceLastClean >= cleaningInterval) {
+                            // Clean the first dirty table
+                            dirtyTables[0].status = 'available';
+                            building.lastTableClean = this.gameTime;
+                            console.log(`🧹 Waiter cleaned a table. ${dirtyTables.length - 1} dirty tables remaining.`);
+
+                            // Update UI if player is viewing this restaurant
+                            if (this.insideRestaurant && this.currentRestaurant === building) {
+                                this.updateRestaurantUI();
+                            }
+                        }
                     }
                 }
             }
@@ -4179,6 +4485,48 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // Check if player is near a restaurant (only when NOT inside a building)
+        if (!this.insideRestaurant && !this.insideHotel && !this.insideShop) {
+            this.nearRestaurant = null;
+            let closestRestaurantDistance = 150;
+            for (let building of this.buildings) {
+                if (building.type === 'restaurant') {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestRestaurantDistance) {
+                        this.nearRestaurant = building;
+                        closestRestaurantDistance = distance;
+                    }
+                }
+            }
+
+            // Restaurant interaction - Enter restaurant
+            if (this.nearRestaurant && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+                // Show prompt above the restaurant building
+                const restaurantType = this.buildingTypes[this.nearRestaurant.type];
+                if (!this.restaurantPrompt) {
+                    this.restaurantPrompt = this.add.text(this.nearRestaurant.x, this.nearRestaurant.y - restaurantType.height - 100, 'Press E to enter Restaurant', {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#FFE66D',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.restaurantPrompt.x = this.nearRestaurant.x;
+                    this.restaurantPrompt.y = this.nearRestaurant.y - restaurantType.height - 100;
+                    this.restaurantPrompt.setVisible(true);
+                }
+
+                // Enter restaurant
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.enterRestaurant(this.nearRestaurant);
+                }
+            } else {
+                if (this.restaurantPrompt) {
+                    this.restaurantPrompt.setVisible(false);
+                }
+            }
+        }
+
         // Exit shop if inside
         if (this.insideShop) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
@@ -4190,6 +4538,13 @@ class MainScene extends Phaser.Scene {
         if (this.insideHotel) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
                 this.exitHotel();
+            }
+        }
+
+        // Exit restaurant if inside
+        if (this.insideRestaurant) {
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
+                this.exitRestaurant();
             }
         }
 
@@ -4263,7 +4618,7 @@ class MainScene extends Phaser.Scene {
         // Handle mailbox menu
         if (this.mailboxMenuOpen && this.pendingApplications.length > 0) {
             // Close mailbox menu
-            if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || Phaser.Input.Keyboard.JustDown(this.escKey)) {
                 this.closeMailboxMenu();
             }
 
@@ -4458,8 +4813,23 @@ class MainScene extends Phaser.Scene {
             this.playerVisual.x = this.player.x;
             this.playerVisual.y = this.player.y;
 
-            // Movement (disabled when restart confirmation is showing)
-            if (!this.restartConfirmShowing) {
+            // Movement (disabled when inside buildings, menus open, or restart confirmation showing)
+            const movementBlocked = this.restartConfirmShowing || this.insideShop || this.insideHotel || this.insideRestaurant ||
+                                   this.bankMenuOpen || this.mailboxMenuOpen || this.buildConfirmShowing;
+
+            // Debug logging if movement is blocked unexpectedly
+            if (movementBlocked && (this.cursors.left.isDown || this.cursors.right.isDown || this.aKey.isDown || this.dKey.isDown)) {
+                console.log('Movement blocked!', {
+                    restartConfirmShowing: this.restartConfirmShowing,
+                    insideShop: this.insideShop,
+                    insideHotel: this.insideHotel,
+                    bankMenuOpen: this.bankMenuOpen,
+                    mailboxMenuOpen: this.mailboxMenuOpen,
+                    buildConfirmShowing: this.buildConfirmShowing
+                });
+            }
+
+            if (!movementBlocked) {
                 if (this.cursors.left.isDown || this.aKey.isDown) {
                     this.player.setVelocityX(-200);
                     this.playerVisual.scaleX = -1;
@@ -4473,8 +4843,8 @@ class MainScene extends Phaser.Scene {
                 this.player.setVelocityX(0);
             }
 
-            // Jump - check if on ground (disabled when restart confirmation is showing)
-            if (!this.restartConfirmShowing) {
+            // Jump - check if on ground (disabled when movement is blocked)
+            if (!movementBlocked) {
                 const onGround = this.player.body.touching.down ||
                                 this.player.body.blocked.down ||
                                 Math.abs(this.player.body.velocity.y) < 0.5;
@@ -4821,6 +5191,27 @@ class MainScene extends Phaser.Scene {
             buildingData.lastWageCheck = this.gameTime;  // Track last time we paid wages
         }
 
+        // Initialize restaurant tables if it's a restaurant
+        if (this.selectedBuilding === 'restaurant') {
+            buildingData.tables = [];
+            buildingData.hasDayWaiter = false;  // No day waiter until hired
+            buildingData.hasNightWaiter = false;  // No night waiter until hired
+            buildingData.dayWaiterWage = 0;  // No wage until day waiter is hired
+            buildingData.nightWaiterWage = 0;  // No wage until night waiter is hired
+            buildingData.lastWageCheck = this.gameTime;  // Track last time we paid wages
+            buildingData.mealPrice = 25;  // Price per meal
+
+            // Create 6 tables
+            for (let i = 0; i < 6; i++) {
+                buildingData.tables.push({
+                    status: 'available',  // available, occupied, or dirty
+                    customer: null,  // Reference to citizen occupying table
+                    mealStartTime: null,  // When customer started eating
+                    mealDuration: 0  // How long they'll eat (in game minutes)
+                });
+            }
+        }
+
         // Add window lights for nighttime
         this.addWindowLights(buildingData, building);
 
@@ -4894,7 +5285,14 @@ class MainScene extends Phaser.Scene {
                     hasEmployee: b.hasEmployee,
                     isOpen: b.isOpen,
                     dailyWage: b.dailyWage,
-                    lastWageCheck: b.lastWageCheck
+                    lastWageCheck: b.lastWageCheck,
+                    // Save restaurant tables
+                    tables: b.tables || undefined,
+                    hasDayWaiter: b.hasDayWaiter,
+                    hasNightWaiter: b.hasNightWaiter,
+                    dayWaiterWage: b.dayWaiterWage,
+                    nightWaiterWage: b.nightWaiterWage,
+                    mealPrice: b.mealPrice
                 })),
                 population: this.population,
                 populationCapacity: this.populationCapacity,
@@ -4970,7 +5368,13 @@ class MainScene extends Phaser.Scene {
                         buildingData.hasMaid,
                         buildingData.maidDailyWage,
                         buildingData.lastMaidWageCheck,
-                        buildingData.lastMaidClean
+                        buildingData.lastMaidClean,
+                        buildingData.tables,
+                        buildingData.hasDayWaiter,
+                        buildingData.hasNightWaiter,
+                        buildingData.dayWaiterWage,
+                        buildingData.nightWaiterWage,
+                        buildingData.mealPrice
                     );
                 });
                 console.log(`Successfully loaded ${this.buildings.length} buildings`);
@@ -4984,7 +5388,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0, hasMaid = null, maidDailyWage = null, lastMaidWageCheck = null, lastMaidClean = null) {
+    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0, hasMaid = null, maidDailyWage = null, lastMaidWageCheck = null, lastMaidClean = null, tables = null, hasDayWaiter = null, hasNightWaiter = null, dayWaiterWage = null, nightWaiterWage = null, mealPrice = null) {
         const building = this.buildingTypes[type];
         if (!building) {
             console.error(`Building type ${type} not found!`);
@@ -5147,6 +5551,17 @@ class MainScene extends Phaser.Scene {
             buildingData.hasEmployee = hasEmployee !== null ? hasEmployee : false;
             buildingData.isOpen = isOpen !== null ? isOpen : false;
             buildingData.dailyWage = dailyWage !== null ? dailyWage : 0;
+            buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.gameTime;
+        }
+
+        // Restore restaurant tables if they exist
+        if (tables) {
+            buildingData.tables = tables;
+            buildingData.hasDayWaiter = hasDayWaiter !== null ? hasDayWaiter : false;
+            buildingData.hasNightWaiter = hasNightWaiter !== null ? hasNightWaiter : false;
+            buildingData.dayWaiterWage = dayWaiterWage !== null ? dayWaiterWage : 0;
+            buildingData.nightWaiterWage = nightWaiterWage !== null ? nightWaiterWage : 0;
+            buildingData.mealPrice = mealPrice !== null ? mealPrice : 25;
             buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.gameTime;
         }
 
@@ -5314,6 +5729,164 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    enterRestaurant(restaurant) {
+        console.log('Entering restaurant');
+
+        // Collect accumulated income
+        if (restaurant.accumulatedIncome >= 1) {
+            const collectedIncome = Math.floor(restaurant.accumulatedIncome);
+            this.money += collectedIncome;
+            this.showFloatingMessage(restaurant.x, restaurant.y - 150, `+$${collectedIncome}`, '#4CAF50');
+            console.log(`Collected $${collectedIncome} from restaurant`);
+            restaurant.accumulatedIncome = 0;
+            restaurant.lastIncomeTime = Date.now();
+            this.updateMoneyUI();
+        }
+
+        this.insideRestaurant = true;
+        this.currentRestaurant = restaurant;
+
+        // Show restaurant interior
+        this.restaurantInteriorContainer.setVisible(true);
+
+        // Show cash on hand display
+        if (!this.cashOnHandDisplay) {
+            this.cashOnHandDisplay = this.add.text(this.gameWidth / 2, this.gameHeight - 50, '', {
+                fontSize: '20px',
+                color: '#FFFFFF',
+                backgroundColor: '#000000',
+                padding: { x: 20, y: 10 },
+                align: 'center'
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(20000);
+        }
+
+        this.cashOnHandDisplay.setText(`Cash on Hand: $${this.money}`);
+        this.cashOnHandDisplay.setVisible(true);
+
+        // Update restaurant UI
+        this.updateRestaurantUI();
+
+        // Disable player movement
+        this.player.setVelocityX(0);
+        this.player.setVelocityY(0);
+    }
+
+    exitRestaurant() {
+        console.log('Exiting restaurant');
+        this.insideRestaurant = false;
+        this.currentRestaurant = null;
+
+        // Hide restaurant interior
+        this.restaurantInteriorContainer.setVisible(false);
+
+        // Hide cash on hand display
+        if (this.cashOnHandDisplay) {
+            this.cashOnHandDisplay.setVisible(false);
+        }
+    }
+
+    updateRestaurantUI() {
+        if (!this.currentRestaurant || !this.currentRestaurant.tables) {
+            console.log('No restaurant or tables data');
+            return;
+        }
+
+        // Count table statuses
+        let availableCount = 0;
+        let occupiedCount = 0;
+        let dirtyCount = 0;
+
+        for (let table of this.currentRestaurant.tables) {
+            if (table.status === 'available') availableCount++;
+            else if (table.status === 'occupied') occupiedCount++;
+            else if (table.status === 'dirty') dirtyCount++;
+        }
+
+        // Update info text
+        const dayWaiterStatus = this.currentRestaurant.hasDayWaiter ? '✓ Day Waiter (6am-8pm)' : '✗ No Day Waiter';
+        const nightWaiterStatus = this.currentRestaurant.hasNightWaiter ? '✓ Night Waiter (8pm-6am)' : '✗ No Night Waiter';
+
+        const infoLines = [
+            `Total Tables: ${this.currentRestaurant.tables.length}`,
+            `Available: ${availableCount} | Occupied: ${occupiedCount} | Dirty: ${dirtyCount}`,
+            ``,
+            `${dayWaiterStatus}`,
+            `${nightWaiterStatus}`,
+            `Meal Price: $${this.currentRestaurant.mealPrice || 25}`
+        ];
+        this.restaurantInfoText.setText(infoLines.join('\n'));
+
+        // Show/hide waiter sprite (show if either waiter is hired)
+        if (this.restaurantWaiterSprite) {
+            this.restaurantWaiterSprite.setVisible(this.currentRestaurant.hasDayWaiter || this.currentRestaurant.hasNightWaiter);
+        }
+
+        // Update hire buttons and wage text
+        if (this.currentRestaurant.hasDayWaiter) {
+            this.restaurantHireDayButton.setVisible(false);
+        } else {
+            this.restaurantHireDayButton.setVisible(true);
+        }
+
+        if (this.currentRestaurant.hasNightWaiter) {
+            this.restaurantHireNightButton.setVisible(false);
+        } else {
+            this.restaurantHireNightButton.setVisible(true);
+        }
+
+        // Show total wages if any waiter is hired
+        const totalWages = (this.currentRestaurant.dayWaiterWage || 0) + (this.currentRestaurant.nightWaiterWage || 0);
+        if (totalWages > 0) {
+            this.restaurantWageText.setText(`Total Daily Wages: $${totalWages}`);
+            this.restaurantWageText.setVisible(true);
+        } else {
+            this.restaurantWageText.setVisible(false);
+        }
+    }
+
+    hireRestaurantWaiter(shift) {
+        if (!this.currentRestaurant) {
+            console.log('No restaurant to hire waiter for');
+            return;
+        }
+
+        if (shift === 'day' && this.currentRestaurant.hasDayWaiter) {
+            console.log('Restaurant already has a day waiter');
+            return;
+        }
+
+        if (shift === 'night' && this.currentRestaurant.hasNightWaiter) {
+            console.log('Restaurant already has a night waiter');
+            return;
+        }
+
+        const hiringCost = 800;
+        if (this.money < hiringCost) {
+            console.log(`❌ Not enough money to hire ${shift} waiter! Need $${hiringCost}, have $${this.money}`);
+            return;
+        }
+
+        // Hire waiter
+        this.money -= hiringCost;
+        const dailyWage = 40; // $40 per game day
+
+        if (shift === 'day') {
+            this.currentRestaurant.hasDayWaiter = true;
+            this.currentRestaurant.dayWaiterWage = dailyWage;
+            console.log(`✓ Hired DAY waiter for $${hiringCost}. Daily wage: $${dailyWage}`);
+        } else if (shift === 'night') {
+            this.currentRestaurant.hasNightWaiter = true;
+            this.currentRestaurant.nightWaiterWage = dailyWage;
+            console.log(`✓ Hired NIGHT waiter for $${hiringCost}. Daily wage: $${dailyWage}`);
+        }
+
+        this.updateMoneyUI();
+        this.updateRestaurantUI();
+
+        // Save game
+        this.saveGame();
+    }
+
     updateHotelUI() {
         if (!this.currentHotel || !this.currentHotel.rooms) {
             console.log('No hotel or rooms data');
@@ -5338,7 +5911,7 @@ class MainScene extends Phaser.Scene {
         const employeeStatus = this.currentHotel.hasEmployee ? '✓ Front Desk' : '✗ No Front Desk';
         const autoCleanInfo = this.currentHotel.hasEmployee ? '(Cleans 1 room/day)' : '';
         const maidStatus = this.currentHotel.hasMaid ? '✓ Maid' : '✗ No Maid';
-        const maidCleanInfo = this.currentHotel.hasMaid ? '(Cleans all rooms throughout day)' : '';
+        const maidCleanInfo = this.currentHotel.hasMaid ? '(Cleans immediately after checkout)' : '';
 
         const infoLines = [
             `Total Rooms: ${this.currentHotel.rooms.length}`,
@@ -5360,8 +5933,8 @@ class MainScene extends Phaser.Scene {
             this.hotelMaidSprite.setVisible(this.currentHotel.hasMaid);
         }
 
-        // Update clean button
-        if (dirtyCount > 0) {
+        // Update clean button (only show if NO maid - maid cleans automatically!)
+        if (dirtyCount > 0 && !this.currentHotel.hasMaid) {
             this.hotelCleanButton.setText(`🧹 CLEAN ALL DIRTY ROOMS ($${totalCost})`);
             if (this.money >= totalCost) {
                 this.hotelCleanButton.setStyle({ backgroundColor: '#E91E63' });
@@ -6109,11 +6682,13 @@ class MainScene extends Phaser.Scene {
                     // Time to leave - head to nearest bus stop
                     let nearestStop = null;
                     let nearestDistance = Infinity;
-                    for (let stop of this.busStops) {
-                        const dist = Math.abs(citizen.x - stop.x);
-                        if (dist < nearestDistance) {
-                            nearestDistance = dist;
-                            nearestStop = stop;
+                    if (this.busStops && this.busStops.length > 0) {
+                        for (let stop of this.busStops) {
+                            const dist = Math.abs(citizen.x - stop.x);
+                            if (dist < nearestDistance) {
+                                nearestDistance = dist;
+                                nearestStop = stop;
+                            }
                         }
                     }
 
@@ -6132,7 +6707,7 @@ class MainScene extends Phaser.Scene {
                 citizen.container.x = citizen.x;
 
                 // Randomly decide to go to a bus stop
-                if (Math.random() < 0.001) { // 0.1% chance per frame
+                if (Math.random() < 0.001 && this.busStops && this.busStops.length > 0) { // 0.1% chance per frame
                     // Find nearest bus stop
                     let nearestStop = null;
                     let nearestDistance = Infinity;
@@ -6178,18 +6753,43 @@ class MainScene extends Phaser.Scene {
                         b.inventory.stock >= b.inventory.salesPerCustomer
                     );
 
-                    // If no shops available, visit any nearby building
+                    // Get current hour for restaurant shift check
+                    const totalMinutes = Math.floor(this.gameTime);
+                    const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+                    const isDayTime = hour >= 6 && hour < 20; // 6am-8pm is day shift
+
+                    // Find nearby restaurants with available tables and appropriate waiter
+                    const nearbyRestaurants = this.buildings.filter(b =>
+                        b.type === 'restaurant' &&
+                        Math.abs(b.x - citizen.x) < 800 &&
+                        b.tables &&
+                        b.tables.some(t => t.status === 'available') &&
+                        ((isDayTime && b.hasDayWaiter) || (!isDayTime && b.hasNightWaiter))
+                    );
+
+                    // Choose target building (40% shop, 30% restaurant, 30% any)
                     let targetBuilding = null;
-                    if (nearbyShops.length > 0) {
+                    const randomChoice = Math.random();
+
+                    if (randomChoice < 0.4 && nearbyShops.length > 0) {
+                        // 40% chance to visit shop
                         targetBuilding = nearbyShops[Math.floor(Math.random() * nearbyShops.length)];
                         citizen.isShoppingVisit = true;
+                        citizen.isDiningVisit = false;
+                    } else if (randomChoice < 0.7 && nearbyRestaurants.length > 0) {
+                        // 30% chance to visit restaurant
+                        targetBuilding = nearbyRestaurants[Math.floor(Math.random() * nearbyRestaurants.length)];
+                        citizen.isShoppingVisit = false;
+                        citizen.isDiningVisit = true;
                     } else {
+                        // 30% chance to visit any building
                         const nearbyBuildings = this.buildings.filter(b =>
                             Math.abs(b.x - citizen.x) < 500
                         );
                         if (nearbyBuildings.length > 0) {
                             targetBuilding = nearbyBuildings[Math.floor(Math.random() * nearbyBuildings.length)];
                             citizen.isShoppingVisit = false;
+                            citizen.isDiningVisit = false;
                         }
                     }
 
@@ -6201,12 +6801,40 @@ class MainScene extends Phaser.Scene {
 
                 // Check if reached target building
                 if (citizen.targetBuilding) {
-                    const distanceToBuilding = Math.abs(citizen.x - citizen.targetBuilding.x);
-                    if (distanceToBuilding < 50) {
-                        // Arrived at building - start visit
-                        citizen.state = 'visiting';
-                        citizen.visitTimer = 5 + Math.random() * 10; // Visit for 5-15 seconds
-                        citizen.container.setVisible(false); // Hide while inside building
+                    // Safety check: make sure building still exists
+                    if (!this.buildings.includes(citizen.targetBuilding)) {
+                        citizen.targetBuilding = null;
+                        citizen.direction = Math.random() > 0.5 ? 1 : -1;
+                    } else {
+                        const distanceToBuilding = Math.abs(citizen.x - citizen.targetBuilding.x);
+                        if (distanceToBuilding < 50) {
+                            // Special handling for restaurants - find available table
+                            if (citizen.isDiningVisit && citizen.targetBuilding.type === 'restaurant' && citizen.targetBuilding.tables) {
+                                const availableTable = citizen.targetBuilding.tables.find(t => t.status === 'available');
+                                if (availableTable) {
+                                    // Occupy the table
+                                    availableTable.status = 'occupied';
+                                    availableTable.customer = citizen;
+                                    availableTable.mealStartTime = this.gameTime;
+                                    availableTable.mealDuration = 15 + Math.random() * 20; // 15-35 game minutes
+
+                                    citizen.state = 'visiting';
+                                    citizen.visitTimer = availableTable.mealDuration / 60; // Convert game minutes to real seconds
+                                    citizen.occupiedTable = availableTable;
+                                    citizen.container.setVisible(false); // Hide while dining
+                                    console.log(`🍽️ Customer seated at restaurant, will dine for ${Math.floor(availableTable.mealDuration)} game minutes`);
+                                } else {
+                                    // No tables available, leave
+                                    citizen.targetBuilding = null;
+                                    citizen.direction = Math.random() > 0.5 ? 1 : -1;
+                                }
+                            } else {
+                                // Regular building visit
+                                citizen.state = 'visiting';
+                                citizen.visitTimer = 5 + Math.random() * 10; // Visit for 5-15 seconds
+                                citizen.container.setVisible(false); // Hide while inside building
+                            }
+                        }
                     }
                 }
             } else if (citizen.state === 'waiting') {
@@ -6229,6 +6857,15 @@ class MainScene extends Phaser.Scene {
                 // Citizen is inside a building
                 citizen.visitTimer -= deltaTime;
                 if (citizen.visitTimer <= 0) {
+                    // Safety check: make sure building still exists
+                    if (citizen.targetBuilding && !this.buildings.includes(citizen.targetBuilding)) {
+                        citizen.targetBuilding = null;
+                        citizen.state = 'walking';
+                        citizen.container.setVisible(true);
+                        citizen.direction = Math.random() > 0.5 ? 1 : -1;
+                        continue;
+                    }
+
                     // Process shop purchase if this was a shopping visit
                     if (citizen.isShoppingVisit && citizen.targetBuilding && this.isShop(citizen.targetBuilding.type)) {
                         const shop = citizen.targetBuilding;
@@ -6247,6 +6884,33 @@ class MainScene extends Phaser.Scene {
                             }
                         }
                         citizen.isShoppingVisit = false;
+                    }
+
+                    // Process restaurant payment if this was a dining visit
+                    if (citizen.isDiningVisit && citizen.targetBuilding && citizen.targetBuilding.type === 'restaurant') {
+                        const restaurant = citizen.targetBuilding;
+                        const mealPrice = restaurant.mealPrice || 25;
+
+                        // Customer pays for meal
+                        restaurant.accumulatedIncome = (restaurant.accumulatedIncome || 0) + mealPrice;
+                        console.log(`🍽️ Customer paid $${mealPrice} for meal. Restaurant income: $${Math.floor(restaurant.accumulatedIncome)}`);
+
+                        // Mark table as dirty if citizen has an occupied table
+                        if (citizen.occupiedTable) {
+                            citizen.occupiedTable.status = 'dirty';
+                            citizen.occupiedTable.customer = null;
+                            citizen.occupiedTable.mealStartTime = null;
+                            citizen.occupiedTable.mealDuration = 0;
+                            citizen.occupiedTable = null;
+                            console.log(`🍽️ Table marked as dirty after customer left`);
+
+                            // Update UI if player is currently viewing this restaurant
+                            if (this.insideRestaurant && this.currentRestaurant === restaurant) {
+                                this.updateRestaurantUI();
+                            }
+                        }
+
+                        citizen.isDiningVisit = false;
                     }
 
                     // Finished visiting - come back out
