@@ -1064,35 +1064,50 @@ class MainScene extends Phaser.Scene {
         this.hotelInteriorContainer.add(deskTop);
 
         // Hotel employee (front desk clerk) - only visible when hired
-        // Position behind the desk so they appear to be standing there
-        const hotelEmployee = this.add.container(this.gameWidth / 2, this.gameHeight - 320);
+        // Position so feet are on the floor (floor is at gameHeight - 250)
+        const hotelEmployee = this.add.container(this.gameWidth / 2, this.gameHeight - 250);
+
+        // Employee legs
+        const hotelEmpLegs = this.add.graphics();
+        hotelEmpLegs.fillStyle(0x1565C0, 1); // Darker blue for pants
+        hotelEmpLegs.fillRect(-12, -50, 24, 50); // Left leg
+        hotelEmpLegs.fillRect(-12, -50, 10, 50); // Left leg (narrower)
+        hotelEmpLegs.fillRect(2, -50, 10, 50); // Right leg (narrower)
+        hotelEmployee.add(hotelEmpLegs);
+
+        // Employee shoes
+        const hotelEmpShoes = this.add.graphics();
+        hotelEmpShoes.fillStyle(0x000000, 1);
+        hotelEmpShoes.fillEllipse(-7, -2, 12, 6); // Left shoe
+        hotelEmpShoes.fillEllipse(7, -2, 12, 6); // Right shoe
+        hotelEmployee.add(hotelEmpShoes);
 
         // Employee body (much larger, normal proportions)
-        const hotelEmpBody = this.add.rectangle(0, 0, 60, 100, 0x1976D2); // Blue uniform
+        const hotelEmpBody = this.add.rectangle(0, -95, 60, 90, 0x1976D2); // Blue uniform
         hotelEmployee.add(hotelEmpBody);
 
         // Employee head (proportional to body)
-        const hotelEmpHead = this.add.circle(0, -70, 25, 0xFFDBAC);
+        const hotelEmpHead = this.add.circle(0, -160, 25, 0xFFDBAC);
         hotelEmployee.add(hotelEmpHead);
 
         // Employee eyes
         const hotelEmpEyes = this.add.graphics();
         hotelEmpEyes.fillStyle(0x000000, 1);
-        hotelEmpEyes.fillCircle(-8, -72, 3);
-        hotelEmpEyes.fillCircle(8, -72, 3);
+        hotelEmpEyes.fillCircle(-8, -162, 3);
+        hotelEmpEyes.fillCircle(8, -162, 3);
         hotelEmployee.add(hotelEmpEyes);
 
         // Employee smile
         const hotelEmpSmile = this.add.graphics();
         hotelEmpSmile.lineStyle(3, 0x000000, 1);
-        hotelEmpSmile.arc(0, -62, 10, 0, Math.PI);
+        hotelEmpSmile.arc(0, -152, 10, 0, Math.PI);
         hotelEmpSmile.strokePath();
         hotelEmployee.add(hotelEmpSmile);
 
         // Employee name tag (larger)
-        const hotelNameTag = this.add.rectangle(0, 20, 35, 12, 0xFFD700);
+        const hotelNameTag = this.add.rectangle(0, -70, 35, 12, 0xFFD700);
         hotelEmployee.add(hotelNameTag);
-        const hotelNameTagText = this.add.text(0, 20, 'STAFF', {
+        const hotelNameTagText = this.add.text(0, -70, 'STAFF', {
             fontSize: '8px',
             color: '#000000',
             fontStyle: 'bold'
@@ -1102,6 +1117,79 @@ class MainScene extends Phaser.Scene {
         hotelEmployee.setVisible(false); // Hidden until employee is hired
         this.hotelInteriorContainer.add(hotelEmployee);
         this.hotelEmployeeSprite = hotelEmployee; // Store reference
+
+        // Hotel maid - only visible when hired
+        // Position on the left side with feet on the floor
+        const hotelMaid = this.add.container(this.gameWidth / 2 - 200, this.gameHeight - 250);
+
+        // Cleaning cart (on the floor, to the right of maid)
+        const cart = this.add.graphics();
+        cart.fillStyle(0xC0C0C0, 1); // Silver cart
+        cart.fillRect(80, -90, 50, 60);
+        cart.lineStyle(2, 0x808080, 1);
+        cart.strokeRect(80, -90, 50, 60);
+        // Cart wheels (on the floor)
+        cart.fillStyle(0x404040, 1);
+        cart.fillCircle(90, -28, 8);
+        cart.fillCircle(120, -28, 8);
+        hotelMaid.add(cart);
+
+        // Maid legs
+        const maidLegs = this.add.graphics();
+        maidLegs.fillStyle(0x6D4C41, 1); // Brown stockings/pants
+        maidLegs.fillRect(-12, -50, 10, 50); // Left leg
+        maidLegs.fillRect(2, -50, 10, 50); // Right leg
+        hotelMaid.add(maidLegs);
+
+        // Maid shoes
+        const maidShoes = this.add.graphics();
+        maidShoes.fillStyle(0x000000, 1);
+        maidShoes.fillEllipse(-7, -2, 12, 6); // Left shoe
+        maidShoes.fillEllipse(7, -2, 12, 6); // Right shoe
+        hotelMaid.add(maidShoes);
+
+        // Maid body
+        const maidBody = this.add.rectangle(0, -95, 55, 90, 0x8B4513); // Brown/tan uniform
+        hotelMaid.add(maidBody);
+
+        // White apron
+        const apron = this.add.rectangle(0, -85, 50, 70, 0xFFFFFF);
+        hotelMaid.add(apron);
+
+        // Apron straps
+        const apronStraps = this.add.graphics();
+        apronStraps.lineStyle(3, 0xFFFFFF, 1);
+        apronStraps.lineBetween(-15, -140, -10, -85);
+        apronStraps.lineBetween(15, -140, 10, -85);
+        hotelMaid.add(apronStraps);
+
+        // Maid head
+        const maidHead = this.add.circle(0, -160, 25, 0xFFDBAC);
+        hotelMaid.add(maidHead);
+
+        // Maid hair/cap
+        const maidCap = this.add.graphics();
+        maidCap.fillStyle(0xFFFFFF, 1);
+        maidCap.fillEllipse(0, -175, 30, 15);
+        hotelMaid.add(maidCap);
+
+        // Maid eyes
+        const maidEyes = this.add.graphics();
+        maidEyes.fillStyle(0x000000, 1);
+        maidEyes.fillCircle(-8, -162, 3);
+        maidEyes.fillCircle(8, -162, 3);
+        hotelMaid.add(maidEyes);
+
+        // Maid smile
+        const maidSmile = this.add.graphics();
+        maidSmile.lineStyle(3, 0x000000, 1);
+        maidSmile.arc(0, -152, 10, 0, Math.PI);
+        maidSmile.strokePath();
+        hotelMaid.add(maidSmile);
+
+        hotelMaid.setVisible(false); // Hidden until maid is hired
+        this.hotelInteriorContainer.add(hotelMaid);
+        this.hotelMaidSprite = hotelMaid; // Store reference
 
         // Hotel chandelier
         const chandelier = this.add.graphics();
@@ -1210,6 +1298,38 @@ class MainScene extends Phaser.Scene {
         this.hotelWageText.setScrollFactor(0).setDepth(15001).setVisible(false);
 
         this.hotelInteriorContainer.add(this.hotelWageText);
+
+        // Hire Maid button
+        this.hotelHireMaidButton = this.add.text(this.gameWidth / 2, this.gameHeight / 2 + 165, 'HIRE MAID ($1000)', {
+            fontSize: '18px',
+            color: '#FFFFFF',
+            backgroundColor: '#7B1FA2',
+            padding: { x: 20, y: 10 }
+        }).setOrigin(0.5).setInteractive();
+        this.hotelHireMaidButton.setScrollFactor(0).setDepth(15001).setVisible(false);
+
+        this.hotelHireMaidButton.on('pointerover', () => {
+            this.hotelHireMaidButton.setStyle({ backgroundColor: '#9C27B0' });
+        });
+        this.hotelHireMaidButton.on('pointerout', () => {
+            this.hotelHireMaidButton.setStyle({ backgroundColor: '#7B1FA2' });
+        });
+        this.hotelHireMaidButton.on('pointerdown', () => {
+            this.hireHotelMaid();
+        });
+
+        this.hotelInteriorContainer.add(this.hotelHireMaidButton);
+
+        // Maid wage info
+        this.hotelMaidWageText = this.add.text(this.gameWidth / 2, this.gameHeight / 2 + 165, '', {
+            fontSize: '16px',
+            color: '#000000',
+            backgroundColor: '#FFFFFF',
+            padding: { x: 15, y: 8 }
+        }).setOrigin(0.5);
+        this.hotelMaidWageText.setScrollFactor(0).setDepth(15001).setVisible(false);
+
+        this.hotelInteriorContainer.add(this.hotelMaidWageText);
 
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
@@ -2735,7 +2855,20 @@ class MainScene extends Phaser.Scene {
 
         } else if (type === 'clothingShop') {
             // CLOTHING SHOP: Elegant boutique with tall windows and mannequin displays
-            const windowColor = 0xF0E6FF; // Light purple tint
+            // 4 color variations for variety
+            const colorSchemes = [
+                { building: 0xFF69B4, awning: 0xE91E63, window: 0xF0E6FF },  // Hot Pink (original)
+                { building: 0xFFE4E1, awning: 0xFFB6C1, window: 0xFFF0F5 },  // Misty Rose/Light Pink
+                { building: 0xE6E6FA, awning: 0x9370DB, window: 0xF8F8FF },  // Lavender/Medium Purple
+                { building: 0xFFE4B5, awning: 0xD2691E, window: 0xFFFAF0 }   // Moccasin/Chocolate
+            ];
+            const scheme = colorSchemes[facadeVariation % 4];
+
+            // Override the building base color with variation color
+            graphics.fillStyle(scheme.building, 1);
+            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+            const windowColor = scheme.window;
 
             // Large elegant storefront window (taller and more upscale)
             graphics.fillStyle(0x000000, 0.3);
@@ -2784,11 +2917,11 @@ class MainScene extends Phaser.Scene {
                 graphics.strokeRect(wx - 10, wy, 20, 40);
             }
 
-            // Purple/Pink elegant awning
+            // Elegant awning - uses variation color
             graphics.fillStyle(0x000000, 0.3);
             graphics.fillRect(x - 75, y - 140, 150, 8);
 
-            graphics.fillStyle(0xE91E63, 1); // Hot pink
+            graphics.fillStyle(scheme.awning, 1);
             graphics.fillRect(x - 75, y - 148, 150, 8);
 
             graphics.fillStyle(0xC2185B, 1); // Darker pink
@@ -2823,7 +2956,21 @@ class MainScene extends Phaser.Scene {
 
         } else if (type === 'electronicsShop') {
             // ELECTRONICS SHOP: Modern tech store with grid windows and neon accents
-            const windowColor = 0xE3F2FD; // Light tech blue
+
+            // Color variations for electronics shop
+            const colorSchemes = [
+                { building: 0x1E88E5, awning: 0x1976D2, window: 0xE3F2FD },  // Classic Blue (original)
+                { building: 0x424242, awning: 0x212121, window: 0xF5F5F5 },  // Sleek Gray/Black
+                { building: 0x00897B, awning: 0x00695C, window: 0xE0F2F1 },  // Teal/Cyan
+                { building: 0x5E35B1, awning: 0x4527A0, window: 0xEDE7F6 }   // Purple/Violet
+            ];
+            const scheme = colorSchemes[facadeVariation % 4];
+
+            // Override the building base color with variation color
+            graphics.fillStyle(scheme.building, 1);
+            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+            const windowColor = scheme.window;
 
             // Modern grid display window (multiple screens look)
             for (let row = 0; row < 2; row++) {
@@ -2872,10 +3019,15 @@ class MainScene extends Phaser.Scene {
             graphics.fillStyle(0x000000, 0.3);
             graphics.fillRect(x - 70, y - 140, 140, 8);
 
-            graphics.fillStyle(0x1976D2, 1);
+            graphics.fillStyle(scheme.awning, 1);
             graphics.fillRect(x - 70, y - 148, 140, 8);
 
-            graphics.fillStyle(0x1565C0, 1);
+            // Darker shade for 3D effect
+            const awningR = (scheme.awning >> 16) & 0xFF;
+            const awningG = (scheme.awning >> 8) & 0xFF;
+            const awningB = scheme.awning & 0xFF;
+            const darkerAwning = ((awningR * 0.85) << 16) | ((awningG * 0.85) << 8) | (awningB * 0.85);
+            graphics.fillStyle(darkerAwning, 1);
             graphics.beginPath();
             graphics.moveTo(x - 70, y - 140);
             graphics.lineTo(x + 70, y - 140);
@@ -2905,7 +3057,21 @@ class MainScene extends Phaser.Scene {
 
         } else if (type === 'groceryStore') {
             // GROCERY STORE: Market style with produce crates outside and multiple windows
-            const windowColor = 0xE8F5E9; // Light green tint
+
+            // Color variations for grocery store
+            const colorSchemes = [
+                { building: 0x81C784, awning: 0x66BB6A, awningDark: 0x4CAF50, window: 0xE8F5E9 },  // Classic Green (original)
+                { building: 0xFFB74D, awning: 0xFF9800, awningDark: 0xF57C00, window: 0xFFF3E0 },  // Orange/Warm
+                { building: 0x9575CD, awning: 0x7E57C2, awningDark: 0x5E35B1, window: 0xF3E5F5 },  // Purple/Lavender
+                { building: 0x4DD0E1, awning: 0x26C6DA, awningDark: 0x00ACC1, window: 0xE0F7FA }   // Cyan/Aqua
+            ];
+            const scheme = colorSchemes[facadeVariation % 4];
+
+            // Override the building base color with variation color
+            graphics.fillStyle(scheme.building, 1);
+            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+            const windowColor = scheme.window;
 
             // Multiple small market-style windows
             for (let col = 0; col < 4; col++) {
@@ -2972,10 +3138,10 @@ class MainScene extends Phaser.Scene {
             graphics.fillStyle(0x000000, 0.3);
             graphics.fillRect(x - 70, y - 125, 140, 8);
 
-            graphics.fillStyle(0x66BB6A, 1); // Bright green
+            graphics.fillStyle(scheme.awning, 1);
             graphics.fillRect(x - 70, y - 133, 140, 8);
 
-            graphics.fillStyle(0x4CAF50, 1); // Darker green
+            graphics.fillStyle(scheme.awningDark, 1);
             graphics.beginPath();
             graphics.moveTo(x - 70, y - 125);
             graphics.lineTo(x + 70, y - 125);
@@ -2984,8 +3150,12 @@ class MainScene extends Phaser.Scene {
             graphics.closePath();
             graphics.fillPath();
 
-            // Awning stripes
-            graphics.lineStyle(2, 0x2E7D32, 1);
+            // Awning stripes - darker shade for stripes
+            const stripeR = (scheme.awningDark >> 16) & 0xFF;
+            const stripeG = (scheme.awningDark >> 8) & 0xFF;
+            const stripeB = scheme.awningDark & 0xFF;
+            const darkerStripe = ((stripeR * 0.7) << 16) | ((stripeG * 0.7) << 8) | (stripeB * 0.7);
+            graphics.lineStyle(2, darkerStripe, 1);
             for (let i = 0; i < 7; i++) {
                 graphics.lineBetween(x - 70 + (i * 23), y - 133, x - 70 + (i * 23), y - 125);
             }
@@ -3010,7 +3180,21 @@ class MainScene extends Phaser.Scene {
 
         } else if (type === 'bookstore') {
             // BOOKSTORE: Cozy vintage shop with shutters and book displays
-            const windowColor = 0xFFF9E6; // Warm paper color
+
+            // Color variations for bookstore
+            const colorSchemes = [
+                { building: 0xA1887F, awning: 0x8D6E63, awningDark: 0x6D4C41, shutter: 0x6D4C41, window: 0xFFF9E6 },  // Classic Brown (original)
+                { building: 0x9FA8DA, awning: 0x7986CB, awningDark: 0x5C6BC0, shutter: 0x3F51B5, window: 0xE8EAF6 },  // Indigo/Navy
+                { building: 0xA5D6A7, awning: 0x81C784, awningDark: 0x66BB6A, shutter: 0x4CAF50, window: 0xF1F8E9 },  // Green/Sage
+                { building: 0xFFAB91, awning: 0xFF8A65, awningDark: 0xFF7043, shutter: 0xFF5722, window: 0xFFF3E0 }   // Coral/Terracotta
+            ];
+            const scheme = colorSchemes[facadeVariation % 4];
+
+            // Override the building base color with variation color
+            graphics.fillStyle(scheme.building, 1);
+            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+            const windowColor = scheme.window;
 
             // Large storefront window with book display
             graphics.fillStyle(0x000000, 0.3);
@@ -3048,7 +3232,7 @@ class MainScene extends Phaser.Scene {
                 const wy = y - building.height + 30;
 
                 // Shutters (left side)
-                graphics.fillStyle(0x6D4C41, 1);
+                graphics.fillStyle(scheme.shutter, 1);
                 graphics.fillRect(wx - 30, wy, 10, 35);
                 graphics.lineStyle(1, 0x4E342E, 1);
                 graphics.strokeRect(wx - 30, wy, 10, 35);
@@ -3071,7 +3255,7 @@ class MainScene extends Phaser.Scene {
                 graphics.lineBetween(wx, wy, wx, wy + 35);
 
                 // Shutters (right side)
-                graphics.fillStyle(0x6D4C41, 1);
+                graphics.fillStyle(scheme.shutter, 1);
                 graphics.fillRect(wx + 20, wy, 10, 35);
                 graphics.lineStyle(1, 0x4E342E, 1);
                 graphics.strokeRect(wx + 20, wy, 10, 35);
@@ -3084,10 +3268,10 @@ class MainScene extends Phaser.Scene {
             graphics.fillStyle(0x000000, 0.3);
             graphics.fillRect(x - 70, y - 125, 140, 8);
 
-            graphics.fillStyle(0x8D6E63, 1);
+            graphics.fillStyle(scheme.awning, 1);
             graphics.fillRect(x - 70, y - 133, 140, 8);
 
-            graphics.fillStyle(0x6D4C41, 1);
+            graphics.fillStyle(scheme.awningDark, 1);
             graphics.beginPath();
             graphics.moveTo(x - 70, y - 125);
             graphics.lineTo(x + 70, y - 125);
@@ -3666,6 +3850,50 @@ class MainScene extends Phaser.Scene {
                         }
                     }
                     building.lastAutoClean = this.gameTime;
+                }
+            }
+
+            // Hotel maid wage payment and progressive cleaning
+            if (building.type === 'hotel' && building.hasMaid && building.maidDailyWage > 0 && building.rooms) {
+                const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
+                const lastMaidWageDay = Math.floor((building.lastMaidWageCheck || 0) / (24 * 60));
+
+                // Pay maid wage at start of new day
+                if (currentDay > lastMaidWageDay) {
+                    this.money -= building.maidDailyWage;
+                    console.log(`💵 Paid $${building.maidDailyWage} wage to hotel maid. Day #${currentDay}`);
+                    building.lastMaidWageCheck = this.gameTime;
+                    this.updateMoneyUI();
+
+                    // Update hotel UI if player is viewing this hotel
+                    if (this.insideHotel && this.currentHotel === building) {
+                        this.updateHotelUI();
+                    }
+                }
+
+                // Maid progressive cleaning - cleans all rooms throughout the day
+                // Count total dirty rooms
+                const dirtyRooms = building.rooms.filter(room => room.status === 'dirty');
+                if (dirtyRooms.length > 0) {
+                    // Calculate time elapsed since last maid clean
+                    const timeSinceLastClean = this.gameTime - building.lastMaidClean;
+
+                    // Calculate cleaning interval based on number of dirty rooms
+                    // Spread cleaning over the full day (1440 minutes) so all rooms are clean by check-in time
+                    const cleaningInterval = (24 * 60) / dirtyRooms.length;
+
+                    // Check if it's time to clean another room
+                    if (timeSinceLastClean >= cleaningInterval) {
+                        // Clean the first dirty room
+                        dirtyRooms[0].status = 'clean';
+                        building.lastMaidClean = this.gameTime;
+                        console.log(`🧹 Hotel maid cleaned a room. ${dirtyRooms.length - 1} dirty rooms remaining.`);
+
+                        // Update hotel UI if player is viewing this hotel
+                        if (this.insideHotel && this.currentHotel === building) {
+                            this.updateHotelUI();
+                        }
+                    }
                 }
             }
 
@@ -4496,10 +4724,14 @@ class MainScene extends Phaser.Scene {
             buildingData.rooms = [];
             buildingData.lastNightCheck = this.gameTime; // Track last time we checked for night transition
             buildingData.accumulatedIncome = 0; // Total income from all rooms
-            buildingData.hasEmployee = false;  // No employee until hired
+            buildingData.hasEmployee = false;  // No front desk employee until hired
             buildingData.dailyWage = 0;  // No wage until employee is hired
             buildingData.lastWageCheck = this.gameTime;  // Track last time we paid wages
             buildingData.lastAutoClean = this.gameTime;  // Track last time employee auto-cleaned
+            buildingData.hasMaid = false;  // No maid until hired
+            buildingData.maidDailyWage = 0;  // No maid wage until hired
+            buildingData.lastMaidWageCheck = this.gameTime;  // Track last time we paid maid
+            buildingData.lastMaidClean = this.gameTime;  // Track last time maid cleaned a room
 
             for (let i = 0; i < building.rooms; i++) {
                 buildingData.rooms.push({
@@ -4566,6 +4798,10 @@ class MainScene extends Phaser.Scene {
                     rooms: b.rooms || undefined,
                     lastNightCheck: b.lastNightCheck || undefined,
                     lastAutoClean: b.lastAutoClean || undefined,
+                    hasMaid: b.hasMaid,
+                    maidDailyWage: b.maidDailyWage,
+                    lastMaidWageCheck: b.lastMaidWageCheck,
+                    lastMaidClean: b.lastMaidClean,
                     // Save shop inventory
                     inventory: b.inventory || undefined,
                     hasEmployee: b.hasEmployee,
@@ -4635,7 +4871,11 @@ class MainScene extends Phaser.Scene {
                         buildingData.dailyWage,
                         buildingData.lastWageCheck,
                         buildingData.lastAutoClean,
-                        buildingData.facadeVariation || 0
+                        buildingData.facadeVariation || 0,
+                        buildingData.hasMaid,
+                        buildingData.maidDailyWage,
+                        buildingData.lastMaidWageCheck,
+                        buildingData.lastMaidClean
                     );
                 });
                 console.log(`Successfully loaded ${this.buildings.length} buildings`);
@@ -4649,7 +4889,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0) {
+    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0, hasMaid = null, maidDailyWage = null, lastMaidWageCheck = null, lastMaidClean = null) {
         const building = this.buildingTypes[type];
         if (!building) {
             console.error(`Building type ${type} not found!`);
@@ -4795,6 +5035,10 @@ class MainScene extends Phaser.Scene {
             buildingData.dailyWage = dailyWage !== null ? dailyWage : 0;
             buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.gameTime;
             buildingData.lastAutoClean = lastAutoClean !== null ? lastAutoClean : this.gameTime;
+            buildingData.hasMaid = hasMaid !== null ? hasMaid : false;
+            buildingData.maidDailyWage = maidDailyWage !== null ? maidDailyWage : 0;
+            buildingData.lastMaidWageCheck = lastMaidWageCheck !== null ? lastMaidWageCheck : this.gameTime;
+            buildingData.lastMaidClean = lastMaidClean !== null ? lastMaidClean : this.gameTime;
         }
 
         // Initialize shop inventory if it's a shop (use saved data or defaults)
@@ -4944,14 +5188,17 @@ class MainScene extends Phaser.Scene {
         const totalCost = dirtyCount * hotelType.cleaningCost;
 
         // Update info text
-        const employeeStatus = this.currentHotel.hasEmployee ? '✓ Employee Hired' : '✗ No Employee';
-        const autoCleanInfo = this.currentHotel.hasEmployee ? '(Auto-cleans 1 room per day)' : '';
+        const employeeStatus = this.currentHotel.hasEmployee ? '✓ Front Desk' : '✗ No Front Desk';
+        const autoCleanInfo = this.currentHotel.hasEmployee ? '(Cleans 1 room/day)' : '';
+        const maidStatus = this.currentHotel.hasMaid ? '✓ Maid' : '✗ No Maid';
+        const maidCleanInfo = this.currentHotel.hasMaid ? '(Cleans all rooms throughout day)' : '';
 
         const infoLines = [
             `Total Rooms: ${this.currentHotel.rooms.length}`,
             `Occupied: ${occupiedCount} | Clean: ${cleanCount} | Dirty: ${dirtyCount}`,
             ``,
             `${employeeStatus} ${autoCleanInfo}`,
+            `${maidStatus} ${maidCleanInfo}`,
             `Cleaning Cost: $${hotelType.cleaningCost} per room`
         ];
         this.hotelInfoText.setText(infoLines.join('\n'));
@@ -4959,6 +5206,11 @@ class MainScene extends Phaser.Scene {
         // Show/hide employee sprite at front desk
         if (this.hotelEmployeeSprite) {
             this.hotelEmployeeSprite.setVisible(this.currentHotel.hasEmployee);
+        }
+
+        // Show/hide maid sprite
+        if (this.hotelMaidSprite) {
+            this.hotelMaidSprite.setVisible(this.currentHotel.hasMaid);
         }
 
         // Update clean button
@@ -4981,7 +5233,7 @@ class MainScene extends Phaser.Scene {
         const hiringCost = 1000;
         if (this.currentHotel.hasEmployee) {
             this.hotelHireButton.setVisible(false);
-            this.hotelWageText.setText(`Daily Wage: $${this.currentHotel.dailyWage || 50}`);
+            this.hotelWageText.setText(`Front Desk Daily Wage: $${this.currentHotel.dailyWage || 50}`);
             this.hotelWageText.setVisible(true);
         } else {
             this.hotelWageText.setVisible(false);
@@ -4994,6 +5246,25 @@ class MainScene extends Phaser.Scene {
                 this.hotelHireButton.setText(`HIRE EMPLOYEE ($${hiringCost})`);
                 this.hotelHireButton.setStyle({ backgroundColor: '#1976D2' });
                 this.hotelHireButton.setInteractive();
+            }
+        }
+
+        // Update maid hire button / wage display
+        if (this.currentHotel.hasMaid) {
+            this.hotelHireMaidButton.setVisible(false);
+            this.hotelMaidWageText.setText(`Maid Daily Wage: $${this.currentHotel.maidDailyWage || 50}`);
+            this.hotelMaidWageText.setVisible(true);
+        } else {
+            this.hotelMaidWageText.setVisible(false);
+            this.hotelHireMaidButton.setVisible(true);
+            if (this.money < hiringCost) {
+                this.hotelHireMaidButton.setText(`HIRE MAID ($${hiringCost}) - NOT ENOUGH MONEY`);
+                this.hotelHireMaidButton.setStyle({ backgroundColor: '#D32F2F' });
+                this.hotelHireMaidButton.disableInteractive();
+            } else {
+                this.hotelHireMaidButton.setText(`HIRE MAID ($${hiringCost})`);
+                this.hotelHireMaidButton.setStyle({ backgroundColor: '#7B1FA2' });
+                this.hotelHireMaidButton.setInteractive();
             }
         }
     }
@@ -5066,6 +5337,39 @@ class MainScene extends Phaser.Scene {
         this.currentHotel.lastAutoClean = this.gameTime;
 
         console.log(`✓ Hired hotel employee for $${hiringCost}. Daily wage: $${this.currentHotel.dailyWage}`);
+
+        // Update UI
+        this.updateHotelUI();
+
+        // Save game
+        this.saveGame();
+    }
+
+    hireHotelMaid() {
+        if (!this.currentHotel) {
+            console.log('No hotel to hire maid for');
+            return;
+        }
+
+        if (this.currentHotel.hasMaid) {
+            console.log('Hotel already has a maid');
+            return;
+        }
+
+        const hiringCost = 1000;
+        if (this.money < hiringCost) {
+            console.log(`❌ Not enough money to hire maid! Need $${hiringCost}, have $${this.money}`);
+            return;
+        }
+
+        // Hire maid
+        this.money -= hiringCost;
+        this.currentHotel.hasMaid = true;
+        this.currentHotel.maidDailyWage = 50; // $50 per game day
+        this.currentHotel.lastMaidWageCheck = this.gameTime;
+        this.currentHotel.lastMaidClean = this.gameTime;
+
+        console.log(`✓ Hired hotel maid for $${hiringCost}. Daily wage: $${this.currentHotel.maidDailyWage}`);
 
         // Update UI
         this.updateHotelUI();
