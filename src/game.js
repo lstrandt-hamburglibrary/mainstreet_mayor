@@ -1064,8 +1064,8 @@ class MainScene extends Phaser.Scene {
         this.hotelInteriorContainer.add(deskTop);
 
         // Hotel employee (front desk clerk) - only visible when hired
-        // Position so feet are on the floor (floor is at gameHeight - 250)
-        const hotelEmployee = this.add.container(this.gameWidth / 2, this.gameHeight - 250);
+        // Position so feet are on the floor (floor surface is at gameHeight - 100)
+        const hotelEmployee = this.add.container(this.gameWidth / 2, this.gameHeight - 100);
 
         // Employee legs
         const hotelEmpLegs = this.add.graphics();
@@ -1119,19 +1119,19 @@ class MainScene extends Phaser.Scene {
         this.hotelEmployeeSprite = hotelEmployee; // Store reference
 
         // Hotel maid - only visible when hired
-        // Position on the left side with feet on the floor
-        const hotelMaid = this.add.container(this.gameWidth / 2 - 200, this.gameHeight - 250);
+        // Position on the left side with feet on the floor (floor surface is at gameHeight - 100)
+        const hotelMaid = this.add.container(this.gameWidth / 2 - 200, this.gameHeight - 100);
 
         // Cleaning cart (on the floor, to the right of maid)
         const cart = this.add.graphics();
         cart.fillStyle(0xC0C0C0, 1); // Silver cart
-        cart.fillRect(80, -90, 50, 60);
+        cart.fillRect(80, -62, 50, 60);
         cart.lineStyle(2, 0x808080, 1);
-        cart.strokeRect(80, -90, 50, 60);
-        // Cart wheels (on the floor)
+        cart.strokeRect(80, -62, 50, 60);
+        // Cart wheels (on the floor at y = 0)
         cart.fillStyle(0x404040, 1);
-        cart.fillCircle(90, -28, 8);
-        cart.fillCircle(120, -28, 8);
+        cart.fillCircle(90, 0, 8);
+        cart.fillCircle(120, 0, 8);
         hotelMaid.add(cart);
 
         // Maid legs
