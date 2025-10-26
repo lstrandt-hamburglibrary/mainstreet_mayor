@@ -4301,6 +4301,9 @@ class MainScene extends Phaser.Scene {
         const x = this.pendingBuildingX;
         const y = this.pendingBuildingY;
 
+        // Generate random facade variation before drawing
+        const facadeVariation = Math.floor(Math.random() * 4);
+
         const newBuilding = this.add.graphics();
         newBuilding.setDepth(10); // Buildings are on top of background
         newBuilding.fillStyle(building.color, 1);
@@ -4309,7 +4312,7 @@ class MainScene extends Phaser.Scene {
         newBuilding.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
 
         // Draw detailed building features (windows, doors, roof, etc.)
-        this.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y, buildingData.facadeVariation);
+        this.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y, facadeVariation);
 
         // Add building-specific signs (no floating labels)
         if (this.selectedBuilding === 'house') {
@@ -4420,7 +4423,7 @@ class MainScene extends Phaser.Scene {
             lastResourceTime: Date.now(),
             placedDistrict: placedDistrict,
             districtBonus: districtBonus,
-            facadeVariation: Math.floor(Math.random() * 4)  // Random 0-3 for 4 different looks
+            facadeVariation: facadeVariation  // Use the variation we already generated
         };
 
         // Add visual indicator if building is in correct district
