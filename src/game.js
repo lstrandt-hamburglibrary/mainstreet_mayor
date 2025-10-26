@@ -4234,8 +4234,8 @@ class MainScene extends Phaser.Scene {
                 continue;
             }
 
-            // Check regular buildings (House, Shop, Restaurant)
-            if (buildingType.incomeRate && building.accumulatedIncome >= 1) {
+            // Check regular buildings (House, Restaurant) - exclude shops and hotels (they auto-collect on entry)
+            if (buildingType.incomeRate && building.accumulatedIncome >= 1 && !this.isShop(building.type) && building.type !== 'hotel') {
                 const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                 if (distance < closestIncomeDistance) {
                     this.nearIncomeBuilding = building;
@@ -4243,7 +4243,7 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
-            // Hotels auto-collect income when you enter them, so skip them here
+            // Hotels and shops auto-collect income when you enter them, so skip them here
 
             // Check apartment buildings (income from rented units)
             if (building.type === 'apartment' && building.units) {
@@ -5095,6 +5095,24 @@ class MainScene extends Phaser.Scene {
 
     enterShop(shop) {
         console.log('Entering shop:', shop);
+
+        // Automatically collect any accumulated income when entering
+        let collectedIncome = 0;
+        if (shop.accumulatedIncome && shop.accumulatedIncome > 0) {
+            collectedIncome = Math.floor(shop.accumulatedIncome);
+            this.money += collectedIncome;
+            shop.accumulatedIncome = 0;
+            shop.lastIncomeTime = Date.now();
+
+            console.log(`💰 Collected $${collectedIncome} from shop! Total money: $${this.money}`);
+            this.updateMoneyUI();
+
+            // Hide income indicator
+            if (shop.incomeIndicator && shop.incomeIndicator.scene) {
+                shop.incomeIndicator.setVisible(false);
+            }
+        }
+
         this.insideShop = true;
         this.currentShop = shop;
 
@@ -5111,6 +5129,10 @@ class MainScene extends Phaser.Scene {
 
         // Update inventory display
         this.updateShopInventoryUI();
+
+        // Show collection message with current balance
+        const shopTypeName = this.buildingTypes[shop.type]?.name || 'Shop';
+        this.showBuildingEntryMessage(shopTypeName, collectedIncome);
 
         // Hide shop prompt
         if (this.shopPrompt) {
@@ -5140,12 +5162,13 @@ class MainScene extends Phaser.Scene {
         console.log('Entering hotel:', hotel);
 
         // Automatically collect any accumulated income when entering
+        let collectedIncome = 0;
         if (hotel.accumulatedIncome && hotel.accumulatedIncome > 0) {
-            const income = Math.floor(hotel.accumulatedIncome);
-            this.money += income;
+            collectedIncome = Math.floor(hotel.accumulatedIncome);
+            this.money += collectedIncome;
             hotel.accumulatedIncome = 0;
 
-            console.log(`💰 Collected $${income} from hotel! Total money: $${this.money}`);
+            console.log(`💰 Collected $${collectedIncome} from hotel! Total money: $${this.money}`);
             this.updateMoneyUI();
 
             // Hide income indicator
@@ -5162,6 +5185,9 @@ class MainScene extends Phaser.Scene {
 
         // Update hotel info
         this.updateHotelUI();
+
+        // Show collection message with current balance
+        this.showBuildingEntryMessage('Hotel', collectedIncome);
 
         // Hide hotel prompt
         if (this.hotelPrompt) {
@@ -5835,6 +5861,37 @@ class MainScene extends Phaser.Scene {
 
             this.saveGame();
         }
+    }
+
+    showBuildingEntryMessage(buildingName, collectedIncome) {
+        // Create or update the entry message text
+        if (!this.buildingEntryMessage) {
+            this.buildingEntryMessage = this.add.text(this.gameWidth / 2, 120, '', {
+                fontSize: '20px',
+                color: '#FFFFFF',
+                backgroundColor: '#000000',
+                padding: { x: 20, y: 10 },
+                align: 'center'
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(20000);
+        }
+
+        // Build the message
+        let message = `Entered ${buildingName}\n`;
+        if (collectedIncome > 0) {
+            message += `💰 Collected: $${collectedIncome}\n`;
+        }
+        message += `Cash on Hand: $${this.money}`;
+
+        // Show the message
+        this.buildingEntryMessage.setText(message);
+        this.buildingEntryMessage.setVisible(true);
+
+        // Hide after 3 seconds
+        this.time.delayedCall(3000, () => {
+            if (this.buildingEntryMessage) {
+                this.buildingEntryMessage.setVisible(false);
+            }
+        });
     }
 
     updateBuses() {
