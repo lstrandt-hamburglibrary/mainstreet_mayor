@@ -2425,7 +2425,20 @@ class MainScene extends Phaser.Scene {
 
         if (type === 'house') {
             // House: Two-story residential with 2x3 symmetrical windows (bottom row removed to avoid door overlap)
-            const windowColor = 0xFFFF99;
+            // 4 color variations for variety
+            const colorSchemes = [
+                { building: 0xFF6B6B, door: 0x8B4513, roof: 0xA0522D, window: 0xFFFF99 },  // Classic Red/Brown
+                { building: 0xFFF9C4, door: 0x795548, roof: 0x8D6E63, window: 0xE3F2FD },  // Cream/Tan
+                { building: 0x81C784, door: 0x4E342E, roof: 0x6D4C41, window: 0xFFFDE7 },  // Sage Green/Dark Brown
+                { building: 0xB0BEC5, door: 0x37474F, roof: 0x546E7A, window: 0xE1F5FE }   // Blue-Gray/Slate
+            ];
+            const scheme = colorSchemes[facadeVariation % 4];
+
+            // Override the building base color with variation color
+            graphics.fillStyle(scheme.building, 1);
+            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+            const windowColor = scheme.window;
             const windowWidth = 20;
             const windowHeight = 25;
             const spacing = 25;
@@ -2467,8 +2480,8 @@ class MainScene extends Phaser.Scene {
             graphics.fillStyle(0x000000, 0.4);
             graphics.fillRect(x - 20 + 3, y - 50 + 3, 40, 50);
 
-            // Front door (centered)
-            graphics.fillStyle(0x8B4513, 1);
+            // Front door (centered) - uses variation color
+            graphics.fillStyle(scheme.door, 1);
             graphics.fillRect(x - 20, y - 50, 40, 50);
             graphics.lineStyle(2, 0x654321, 1);
             graphics.strokeRect(x - 20, y - 50, 40, 50);
@@ -2495,16 +2508,21 @@ class MainScene extends Phaser.Scene {
                 x + building.width/2 + 10, y - building.height
             );
 
-            // Left side of roof (lighter)
-            graphics.fillStyle(0xA0522D, 1);
+            // Left side of roof (lighter) - uses variation color
+            graphics.fillStyle(scheme.roof, 1);
             graphics.fillTriangle(
                 x - building.width/2 - 10, y - building.height,
                 x, y - building.height - 35,
                 x, y - building.height
             );
 
-            // Right side of roof (darker for 3D effect)
-            graphics.fillStyle(0x8B4513, 1);
+            // Right side of roof (darker for 3D effect) - darker shade
+            // Darken the roof color by converting to RGB, reducing, and converting back
+            const roofR = (scheme.roof >> 16) & 0xFF;
+            const roofG = (scheme.roof >> 8) & 0xFF;
+            const roofB = scheme.roof & 0xFF;
+            const darkerRoof = ((roofR * 0.85) << 16) | ((roofG * 0.85) << 8) | (roofB * 0.85);
+            graphics.fillStyle(darkerRoof, 1);
             graphics.fillTriangle(
                 x, y - building.height - 35,
                 x + building.width/2 + 10, y - building.height,
@@ -2525,7 +2543,20 @@ class MainScene extends Phaser.Scene {
 
         } else if (type === 'apartment') {
             // Apartment: Four-story building with 2 units per floor (8 units total)
-            const windowColor = 0xFFFF99;
+            // 4 color variations for variety
+            const colorSchemes = [
+                { building: 0xFF8C94, door: 0x654321, window: 0xFFFF99 },  // Classic Pink/Brown
+                { building: 0x90CAF9, door: 0x424242, window: 0xFFFDE7 },  // Sky Blue/Gray
+                { building: 0xF8BBD0, door: 0x6D4C41, window: 0xE8F5E9 },  // Rose/Brown
+                { building: 0xCE93D8, door: 0x4A148C, window: 0xF3E5F5 }   // Lavender/Purple
+            ];
+            const scheme = colorSchemes[facadeVariation % 4];
+
+            // Override the building base color with variation color
+            graphics.fillStyle(scheme.building, 1);
+            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+            const windowColor = scheme.window;
             const windowWidth = 18;
             const windowHeight = 20;
             const floorHeight = building.height / 4; // 90px per floor
@@ -2578,8 +2609,8 @@ class MainScene extends Phaser.Scene {
             graphics.fillStyle(0x000000, 0.4);
             graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, entranceWidth, entranceHeight);
 
-            // Door frame
-            graphics.fillStyle(0x654321, 1);
+            // Door frame - uses variation color
+            graphics.fillStyle(scheme.door, 1);
             graphics.fillRect(x - entranceWidth/2, entranceY, entranceWidth, entranceHeight);
 
             // Left glass door
