@@ -4243,14 +4243,7 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
-            // Check hotel buildings (income from guest checkouts)
-            if (building.type === 'hotel' && building.accumulatedIncome >= 1) {
-                const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
-                if (distance < closestIncomeDistance) {
-                    this.nearIncomeBuilding = building;
-                    closestIncomeDistance = distance;
-                }
-            }
+            // Hotels auto-collect income when you enter them, so skip them here
 
             // Check apartment buildings (income from rented units)
             if (building.type === 'apartment' && building.units) {
@@ -5145,6 +5138,22 @@ class MainScene extends Phaser.Scene {
 
     enterHotel(hotel) {
         console.log('Entering hotel:', hotel);
+
+        // Automatically collect any accumulated income when entering
+        if (hotel.accumulatedIncome && hotel.accumulatedIncome > 0) {
+            const income = Math.floor(hotel.accumulatedIncome);
+            this.money += income;
+            hotel.accumulatedIncome = 0;
+
+            console.log(`💰 Collected $${income} from hotel! Total money: $${this.money}`);
+            this.updateMoneyUI();
+
+            // Hide income indicator
+            if (hotel.incomeIndicator && hotel.incomeIndicator.scene) {
+                hotel.incomeIndicator.setVisible(false);
+            }
+        }
+
         this.insideHotel = true;
         this.currentHotel = hotel;
 
