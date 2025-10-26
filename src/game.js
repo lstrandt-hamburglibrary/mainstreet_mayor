@@ -3486,6 +3486,11 @@ class MainScene extends Phaser.Scene {
         if (this.bankBalance > 0) resourceText += `\n🏦 Bank: $${this.bankBalance}`;
         if (this.loanAmount > 0) resourceText += `\n💳 Debt: $${this.loanAmount}`;
         this.resourceUI.setText(resourceText);
+
+        // Update permanent cash on hand display if visible
+        if (this.cashOnHandDisplay && this.cashOnHandDisplay.visible) {
+            this.cashOnHandDisplay.setText(`Cash on Hand: $${this.money}`);
+        }
     }
 
     update() {
@@ -5156,6 +5161,11 @@ class MainScene extends Phaser.Scene {
         this.shopRestockButton.setVisible(false);
         this.shopHireButton.setVisible(false);
         this.shopWageText.setVisible(false);
+
+        // Hide cash on hand display
+        if (this.cashOnHandDisplay) {
+            this.cashOnHandDisplay.setVisible(false);
+        }
     }
 
     enterHotel(hotel) {
@@ -5206,6 +5216,11 @@ class MainScene extends Phaser.Scene {
 
         // Hide hotel interior
         this.hotelInteriorContainer.setVisible(false);
+
+        // Hide cash on hand display
+        if (this.cashOnHandDisplay) {
+            this.cashOnHandDisplay.setVisible(false);
+        }
     }
 
     updateHotelUI() {
@@ -5864,9 +5879,9 @@ class MainScene extends Phaser.Scene {
     }
 
     showBuildingEntryMessage(buildingName, collectedIncome) {
-        // Create or update the entry message text
+        // Create temporary collection message if needed
         if (!this.buildingEntryMessage) {
-            this.buildingEntryMessage = this.add.text(this.gameWidth / 2, 120, '', {
+            this.buildingEntryMessage = this.add.text(this.gameWidth / 2, 100, '', {
                 fontSize: '20px',
                 color: '#FFFFFF',
                 backgroundColor: '#000000',
@@ -5875,19 +5890,33 @@ class MainScene extends Phaser.Scene {
             }).setOrigin(0.5).setScrollFactor(0).setDepth(20000);
         }
 
-        // Build the message
-        let message = `Entered ${buildingName}\n`;
-        if (collectedIncome > 0) {
-            message += `💰 Collected: $${collectedIncome}\n`;
+        // Create permanent cash on hand display if needed
+        if (!this.cashOnHandDisplay) {
+            this.cashOnHandDisplay = this.add.text(this.gameWidth / 2, 150, '', {
+                fontSize: '18px',
+                color: '#FFFFFF',
+                backgroundColor: '#1B5E20',
+                padding: { x: 15, y: 8 },
+                align: 'center'
+            }).setOrigin(0.5).setScrollFactor(0).setDepth(20000);
         }
-        message += `Cash on Hand: $${this.money}`;
 
-        // Show the message
-        this.buildingEntryMessage.setText(message);
+        // Build temporary message (entered + collected)
+        let tempMessage = `Entered ${buildingName}`;
+        if (collectedIncome > 0) {
+            tempMessage += `\n💰 Collected: $${collectedIncome}`;
+        }
+
+        // Show temporary message
+        this.buildingEntryMessage.setText(tempMessage);
         this.buildingEntryMessage.setVisible(true);
 
-        // Hide after 3 seconds
-        this.time.delayedCall(3000, () => {
+        // Update and show permanent cash display
+        this.cashOnHandDisplay.setText(`Cash on Hand: $${this.money}`);
+        this.cashOnHandDisplay.setVisible(true);
+
+        // Hide temporary message after 4 seconds
+        this.time.delayedCall(4000, () => {
             if (this.buildingEntryMessage) {
                 this.buildingEntryMessage.setVisible(false);
             }
