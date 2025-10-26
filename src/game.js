@@ -2611,12 +2611,16 @@ class MainScene extends Phaser.Scene {
             // Hotel: Five-story building with 2 rooms per floor (10 rooms total)
             // 4 color variations for variety
             const colorSchemes = [
-                { doorFrame: 0xFFD700, accent: 0xFFD700, window: 0xFFFF99 },  // Gold/Yellow
-                { doorFrame: 0xC0C0C0, accent: 0xE0E0E0, window: 0xE3F2FD },  // Silver/Blue
-                { doorFrame: 0xB8860B, accent: 0xCD853F, window: 0xFFF9E6 },  // Bronze/Tan
-                { doorFrame: 0x8B4513, accent: 0xA0522D, window: 0xFFE4B5 }   // Brown/Cream
+                { building: 0x8B1A1A, doorFrame: 0xFFD700, accent: 0xFFD700, window: 0xFFF9E0 },  // Burgundy/Gold - Classic luxury
+                { building: 0x1A3A5C, doorFrame: 0xC0C0C0, accent: 0xE0E0E0, window: 0xE3F2FD },  // Navy/Silver - Modern elegant
+                { building: 0x2C6E6E, doorFrame: 0xB8860B, accent: 0xFFD700, window: 0xE8F5E9 },  // Teal/Bronze - Contemporary
+                { building: 0x424242, doorFrame: 0xC0C0C0, accent: 0xFFFFFF, window: 0xF5F5F5 }   // Charcoal/Silver - Minimalist
             ];
             const scheme = colorSchemes[facadeVariation % 4];
+
+            // Override the building base color with variation color
+            graphics.fillStyle(scheme.building, 1);
+            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
 
             const windowColor = scheme.window;
             const windowWidth = 20;
