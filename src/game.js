@@ -1,3 +1,6 @@
+import { BuildingTypes, Districts, GameConfig } from './config/GameConfig.js';
+import { BuildingRenderer } from './buildings/BuildingRenderer.js';
+
 class MainScene extends Phaser.Scene {
     constructor() {
         super({ key: 'MainScene' });
@@ -115,6 +118,9 @@ class MainScene extends Phaser.Scene {
             }
         };
         this.districtTravelMenuOpen = false;
+
+        // Initialize building renderer
+        this.buildingRenderer = new BuildingRenderer(this);
 
         // Settings menu state
         this.settingsMenuOpen = false;
@@ -1619,7 +1625,7 @@ class MainScene extends Phaser.Scene {
             );
 
             // Redraw building details
-            this.drawBuildingDetails(building.graphics, building.type, building.x, newBuildingY, building.facadeVariation || 0);
+            this.buildingRenderer.drawBuildingDetails(building.graphics, building.type, building.x, newBuildingY, building.facadeVariation || 0);
 
             // Update building Y coordinate (no labels to update - we use signs now)
             building.y = newBuildingY;
@@ -4527,7 +4533,7 @@ class MainScene extends Phaser.Scene {
 
         // Draw building details (windows, doors, etc.) so user can see what they're placing
         try {
-            this.drawBuildingDetails(previewGraphics, this.selectedBuilding, snappedX, buildingY, 0);
+            this.buildingRenderer.drawBuildingDetails(previewGraphics, this.selectedBuilding, snappedX, buildingY, 0);
         } catch (error) {
             console.error('Error drawing building preview details:', error);
         }
@@ -4634,7 +4640,7 @@ class MainScene extends Phaser.Scene {
         newBuilding.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
 
         // Draw detailed building features (windows, doors, roof, etc.)
-        this.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y, facadeVariation);
+        this.buildingRenderer.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y, facadeVariation);
 
         // Add building-specific signs (no floating labels)
         if (this.selectedBuilding === 'house') {
@@ -4999,7 +5005,7 @@ class MainScene extends Phaser.Scene {
 
         // Draw detailed building features (windows, doors, roof, etc.)
         try {
-            this.drawBuildingDetails(newBuilding, type, x, buildingY, facadeVariation);
+            this.buildingRenderer.drawBuildingDetails(newBuilding, type, x, buildingY, facadeVariation);
             console.log(`Successfully drew details for ${type}`);
         } catch (error) {
             console.error(`Error drawing details for ${type}:`, error);

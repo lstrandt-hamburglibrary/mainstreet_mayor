@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Module Test</title>
+</head>
+<body>
+    <h1>Module Test</h1>
+    <div id="status">Testing modules...</div>
+    <script type="module">
+        try {
+            // Test importing the config
+            const { BuildingTypes, Districts, GameConfig } = await import('./src/config/GameConfig.js');
+            console.log('✓ GameConfig loaded successfully');
+            console.log('  - BuildingTypes:', Object.keys(BuildingTypes).length, 'types');
+            console.log('  - Districts:', Object.keys(Districts).length, 'districts');
+
+            // Test importing the building renderer
+            const { BuildingRenderer } = await import('./src/buildings/BuildingRenderer.js');
+            console.log('✓ BuildingRenderer loaded successfully');
+            console.log('  - BuildingRenderer class:', typeof BuildingRenderer);
+
+            document.getElementById('status').innerHTML = `
+                <div style="color: green; font-weight: bold;">✓ All modules loaded successfully!</div>
+                <ul>
+                    <li>GameConfig: ${Object.keys(BuildingTypes).length} building types, ${Object.keys(Districts).length} districts</li>
+                    <li>BuildingRenderer: Class loaded</li>
+                </ul>
+                <div style="margin-top: 20px;">
+                    <a href="index.html">Launch Game →</a>
+                </div>
+            `;
+        } catch (error) {
+            console.error('✗ Error loading modules:', error);
+            document.getElementById('status').innerHTML = `
+                <div style="color: red; font-weight: bold;">✗ Error loading modules</div>
+                <pre style="background: #f0f0f0; padding: 10px; overflow: auto;">${error.stack}</pre>
+            `;
+        }
+    </script>
+</body>
+</html>
