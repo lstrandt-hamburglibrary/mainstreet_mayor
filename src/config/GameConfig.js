@@ -116,6 +116,63 @@ export const BuildingTypes = {
         district: 'downtown',
         shopType: 'bookstore'
     },
+    chinese_restaurant: {
+        name: 'Chinese Restaurant',
+        cost: 300,
+        wood: 20,
+        bricks: 15,
+        width: 240,
+        height: 220,
+        color: 0xDC143C, // Crimson red
+        incomeRate: 15,
+        maxIncome: 150,
+        district: 'downtown',
+        restaurantType: 'chinese',
+        mealPrice: 25
+    },
+    italian_restaurant: {
+        name: 'Italian Restaurant',
+        cost: 320,
+        wood: 22,
+        bricks: 16,
+        width: 240,
+        height: 220,
+        color: 0x228B22, // Forest green
+        incomeRate: 18,
+        maxIncome: 180,
+        district: 'downtown',
+        restaurantType: 'italian',
+        mealPrice: 30
+    },
+    diner: {
+        name: 'Diner',
+        cost: 250,
+        wood: 18,
+        bricks: 12,
+        width: 240,
+        height: 220,
+        color: 0x4682B4, // Steel blue
+        incomeRate: 12,
+        maxIncome: 120,
+        district: 'downtown',
+        restaurantType: 'diner',
+        mealPrice: 20
+    },
+    sub_shop: {
+        name: 'Sub Shop',
+        cost: 200,
+        wood: 15,
+        bricks: 10,
+        width: 240,
+        height: 220,
+        color: 0xFFD700, // Gold/yellow
+        incomeRate: 10,
+        maxIncome: 100,
+        district: 'downtown',
+        restaurantType: 'sub_shop',
+        mealPrice: 15
+    },
+    // Legacy restaurant type (for backward compatibility with old saves)
     restaurant: {
         name: 'Restaurant',
         cost: 300,
@@ -123,10 +180,12 @@ export const BuildingTypes = {
         bricks: 15,
         width: 240,
         height: 220,
-        color: 0xFFE66D,
+        color: 0xDC143C,
         incomeRate: 15,
         maxIncome: 150,
-        district: 'downtown'
+        district: 'downtown',
+        restaurantType: 'restaurant',
+        mealPrice: 25
     },
     bank: {
         name: 'Bank',

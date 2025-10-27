@@ -43,8 +43,8 @@ export class BuildingRenderer {
             this.drawGroceryStore(graphics, building, x, y, facadeVariation);
         } else if (type === 'bookstore') {
             this.drawBookstore(graphics, building, x, y, facadeVariation);
-        } else if (type === 'restaurant') {
-            this.drawRestaurant(graphics, building, x, y, facadeVariation);
+        } else if (type === 'restaurant' || type === 'chinese_restaurant' || type === 'italian_restaurant' || type === 'diner' || type === 'sub_shop') {
+            this.drawRestaurant(graphics, building, x, y, facadeVariation, type);
         } else if (type === 'bank') {
             this.drawBank(graphics, building, x, y, facadeVariation);
         } else if (type === 'market') {
@@ -743,8 +743,14 @@ export class BuildingRenderer {
         graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
     }
 
-    drawRestaurant(graphics, building, x, y, facadeVariation) {
+    drawRestaurant(graphics, building, x, y, facadeVariation, type) {
         const windowColor = 0xFFF8DC;
+
+        // Calculate banner width based on restaurant name
+        // Average character width is ~10px at 16px font size, add padding
+        const restaurantName = this.scene.buildingTypes[type]?.name || 'Restaurant';
+        const bannerWidth = Math.max(130, restaurantName.length * 10 + 20); // Minimum 130px, or name length + padding
+        const bannerHalfWidth = bannerWidth / 2;
 
         // Arched windows
         for (let col = 0; col < 3; col++) {
@@ -805,24 +811,24 @@ export class BuildingRenderer {
         graphics.fillCircle(x - 9, y - 36, 1.5);
         graphics.fillCircle(x + 7, y - 36, 1.5);
 
-        // Restaurant sign
+        // Restaurant sign (dynamic width based on name)
         graphics.fillStyle(0x000000, 0.3);
-        graphics.fillRect(x - 65 + 2, y - 105 + 2, 130, 20);
+        graphics.fillRect(x - bannerHalfWidth + 2, y - 105 + 2, bannerWidth, 20);
 
         graphics.fillStyle(0x8B0000, 1);
-        graphics.fillRect(x - 65, y - 105, 130, 20);
+        graphics.fillRect(x - bannerHalfWidth, y - 105, bannerWidth, 20);
 
         graphics.fillStyle(0x660000, 1);
         graphics.beginPath();
-        graphics.moveTo(x - 65, y - 85);
-        graphics.lineTo(x + 65, y - 85);
-        graphics.lineTo(x + 63, y - 80);
-        graphics.lineTo(x - 63, y - 80);
+        graphics.moveTo(x - bannerHalfWidth, y - 85);
+        graphics.lineTo(x + bannerHalfWidth, y - 85);
+        graphics.lineTo(x + bannerHalfWidth - 2, y - 80);
+        graphics.lineTo(x - bannerHalfWidth + 2, y - 80);
         graphics.closePath();
         graphics.fillPath();
 
         graphics.lineStyle(2, 0x000000, 1);
-        graphics.strokeRect(x - 65, y - 105, 130, 20);
+        graphics.strokeRect(x - bannerHalfWidth, y - 105, bannerWidth, 20);
 
         // Peaked roof
         graphics.fillStyle(0x000000, 0.3);

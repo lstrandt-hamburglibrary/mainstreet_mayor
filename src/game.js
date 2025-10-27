@@ -1,5 +1,11 @@
 import { BuildingTypes, Districts, GameConfig } from './config/GameConfig.js';
 import { BuildingRenderer } from './buildings/BuildingRenderer.js';
+import { RestaurantSystem } from './systems/RestaurantSystem.js';
+import { HotelSystem } from './systems/HotelSystem.js';
+import { ShopSystem } from './systems/ShopSystem.js';
+import { SaveSystem } from './systems/SaveSystem.js';
+import { CitizenSystem } from './systems/CitizenSystem.js';
+import { UIManager } from './systems/UIManager.js';
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -65,62 +71,38 @@ class MainScene extends Phaser.Scene {
         this.currentShop = null;
         this.nearShop = null;
 
-        this.buildingTypes = {
-            house: { name: 'House', cost: 100, wood: 10, bricks: 5, width: 160, height: 260, color: 0xFF6B6B,
-                    incomeRate: 5, maxIncome: 50, district: 'residential' },  // Two-story house, $5/min, max $50
-            apartment: { name: 'Apartment', cost: 400, wood: 30, bricks: 35, width: 200, height: 360, color: 0xFF8C94,
-                    units: 8, incomePerUnit: 8, maxIncomePerUnit: 80, district: 'residential' },  // 4 stories, 2 units per floor
-            hotel: { name: 'Hotel', cost: 600, wood: 40, bricks: 45, width: 240, height: 400, color: 0x9C27B0,
-                    rooms: 10, nightlyRate: 50, cleaningCost: 15, district: 'residential' },  // 5 stories, 2 rooms per floor, $50/night per room, $15 to clean
-            clothingShop: { name: 'Clothing Shop', cost: 200, wood: 15, bricks: 10, width: 200, height: 240, color: 0xFF69B4,
-                    incomeRate: 10, maxIncome: 100, district: 'downtown', shopType: 'clothing' },  // Pink
-            electronicsShop: { name: 'Electronics Shop', cost: 250, wood: 15, bricks: 15, width: 200, height: 240, color: 0x2196F3,
-                    incomeRate: 15, maxIncome: 150, district: 'downtown', shopType: 'electronics' },  // Blue
-            groceryStore: { name: 'Grocery Store', cost: 180, wood: 12, bricks: 8, width: 200, height: 240, color: 0x8BC34A,
-                    incomeRate: 8, maxIncome: 80, district: 'downtown', shopType: 'grocery' },  // Green
-            bookstore: { name: 'Bookstore', cost: 150, wood: 10, bricks: 8, width: 200, height: 240, color: 0x9C27B0,
-                    incomeRate: 7, maxIncome: 70, district: 'downtown', shopType: 'bookstore' },  // Purple
-            restaurant: { name: 'Restaurant', cost: 300, wood: 20, bricks: 15, width: 240, height: 220, color: 0xFFE66D,
-                    incomeRate: 15, maxIncome: 150, district: 'downtown' },  // $15/min, max $150
-            bank: { name: 'Bank', cost: 500, wood: 25, bricks: 30, width: 220, height: 260, color: 0x2E7D32, district: 'downtown' },
-            market: { name: 'Market', cost: 150, wood: 12, bricks: 8, width: 180, height: 180, color: 0xFF9800, district: 'industrial' },
-            lumbermill: { name: 'Lumber Mill', cost: 250, wood: 5, bricks: 20, width: 200, height: 200, color: 0x8D6E63,
-                    resourceType: 'wood', regenRate: 1, maxStorage: 15, district: 'industrial' },  // 1 wood/min, max 15
-            brickfactory: { name: 'Brick Factory', cost: 250, wood: 20, bricks: 5, width: 200, height: 200, color: 0xD84315,
-                    resourceType: 'bricks', regenRate: 1, maxStorage: 15, district: 'industrial' }  // 1 brick/min, max 15
-        };
+        // Apartment viewing system
+        this.insideApartment = false;
+        this.currentApartment = null;
+        this.nearApartment = null;
 
-        // District system
-        this.districts = {
-            residential: {
-                name: 'Residential District',
-                startX: 0,
-                endX: 4000,
-                centerX: 2000,
-                color: 0xFF6B6B,
-                description: 'Houses, Apartments, Hotels'
-            },
-            downtown: {
-                name: 'Downtown',
-                startX: 4000,
-                endX: 8000,
-                centerX: 6000,
-                color: 0x4ECDC4,
-                description: 'Shops, Restaurants, Banks'
-            },
-            industrial: {
-                name: 'Industrial District',
-                startX: 8000,
-                endX: 12000,
-                centerX: 10000,
-                color: 0x8D6E63,
-                description: 'Markets, Lumber Mills, Brick Factories'
-            }
-        };
+        // Use imported building types from GameConfig.js
+        this.buildingTypes = BuildingTypes;
+
+        // Use imported districts from GameConfig.js
+        this.districts = Districts;
         this.districtTravelMenuOpen = false;
 
         // Initialize building renderer
         this.buildingRenderer = new BuildingRenderer(this);
+
+        // Initialize restaurant system
+        this.restaurantSystem = new RestaurantSystem(this);
+
+        // Initialize hotel system
+        this.hotelSystem = new HotelSystem(this);
+
+        // Initialize shop system
+        this.shopSystem = new ShopSystem(this);
+
+        // Initialize save system
+        this.saveSystem = new SaveSystem(this);
+
+        // Initialize citizen system
+        this.citizenSystem = new CitizenSystem(this);
+
+        // Initialize UI manager
+        this.uiManager = new UIManager(this);
 
         // Settings menu state
         this.settingsMenuOpen = false;
@@ -423,13 +405,13 @@ class MainScene extends Phaser.Scene {
             padding: { x: 8, y: 4 }
         }).setScrollFactor(0);
 
-        // Resource UI (top left, below controls)
+        // Resource UI (top left, below controls) - Always visible above everything
         this.resourceUI = this.add.text(20, 45, '', {
             fontSize: '14px',
             color: '#ffffff',
             backgroundColor: '#000000',
             padding: { x: 8, y: 6 }
-        }).setScrollFactor(0);
+        }).setScrollFactor(0).setDepth(25000); // Very high depth to stay on top
 
         // Settings button (top right)
         this.settingsButton = this.add.text(this.gameWidth - 130, 20, '⚙️ MENU', {
@@ -595,7 +577,7 @@ class MainScene extends Phaser.Scene {
         this.speedPauseButton.on('pointerdown', () => {
             this.isPaused = !this.isPaused;
             this.speedPauseButton.setText(this.isPaused ? '▶' : '||');
-            this.updateSpeedButtons();
+            this.uiManager.updateSpeedButtons();
         });
 
         // 1x speed button
@@ -608,7 +590,7 @@ class MainScene extends Phaser.Scene {
 
         this.speed1xButton.on('pointerdown', () => {
             this.timeSpeed = 1;
-            this.updateSpeedButtons();
+            this.uiManager.updateSpeedButtons();
         });
 
         // 2x speed button
@@ -621,7 +603,7 @@ class MainScene extends Phaser.Scene {
 
         this.speed2xButton.on('pointerdown', () => {
             this.timeSpeed = 2;
-            this.updateSpeedButtons();
+            this.uiManager.updateSpeedButtons();
         });
 
         // 3x speed button
@@ -634,7 +616,7 @@ class MainScene extends Phaser.Scene {
 
         this.speed3xButton.on('pointerdown', () => {
             this.timeSpeed = 3;
-            this.updateSpeedButtons();
+            this.uiManager.updateSpeedButtons();
         });
 
         // Add hover effects
@@ -644,7 +626,7 @@ class MainScene extends Phaser.Scene {
         });
 
         // Initialize speed button states
-        this.updateSpeedButtons();
+        this.uiManager.updateSpeedButtons();
 
         // Build menu UI (clickable buttons at bottom of screen) - RESTORED TO WORKING VERSION
         this.buildMenuContainer = this.add.container(this.gameWidth / 2, this.gameHeight - 80);
@@ -696,87 +678,63 @@ class MainScene extends Phaser.Scene {
 
         this.buildMenuContainer.add(this.buildMenuCloseButton);
 
-        // Create building buttons (3 rows of 4)
-        const buildings = [
-            { type: 'house', label: '🏠 House\n$100', color: '#FF6B6B' },
-            { type: 'apartment', label: '🏢 Apartment\n$400', color: '#FF8C94' },
-            { type: 'hotel', label: '🏨 Hotel\n$600', color: '#9C27B0' },
-            { type: 'clothingShop', label: '👔 Clothing\n$200', color: '#FF69B4' },
-            { type: 'electronicsShop', label: '💻 Electronics\n$250', color: '#2196F3' },
-            { type: 'groceryStore', label: '🥬 Grocery\n$180', color: '#8BC34A' },
-            { type: 'bookstore', label: '📚 Bookstore\n$150', color: '#9C27B0' },
-            { type: 'restaurant', label: '🍽️ Restaurant\n$300', color: '#FFE66D' },
-            { type: 'bank', label: '🏦 Bank\n$500', color: '#2E7D32' },
-            { type: 'market', label: '🏪 Market\n$150', color: '#FF9800' },
-            { type: 'lumbermill', label: '🌲 Lumber\n$250', color: '#8D6E63' }
-        ];
+        // Building categories
+        this.buildingCategories = {
+            residential: [
+                { type: 'house', label: '🏠 House', price: '$100', color: '#FF6B6B' },
+                { type: 'apartment', label: '🏢 Apartment', price: '$400', color: '#FF8C94' },
+                { type: 'hotel', label: '🏨 Hotel', price: '$600', color: '#9C27B0' }
+            ],
+            shops: [
+                { type: 'clothingShop', label: '👔 Clothing', price: '$200', color: '#FF69B4' },
+                { type: 'electronicsShop', label: '💻 Electronics', price: '$250', color: '#2196F3' },
+                { type: 'groceryStore', label: '🥬 Grocery', price: '$180', color: '#8BC34A' },
+                { type: 'bookstore', label: '📚 Bookstore', price: '$150', color: '#9C27B0' }
+            ],
+            restaurants: [
+                { type: 'chinese_restaurant', label: '🥡 Chinese', price: '$300', color: '#DC143C' },
+                { type: 'italian_restaurant', label: '🍝 Italian', price: '$320', color: '#228B22' },
+                { type: 'diner', label: '🍔 Diner', price: '$250', color: '#4682B4' },
+                { type: 'sub_shop', label: '🥖 Sub Shop', price: '$200', color: '#FFD700' }
+            ],
+            resources: [
+                { type: 'bank', label: '🏦 Bank', price: '$500', color: '#2E7D32' },
+                { type: 'market', label: '🏪 Market', price: '$150', color: '#FF9800' },
+                { type: 'lumbermill', label: '🌲 Lumber Mill', price: '$250', color: '#8D6E63' },
+                { type: 'brickfactory', label: '🧱 Brick Factory', price: '$250', color: '#D84315' }
+            ]
+        };
+
+        this.currentCategory = 'residential';
+
+        // Category dropdown
+        this.categoryDropdown = this.add.text(-400, -40, '📂 Category: Residential ▼', {
+            fontSize: '14px',
+            color: '#FFFFFF',
+            backgroundColor: '#424242',
+            padding: { x: 12, y: 6 }
+        }).setOrigin(0, 0.5).setInteractive().setScrollFactor(0);
+
+        this.categoryDropdown.on('pointerover', () => {
+            this.categoryDropdown.setStyle({ backgroundColor: '#616161' });
+        });
+
+        this.categoryDropdown.on('pointerout', () => {
+            this.categoryDropdown.setStyle({ backgroundColor: '#424242' });
+        });
+
+        this.categoryDropdown.on('pointerdown', () => {
+            this.cycleBuildCategory();
+        });
+
+        this.buildMenuContainer.add(this.categoryDropdown);
+
+        // Container for building buttons (will be populated based on category)
+        this.buildingButtonsContainer = this.add.container(0, 0);
+        this.buildMenuContainer.add(this.buildingButtonsContainer);
 
         this.buildingButtons = {};
-        buildings.forEach((building, index) => {
-            const col = index % 4;
-            const row = Math.floor(index / 4);
-            const x = -300 + (col * 200);
-            const y = -40 + (row * 35);
-
-            const btn = this.add.text(x, y, building.label, {
-                fontSize: '12px',
-                color: '#ffffff',
-                backgroundColor: building.color,
-                padding: { x: 10, y: 5 },
-                align: 'center'
-            }).setOrigin(0.5).setInteractive().setScrollFactor(0);
-
-            btn.on('pointerdown', () => {
-                console.log('🎯 Building button clicked:', building.type);
-                this.selectedBuilding = building.type;
-                this.updateBuildingButtonStates();
-            });
-
-            btn.on('pointerover', () => {
-                if (this.selectedBuilding !== building.type) {
-                    btn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
-                }
-            });
-
-            btn.on('pointerout', () => {
-                if (this.selectedBuilding !== building.type) {
-                    btn.setStyle({ backgroundColor: building.color, color: '#ffffff' });
-                }
-            });
-
-            this.buildMenuContainer.add(btn);
-            this.buildingButtons[building.type] = { button: btn, originalColor: building.color };
-        });
-
-        // Add brick factory button (4th column, 3rd row)
-        const brickBtn = this.add.text(100, 60, '🧱 Brick\n$250', {
-            fontSize: '12px',
-            color: '#ffffff',
-            backgroundColor: '#D84315',
-            padding: { x: 10, y: 5 },
-            align: 'center'
-        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
-
-        brickBtn.on('pointerdown', () => {
-            console.log('🎯 Brick factory button clicked');
-            this.selectedBuilding = 'brickfactory';
-            this.updateBuildingButtonStates();
-        });
-
-        brickBtn.on('pointerover', () => {
-            if (this.selectedBuilding !== 'brickfactory') {
-                brickBtn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
-            }
-        });
-
-        brickBtn.on('pointerout', () => {
-            if (this.selectedBuilding !== 'brickfactory') {
-                brickBtn.setStyle({ backgroundColor: '#D84315', color: '#ffffff' });
-            }
-        });
-
-        this.buildMenuContainer.add(brickBtn);
-        this.buildingButtons['brickfactory'] = { button: brickBtn, originalColor: '#D84315' };
+        this.updateBuildingCategoryDisplay();
 
         // Demolish mode UI (simple overlay)
         this.demolishUI = this.add.text(this.gameWidth / 2, this.gameHeight - 60, '💥 DEMOLISH MODE - Click any building to delete it', {
@@ -895,6 +853,15 @@ class MainScene extends Phaser.Scene {
         this.resourceBuildingMenuOpen = false;
         this.nearResourceBuilding = null; // Track which resource building player is near
 
+        // Apartment viewing UI
+        this.apartmentUI = this.add.text(this.gameWidth / 2, this.gameHeight / 2, '', {
+            fontSize: '14px',
+            color: '#ffffff',
+            backgroundColor: '#5D4037',
+            padding: { x: 15, y: 12 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(9999);
+        this.apartmentUI.setVisible(false);
+
         // Shop Interior UI (full-screen overlay)
         this.shopInteriorContainer = this.add.container(0, 0);
         this.shopInteriorContainer.setScrollFactor(0).setDepth(15000).setVisible(false);
@@ -1007,24 +974,24 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.shopInteriorContainer.add(this.shopNameLabel);
 
-        // Player money display (top right, above inventory panel)
-        this.shopMoneyText = this.add.text(this.gameWidth - 30, 110, '', {
+        // Player money display (hidden - using main resource UI instead)
+        this.shopMoneyText = this.add.text(20, 120, '', {
             fontSize: '18px',
-            color: '#000000',
+            color: '#FFFFFF',
             backgroundColor: '#4CAF50',
             padding: { x: 10, y: 5 },
-            align: 'right'
-        }).setOrigin(1, 0);
+            align: 'left'
+        }).setOrigin(0, 0).setVisible(false); // Hidden since main resource UI shows money
         this.shopInteriorContainer.add(this.shopMoneyText);
 
-        // Inventory info panel (top right)
-        this.shopStockText = this.add.text(this.gameWidth - 30, 150, '', {
+        // Inventory info panel (upper left corner, below main resource UI)
+        this.shopStockText = this.add.text(20, 120, '', {
             fontSize: '16px',
-            color: '#000000',
-            backgroundColor: '#FFFFFF',
+            color: '#FFFFFF',
+            backgroundColor: 'rgba(0,0,0,0.7)',
             padding: { x: 10, y: 5 },
-            align: 'right'
-        }).setOrigin(1, 0);
+            align: 'left'
+        }).setOrigin(0, 0);
         this.shopInteriorContainer.add(this.shopStockText);
 
         this.shopEmployeeText = this.add.text(this.gameWidth - 30, 190, '', {
@@ -1061,7 +1028,7 @@ class MainScene extends Phaser.Scene {
             this.shopRestockButton.setStyle({ backgroundColor: '#2E7D32' });
         });
         this.shopRestockButton.on('pointerdown', () => {
-            this.restockShop();
+            this.shopSystem.restockShop();
         });
 
         // Hire Employee button (bottom center, above restock button)
@@ -1080,7 +1047,7 @@ class MainScene extends Phaser.Scene {
             this.shopHireButton.setStyle({ backgroundColor: '#1976D2' });
         });
         this.shopHireButton.on('pointerdown', () => {
-            this.hireEmployee();
+            this.shopSystem.hireEmployee();
         });
 
         // Employee wage info (bottom center, above restock button)
@@ -1293,14 +1260,14 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.hotelInteriorContainer.add(this.hotelNameLabel);
 
-        // Hotel info panel
-        this.hotelInfoText = this.add.text(this.gameWidth / 2, 220, '', {
+        // Hotel info panel (upper left corner, below main resource UI)
+        this.hotelInfoText = this.add.text(20, 120, '', {
             fontSize: '16px',
             color: '#FFFFFF',
             backgroundColor: 'rgba(0,0,0,0.7)',
             padding: { x: 15, y: 10 },
-            align: 'center'
-        }).setOrigin(0.5);
+            align: 'left'
+        }).setOrigin(0, 0);
         this.hotelInteriorContainer.add(this.hotelInfoText);
 
         // Clean All Rooms button
@@ -1319,7 +1286,7 @@ class MainScene extends Phaser.Scene {
             this.hotelCleanButton.setStyle({ backgroundColor: '#E91E63' });
         });
         this.hotelCleanButton.on('pointerdown', () => {
-            this.cleanHotelRooms();
+            this.hotelSystem.cleanHotelRooms();
         });
 
         this.hotelInteriorContainer.add(this.hotelCleanButton);
@@ -1340,7 +1307,7 @@ class MainScene extends Phaser.Scene {
             this.hotelHireButton.setStyle({ backgroundColor: '#1976D2' });
         });
         this.hotelHireButton.on('pointerdown', () => {
-            this.hireHotelEmployee();
+            this.hotelSystem.hireHotelEmployee();
         });
 
         this.hotelInteriorContainer.add(this.hotelHireButton);
@@ -1372,7 +1339,7 @@ class MainScene extends Phaser.Scene {
             this.hotelHireMaidButton.setStyle({ backgroundColor: '#7B1FA2' });
         });
         this.hotelHireMaidButton.on('pointerdown', () => {
-            this.hireHotelMaid();
+            this.hotelSystem.hireHotelMaid();
         });
 
         this.hotelInteriorContainer.add(this.hotelHireMaidButton);
@@ -1500,14 +1467,14 @@ class MainScene extends Phaser.Scene {
         }).setOrigin(0.5);
         this.restaurantInteriorContainer.add(this.restaurantNameLabel);
 
-        // Restaurant info panel
-        this.restaurantInfoText = this.add.text(this.gameWidth / 2, 200, '', {
+        // Restaurant info panel (upper left corner, below main resource UI)
+        this.restaurantInfoText = this.add.text(20, 120, '', {
             fontSize: '16px',
             color: '#FFFFFF',
             backgroundColor: 'rgba(0,0,0,0.7)',
             padding: { x: 15, y: 10 },
-            align: 'center'
-        }).setOrigin(0.5);
+            align: 'left'
+        }).setOrigin(0, 0);
         this.restaurantInteriorContainer.add(this.restaurantInfoText);
 
         // Hire Day Waiter button
@@ -1526,7 +1493,7 @@ class MainScene extends Phaser.Scene {
             this.restaurantHireDayButton.setStyle({ backgroundColor: '#1976D2' });
         });
         this.restaurantHireDayButton.on('pointerdown', () => {
-            this.hireRestaurantWaiter('day');
+            this.restaurantSystem.hireRestaurantWaiter('day');
         });
 
         this.restaurantInteriorContainer.add(this.restaurantHireDayButton);
@@ -1547,7 +1514,7 @@ class MainScene extends Phaser.Scene {
             this.restaurantHireNightButton.setStyle({ backgroundColor: '#7B1FA2' });
         });
         this.restaurantHireNightButton.on('pointerdown', () => {
-            this.hireRestaurantWaiter('night');
+            this.restaurantSystem.hireRestaurantWaiter('night');
         });
 
         this.restaurantInteriorContainer.add(this.restaurantHireNightButton);
@@ -1562,6 +1529,11 @@ class MainScene extends Phaser.Scene {
         this.restaurantWageText.setScrollFactor(0).setDepth(15001).setVisible(false);
 
         this.restaurantInteriorContainer.add(this.restaurantWageText);
+
+        // Container for restaurant tables (will be populated when entering)
+        this.restaurantTablesContainer = this.add.container(0, 0);
+        this.restaurantTablesContainer.setScrollFactor(0).setDepth(15000);
+        this.restaurantInteriorContainer.add(this.restaurantTablesContainer);
 
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
@@ -1771,10 +1743,13 @@ class MainScene extends Phaser.Scene {
         this.spawnBuses();
 
         // Spawn initial citizens
-        this.spawnCitizens();
+        this.citizenSystem.spawnCitizens();
 
         // Load saved game if exists
-        this.loadGame();
+        this.saveSystem.loadGame();
+
+        // Check for vacant apartments after loading and generate applications
+        this.checkVacantApartmentsAfterLoad();
 
         // Debug: Check localStorage on startup
         console.log('=== GAME STARTUP DEBUG ===');
@@ -1792,6 +1767,10 @@ class MainScene extends Phaser.Scene {
 
     isShop(buildingType) {
         return ['clothingShop', 'electronicsShop', 'groceryStore', 'bookstore'].includes(buildingType);
+    }
+
+    isRestaurant(buildingType) {
+        return ['chinese_restaurant', 'italian_restaurant', 'diner', 'sub_shop'].includes(buildingType);
     }
 
     handleResize(gameSize) {
@@ -2552,147 +2531,7 @@ class MainScene extends Phaser.Scene {
         });
     }
 
-    spawnCitizens() {
-        // Spawn 20 initial citizens at random locations
-        const groundLevel = this.gameHeight - 100;
-
-        for (let i = 0; i < 20; i++) {
-            const x = Math.random() * 12000;
-            this.createCitizen(x, groundLevel - 30);
-        }
-    }
-
-    spawnNewCitizen() {
-        // Spawn a new citizen near a random residential building
-        const groundLevel = this.gameHeight - 100;
-
-        // Find all residential buildings
-        const residentialBuildings = this.buildings.filter(b =>
-            this.buildingTypes[b.type]?.district === 'residential'
-        );
-
-        let spawnX;
-        if (residentialBuildings.length > 0) {
-            // Spawn near a random residential building
-            const randomBuilding = residentialBuildings[Math.floor(Math.random() * residentialBuildings.length)];
-            spawnX = randomBuilding.x + (Math.random() * 400 - 200); // Within 200px of building
-        } else {
-            // No residential buildings yet, spawn randomly
-            spawnX = Math.random() * 12000;
-        }
-
-        this.createCitizen(spawnX, groundLevel - 30);
-    }
-
-    spawnTourist(x) {
-        // Spawn a tourist (temporary visitor) at a bus stop
-        const groundLevel = this.gameHeight - 100;
-        const spawnX = x + (Math.random() * 100 - 50); // Near bus stop
-
-        this.createCitizen(spawnX, groundLevel - 30);
-
-        // Mark the last spawned citizen as a tourist
-        const tourist = this.citizens[this.citizens.length - 1];
-        tourist.isTourist = true;
-        tourist.touristTimer = 180 + Math.random() * 120; // Stay for 3-5 minutes (game time)
-        tourist.spawnedAtStop = x; // Remember where they arrived
-    }
-
-    createCitizen(startX, startY) {
-        const citizen = this.add.container(startX, startY);
-        citizen.setDepth(11); // Above buildings (10), below buses (12)
-
-        // Randomize citizen appearance
-        const skinTones = [0xFFDBAC, 0xF1C27D, 0xE0AC69, 0xC68642, 0x8D5524, 0x5C3317];
-        const shirtColors = [0x2196F3, 0xF44336, 0x4CAF50, 0xFF9800, 0x9C27B0, 0x00BCD4, 0xE91E63];
-        const pantColors = [0x1565C0, 0x424242, 0x795548, 0x5D4037];
-
-        const skinTone = skinTones[Math.floor(Math.random() * skinTones.length)];
-        const shirtColor = shirtColors[Math.floor(Math.random() * shirtColors.length)];
-        const pantColor = pantColors[Math.floor(Math.random() * pantColors.length)];
-
-        // Shadow
-        const shadow = this.add.ellipse(0, 28, 20, 6, 0x000000, 0.3);
-        citizen.add(shadow);
-
-        // Legs
-        const leftLeg = this.add.graphics();
-        leftLeg.fillStyle(pantColor, 1);
-        leftLeg.fillRoundedRect(-6, 6, 6, 14, 2);
-        citizen.add(leftLeg);
-
-        const rightLeg = this.add.graphics();
-        rightLeg.fillStyle(pantColor, 1);
-        rightLeg.fillRoundedRect(0, 6, 6, 14, 2);
-        citizen.add(rightLeg);
-
-        // Shoes
-        const leftShoe = this.add.ellipse(-3, 22, 8, 4, 0x000000);
-        const rightShoe = this.add.ellipse(3, 22, 8, 4, 0x000000);
-        citizen.add(leftShoe);
-        citizen.add(rightShoe);
-
-        // Body (shirt)
-        const body = this.add.graphics();
-        body.fillStyle(shirtColor, 1);
-        body.fillRoundedRect(-8, -12, 16, 20, 3);
-        citizen.add(body);
-
-        // Arms
-        const leftArm = this.add.graphics();
-        leftArm.fillStyle(shirtColor, 1);
-        leftArm.fillRoundedRect(-12, -6, 4, 10, 2);
-        citizen.add(leftArm);
-
-        const rightArm = this.add.graphics();
-        rightArm.fillStyle(shirtColor, 1);
-        rightArm.fillRoundedRect(8, -6, 4, 10, 2);
-        citizen.add(rightArm);
-
-        // Hands
-        const leftHand = this.add.circle(-10, 6, 3, skinTone);
-        const rightHand = this.add.circle(10, 6, 3, skinTone);
-        citizen.add(leftHand);
-        citizen.add(rightHand);
-
-        // Neck
-        const neck = this.add.rectangle(0, -14, 4, 3, skinTone);
-        citizen.add(neck);
-
-        // Head
-        const head = this.add.circle(0, -20, 8, skinTone);
-        citizen.add(head);
-
-        // Eyes
-        const leftEye = this.add.circle(-3, -21, 1.5, 0x000000);
-        const rightEye = this.add.circle(3, -21, 1.5, 0x000000);
-        citizen.add(leftEye);
-        citizen.add(rightEye);
-
-        // Random hair color and style
-        const hairColors = [0x000000, 0x3E2723, 0x5D4037, 0xFFD700, 0xF44336];
-        const hairColor = hairColors[Math.floor(Math.random() * hairColors.length)];
-        const hair = this.add.circle(0, -24, 6, hairColor);
-        citizen.add(hair);
-
-        // Store citizen data
-        const targetBuilding = this.buildings.length > 0
-            ? this.buildings[Math.floor(Math.random() * this.buildings.length)]
-            : null;
-
-        this.citizens.push({
-            container: citizen,
-            x: startX,
-            y: startY,
-            state: 'walking', // walking, waiting, riding, visiting
-            walkSpeed: 30 + Math.random() * 20, // Random walk speed
-            direction: Math.random() > 0.5 ? 1 : -1,
-            targetBuilding: targetBuilding,
-            targetBusStop: null,
-            waitTimer: 0,
-            visitTimer: 0
-        });
-    }
+    // Citizen functions moved to CitizenSystem.js
 
     generateRentalApplication(apartmentBuilding, unitIndex) {
         // Random name generation
@@ -2737,30 +2576,55 @@ class MainScene extends Phaser.Scene {
         };
     }
 
-    generateApplicationsForVacantUnit(apartmentBuilding, unitIndex) {
-        console.log(`generateApplicationsForVacantUnit called for unit ${unitIndex}, mailboxes:`, this.mailboxes.length);
-        // Generate 3-5 applications
-        const numApplications = 3 + Math.floor(Math.random() * 3);
-        const applications = [];
+    autoFillVacantUnit(apartmentBuilding, unitIndex) {
+        // Auto-fill vacant units with random tenants after a short delay
+        console.log(`🏢 Auto-filling vacant unit ${unitIndex + 1}...`);
 
-        for (let i = 0; i < numApplications; i++) {
-            applications.push(this.generateRentalApplication(apartmentBuilding, unitIndex));
+        // Wait 3-8 seconds to simulate "listing time"
+        const delay = 3000 + Math.random() * 5000;
+
+        setTimeout(() => {
+            // Check if unit is still vacant (might have been filled manually or building deleted)
+            if (!apartmentBuilding.units || !apartmentBuilding.units[unitIndex] || apartmentBuilding.units[unitIndex].rented) {
+                return;
+            }
+
+            // Generate random tenant
+            const tenant = this.generateRentalApplication(apartmentBuilding, unitIndex);
+            const unit = apartmentBuilding.units[unitIndex];
+
+            // Move tenant in
+            unit.rented = true;
+            unit.tenant = tenant;
+            unit.accumulatedIncome = 0;
+            unit.lastIncomeTime = Date.now();
+            unit.lastRiskCheck = Date.now();
+
+            console.log(`✅ ${tenant.name} (${tenant.job}) moved into unit ${unitIndex + 1}!`);
+            console.log(`   💰 Rent: $${tenant.rentOffer}/day | 📊 Credit: ${tenant.creditScore} | 💼 Employed: ${tenant.employmentLength} months`);
+
+            // Save game to persist new tenant
+            this.saveSystem.saveGame();
+        }, delay);
+    }
+
+    checkVacantApartmentsAfterLoad() {
+        // After loading, check all apartments for vacant units and auto-fill them
+        console.log('🏢 Checking for vacant apartments after load...');
+
+        for (let building of this.buildings) {
+            // Check if this is an apartment building
+            if (building.type === 'apartment' && building.units) {
+                for (let i = 0; i < building.units.length; i++) {
+                    const unit = building.units[i];
+                    // If unit is not rented, auto-fill it
+                    if (!unit.rented) {
+                        console.log(`📭 Found vacant unit ${i + 1} in apartment building, auto-filling...`);
+                        this.autoFillVacantUnit(building, i);
+                    }
+                }
+            }
         }
-
-        // Add to pending applications
-        this.pendingApplications.push({
-            apartmentBuilding: apartmentBuilding,
-            unitIndex: unitIndex,
-            applications: applications,
-            arrivalTime: Date.now()
-        });
-
-        // Flag mailboxes as having applications
-        for (let mailbox of this.mailboxes) {
-            mailbox.hasApplications = true;
-        }
-
-        console.log(`${numApplications} applications received for apartment unit ${unitIndex + 1}`);
     }
 
     checkTenantRisk(unit) {
@@ -2799,915 +2663,81 @@ class MainScene extends Phaser.Scene {
             unit.tenant = null;
             unit.accumulatedIncome = 0;
 
-            // Generate new applications after a delay
+            // Auto-fill with new tenant after a delay
             const building = this.buildings.find(b => b.units && b.units.includes(unit));
             const unitIndex = building.units.indexOf(unit);
 
-            // Wait a bit before new applications arrive (simulate time to clean/list unit)
-            setTimeout(() => {
-                this.generateApplicationsForVacantUnit(building, unitIndex);
-            }, 5000); // 5 seconds delay
+            // Auto-fill the vacant unit
+            this.autoFillVacantUnit(building, unitIndex);
         }
     }
 
-    drawBuildingDetails(graphics, type, x, y, facadeVariation = 0) {
-        const building = this.buildingTypes[type];
+    // drawBuildingDetails has been moved to BuildingRenderer.js
 
-        if (type === 'house') {
-            // House: Two-story residential with 2x3 symmetrical windows (bottom row removed to avoid door overlap)
-            // 4 color variations for variety
-            const colorSchemes = [
-                { building: 0xFF6B6B, door: 0x8B4513, roof: 0xA0522D, window: 0xFFFF99 },  // Classic Red/Brown
-                { building: 0xFFF9C4, door: 0x795548, roof: 0x8D6E63, window: 0xE3F2FD },  // Cream/Tan
-                { building: 0x81C784, door: 0x4E342E, roof: 0x6D4C41, window: 0xFFFDE7 },  // Sage Green/Dark Brown
-                { building: 0xB0BEC5, door: 0x37474F, roof: 0x546E7A, window: 0xE1F5FE }   // Blue-Gray/Slate
-            ];
-            const scheme = colorSchemes[facadeVariation % 4];
+    cycleBuildCategory() {
+        // Cycle through categories: residential → shops → restaurants → resources → residential
+        const categories = ['residential', 'shops', 'restaurants', 'resources'];
+        const currentIndex = categories.indexOf(this.currentCategory);
+        const nextIndex = (currentIndex + 1) % categories.length;
+        this.currentCategory = categories[nextIndex];
 
-            // Override the building base color with variation color
-            graphics.fillStyle(scheme.building, 1);
-            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+        // Update dropdown text
+        const categoryNames = {
+            residential: 'Residential',
+            shops: 'Shops',
+            restaurants: 'Restaurants',
+            resources: 'Resources'
+        };
+        this.categoryDropdown.setText(`📂 Category: ${categoryNames[this.currentCategory]} ▼`);
 
-            const windowColor = scheme.window;
-            const windowWidth = 20;
-            const windowHeight = 25;
-            const spacing = 25;
+        // Update displayed buildings
+        this.updateBuildingCategoryDisplay();
+    }
 
-            // Floor separator line (between stories)
-            graphics.lineStyle(3, 0x654321, 1);
-            graphics.lineBetween(x - building.width/2, y - building.height/2, x + building.width/2, y - building.height/2);
+    updateBuildingCategoryDisplay() {
+        // Clear existing building buttons
+        this.buildingButtonsContainer.removeAll(true);
+        this.buildingButtons = {};
 
-            // 2 columns, 3 rows of windows (bottom row removed to avoid door overlap)
-            for (let row = 0; row < 3; row++) {
-                for (let col = 0; col < 2; col++) {
-                    const wx = x - spacing + (col * spacing * 2);
-                    const wy = y - building.height + 50 + (row * 50);
+        // Get buildings for current category
+        const categoryBuildings = this.buildingCategories[this.currentCategory];
 
-                    // Window shadow (depth effect - darker rectangle behind)
-                    graphics.fillStyle(0x000000, 0.3);
-                    graphics.fillRect(wx - windowWidth/2 + 2, wy + 2, windowWidth, windowHeight);
+        // Create buttons for current category
+        categoryBuildings.forEach((building, index) => {
+            const col = index % 4;
+            const row = Math.floor(index / 4);
+            const x = -300 + (col * 200);
+            const y = 0 + (row * 35);
 
-                    // Window
-                    graphics.fillStyle(windowColor, 1);
-                    graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
+            const btn = this.add.text(x, y, `${building.label}\n${building.price}`, {
+                fontSize: '12px',
+                color: '#ffffff',
+                backgroundColor: building.color,
+                padding: { x: 10, y: 5 },
+                align: 'center'
+            }).setOrigin(0.5).setInteractive().setScrollFactor(0);
 
-                    // Window reflection (lighter top half)
-                    graphics.fillStyle(0xFFFFFF, 0.3);
-                    graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight/2);
+            btn.on('pointerdown', () => {
+                console.log('🎯 Building button clicked:', building.type);
+                this.selectedBuilding = building.type;
+                this.updateBuildingButtonStates();
+            });
 
-                    // Window frame
-                    graphics.lineStyle(2, 0x654321, 1);
-                    graphics.strokeRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
-
-                    // Window cross
-                    graphics.lineStyle(1, 0x654321, 1);
-                    graphics.lineBetween(wx, wy, wx, wy + windowHeight);
-                    graphics.lineBetween(wx - windowWidth/2, wy + windowHeight/2, wx + windowWidth/2, wy + windowHeight/2);
+            btn.on('pointerover', () => {
+                if (this.selectedBuilding !== building.type) {
+                    btn.setStyle({ backgroundColor: '#FFD700', color: '#000000' });
                 }
-            }
+            });
 
-            // Door shadow (3D depth)
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillRect(x - 20 + 3, y - 50 + 3, 40, 50);
-
-            // Front door (centered) - uses variation color
-            graphics.fillStyle(scheme.door, 1);
-            graphics.fillRect(x - 20, y - 50, 40, 50);
-            graphics.lineStyle(2, 0x654321, 1);
-            graphics.strokeRect(x - 20, y - 50, 40, 50);
-
-            // Door panels
-            graphics.lineStyle(1, 0x654321, 1);
-            graphics.strokeRect(x - 15, y - 45, 12, 20);
-            graphics.strokeRect(x + 3, y - 45, 12, 20);
-
-            // Doorknob with shadow
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillCircle(x + 13, y - 24, 3);
-            graphics.fillStyle(0xFFD700, 1);
-            graphics.fillCircle(x + 12, y - 25, 3);
-            graphics.fillStyle(0xFFFF99, 0.5);
-            graphics.fillCircle(x + 11, y - 26, 1.5);
-
-            // 3D Peaked Roof with angular perspective
-            // Dark underside shadow
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillTriangle(
-                x - building.width/2 - 10, y - building.height,
-                x, y - building.height - 35,
-                x + building.width/2 + 10, y - building.height
-            );
-
-            // Left side of roof (lighter) - uses variation color
-            graphics.fillStyle(scheme.roof, 1);
-            graphics.fillTriangle(
-                x - building.width/2 - 10, y - building.height,
-                x, y - building.height - 35,
-                x, y - building.height
-            );
-
-            // Right side of roof (darker for 3D effect) - darker shade
-            // Darken the roof color by converting to RGB, reducing, and converting back
-            const roofR = (scheme.roof >> 16) & 0xFF;
-            const roofG = (scheme.roof >> 8) & 0xFF;
-            const roofB = scheme.roof & 0xFF;
-            const darkerRoof = ((roofR * 0.85) << 16) | ((roofG * 0.85) << 8) | (roofB * 0.85);
-            graphics.fillStyle(darkerRoof, 1);
-            graphics.fillTriangle(
-                x, y - building.height - 35,
-                x + building.width/2 + 10, y - building.height,
-                x, y - building.height
-            );
-
-            // Roof outline
-            graphics.lineStyle(2, 0x654321, 1);
-            graphics.strokeTriangle(
-                x - building.width/2 - 10, y - building.height,
-                x, y - building.height - 35,
-                x + building.width/2 + 10, y - building.height
-            );
-
-            // Roof ridge line (3D edge)
-            graphics.lineStyle(1, 0x000000, 0.5);
-            graphics.lineBetween(x, y - building.height, x, y - building.height - 35);
-
-        } else if (type === 'apartment') {
-            // Apartment: Four-story building with 2 units per floor (8 units total)
-            // 4 color variations for variety
-            const colorSchemes = [
-                { building: 0xFF8C94, door: 0x654321, window: 0xFFFF99 },  // Classic Pink/Brown
-                { building: 0x90CAF9, door: 0x424242, window: 0xFFFDE7 },  // Sky Blue/Gray
-                { building: 0xF8BBD0, door: 0x6D4C41, window: 0xE8F5E9 },  // Rose/Brown
-                { building: 0xCE93D8, door: 0x4A148C, window: 0xF3E5F5 }   // Lavender/Purple
-            ];
-            const scheme = colorSchemes[facadeVariation % 4];
-
-            // Override the building base color with variation color
-            graphics.fillStyle(scheme.building, 1);
-            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
-
-            const windowColor = scheme.window;
-            const windowWidth = 18;
-            const windowHeight = 20;
-            const floorHeight = building.height / 4; // 90px per floor
-
-            // Draw floor separator lines
-            graphics.lineStyle(2, 0x654321, 1);
-            for (let floor = 1; floor < 4; floor++) {
-                const floorY = y - (floor * floorHeight);
-                graphics.lineBetween(x - building.width/2, floorY, x + building.width/2, floorY);
-            }
-
-            // Draw units (2 per floor, 4 floors = 8 units)
-            for (let floor = 0; floor < 4; floor++) {
-                for (let unit = 0; unit < 2; unit++) {
-                    const unitX = x - 50 + (unit * 100); // Left or right unit
-                    const unitY = y - building.height + (floor * floorHeight) + 20;
-                    const unitIndex = floor * 2 + unit; // Calculate unit index (0-7)
-
-                    // Windows for each unit (2 windows)
-                    for (let win = 0; win < 2; win++) {
-                        const wx = unitX - 15 + (win * 30);
-                        const wy = unitY + 15;
-
-                        // Window shadow
-                        graphics.fillStyle(0x000000, 0.3);
-                        graphics.fillRect(wx - windowWidth/2 + 1, wy + 1, windowWidth, windowHeight);
-
-                        // Window
-                        graphics.fillStyle(windowColor, 1);
-                        graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
-
-                        // Window reflection
-                        graphics.fillStyle(0xFFFFFF, 0.3);
-                        graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight/2);
-
-                        // Window frame
-                        graphics.lineStyle(1, 0x654321, 1);
-                        graphics.strokeRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
-                    }
-                    // Note: VACANT signs are added dynamically as text in the update loop
+            btn.on('pointerout', () => {
+                if (this.selectedBuilding !== building.type) {
+                    btn.setStyle({ backgroundColor: building.color, color: '#ffffff' });
                 }
-            }
-
-            // Main entrance - Double glass doors on first floor (centered)
-            const entranceWidth = 50;
-            const entranceHeight = 70;
-            const entranceY = y - entranceHeight;
-
-            // Door frame shadow
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, entranceWidth, entranceHeight);
-
-            // Door frame - uses variation color
-            graphics.fillStyle(scheme.door, 1);
-            graphics.fillRect(x - entranceWidth/2, entranceY, entranceWidth, entranceHeight);
-
-            // Left glass door
-            graphics.fillStyle(0x87CEEB, 0.7);
-            graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, (entranceWidth/2) - 5, entranceHeight - 6);
-
-            // Right glass door
-            graphics.fillRect(x + 2, entranceY + 3, (entranceWidth/2) - 5, entranceHeight - 6);
-
-            // Glass reflection
-            graphics.fillStyle(0xFFFFFF, 0.3);
-            graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, (entranceWidth/2) - 5, (entranceHeight - 6)/2);
-            graphics.fillRect(x + 2, entranceY + 3, (entranceWidth/2) - 5, (entranceHeight - 6)/2);
-
-            // Door divider (between double doors)
-            graphics.fillStyle(0x654321, 1);
-            graphics.fillRect(x - 2, entranceY, 4, entranceHeight);
-
-            // Door handles (gold)
-            graphics.fillStyle(0xFFD700, 1);
-            graphics.fillCircle(x - 10, entranceY + entranceHeight/2, 3);
-            graphics.fillCircle(x + 10, entranceY + entranceHeight/2, 3);
-
-            // Flat roof
-            graphics.fillStyle(0x696969, 1);
-            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
-
-        } else if (type === 'hotel') {
-            // Hotel: Five-story building with 2 rooms per floor (10 rooms total)
-            // 4 color variations for variety
-            const colorSchemes = [
-                { building: 0x8B1A1A, doorFrame: 0xFFD700, accent: 0xFFD700, window: 0xFFF9E0 },  // Burgundy/Gold - Classic luxury
-                { building: 0x1A3A5C, doorFrame: 0xC0C0C0, accent: 0xE0E0E0, window: 0xE3F2FD },  // Navy/Silver - Modern elegant
-                { building: 0x2C6E6E, doorFrame: 0xB8860B, accent: 0xFFD700, window: 0xE8F5E9 },  // Teal/Bronze - Contemporary
-                { building: 0x424242, doorFrame: 0xC0C0C0, accent: 0xFFFFFF, window: 0xF5F5F5 }   // Charcoal/Silver - Minimalist
-            ];
-            const scheme = colorSchemes[facadeVariation % 4];
-
-            // Override the building base color with variation color
-            graphics.fillStyle(scheme.building, 1);
-            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
-
-            const windowColor = scheme.window;
-            const windowWidth = 20;
-            const windowHeight = 22;
-            const floorHeight = building.height / 5; // 80px per floor
-
-            // Draw floor separator lines
-            graphics.lineStyle(2, 0x654321, 1);
-            for (let floor = 1; floor < 5; floor++) {
-                const floorY = y - (floor * floorHeight);
-                graphics.lineBetween(x - building.width/2, floorY, x + building.width/2, floorY);
-            }
-
-            // Draw rooms (2 per floor, 5 floors = 10 rooms)
-            for (let floor = 0; floor < 5; floor++) {
-                for (let room = 0; room < 2; room++) {
-                    const roomX = x - 60 + (room * 120); // Left or right room
-                    const roomY = y - building.height + (floor * floorHeight) + 25;
-                    const roomIndex = floor * 2 + room; // Calculate room index (0-9)
-
-                    // Windows for each room (2 windows)
-                    for (let win = 0; win < 2; win++) {
-                        const wx = roomX - 20 + (win * 40);
-                        const wy = roomY + 15;
-
-                        // Window shadow
-                        graphics.fillStyle(0x000000, 0.3);
-                        graphics.fillRect(wx - windowWidth/2 + 1, wy + 1, windowWidth, windowHeight);
-
-                        // Window
-                        graphics.fillStyle(windowColor, 1);
-                        graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
-
-                        // Window reflection
-                        graphics.fillStyle(0xFFFFFF, 0.3);
-                        graphics.fillRect(wx - windowWidth/2, wy, windowWidth, windowHeight/2);
-
-                        // Window frame
-                        graphics.lineStyle(1, 0x654321, 1);
-                        graphics.strokeRect(wx - windowWidth/2, wy, windowWidth, windowHeight);
-                    }
-                    // Note: DIRTY signs are added dynamically as text in the update loop
-                }
-            }
-
-            // Main entrance - Large revolving door on first floor (centered)
-            const entranceWidth = 60;
-            const entranceHeight = 75;
-            const entranceY = y - entranceHeight;
-
-            // Door frame shadow
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillRect(x - entranceWidth/2 + 3, entranceY + 3, entranceWidth, entranceHeight);
-
-            // Door frame (uses variation color)
-            graphics.fillStyle(scheme.doorFrame, 1);
-            graphics.fillRect(x - entranceWidth/2, entranceY, entranceWidth, entranceHeight);
-
-            // Glass revolving door
-            graphics.fillStyle(0x87CEEB, 0.6);
-            graphics.fillRect(x - entranceWidth/2 + 5, entranceY + 5, entranceWidth - 10, entranceHeight - 10);
-
-            // Glass reflection
-            graphics.fillStyle(0xFFFFFF, 0.4);
-            graphics.fillRect(x - entranceWidth/2 + 5, entranceY + 5, entranceWidth - 10, (entranceHeight - 10)/2);
-
-            // Revolving door dividers (cross pattern)
-            graphics.fillStyle(0xC0C0C0, 1);
-            graphics.fillRect(x - 2, entranceY + 5, 4, entranceHeight - 10); // Vertical
-            graphics.fillRect(x - entranceWidth/2 + 5, entranceY + entranceHeight/2 - 2, entranceWidth - 10, 4); // Horizontal
-
-            // Hotel sign above entrance (uses variation accent color)
-            graphics.fillStyle(scheme.accent, 1);
-            graphics.fillRect(x - 40, y - building.height + 10, 80, 20);
-            graphics.lineStyle(2, 0x654321, 1);
-            graphics.strokeRect(x - 40, y - building.height + 10, 80, 20);
-
-            // Flat roof with decorative trim
-            graphics.fillStyle(0x696969, 1);
-            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
-
-        } else if (type === 'clothingShop') {
-            // CLOTHING SHOP: Elegant boutique with tall windows and mannequin displays
-            // 4 color variations for variety
-            const colorSchemes = [
-                { building: 0xFF69B4, awning: 0xE91E63, window: 0xF0E6FF },  // Hot Pink (original)
-                { building: 0xFFE4E1, awning: 0xFFB6C1, window: 0xFFF0F5 },  // Misty Rose/Light Pink
-                { building: 0xE6E6FA, awning: 0x9370DB, window: 0xF8F8FF },  // Lavender/Medium Purple
-                { building: 0xFFE4B5, awning: 0xD2691E, window: 0xFFFAF0 }   // Moccasin/Chocolate
-            ];
-            const scheme = colorSchemes[facadeVariation % 4];
-
-            // Override the building base color with variation color
-            graphics.fillStyle(scheme.building, 1);
-            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
-
-            const windowColor = scheme.window;
-
-            // Large elegant storefront window (taller and more upscale)
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 70 + 3, y - 140 + 3, 140, 80);
-
-            graphics.fillStyle(windowColor, 1);
-            graphics.fillRect(x - 70, y - 140, 140, 80);
-
-            // Window reflection
-            graphics.fillStyle(0xFFFFFF, 0.3);
-            graphics.fillRect(x - 70, y - 140, 140, 40);
-
-            graphics.lineStyle(3, 0x000000, 1);
-            graphics.strokeRect(x - 70, y - 140, 140, 80);
-
-            // Elegant window dividers (vertical only)
-            graphics.lineStyle(2, 0x000000, 1);
-            graphics.lineBetween(x - 35, y - 140, x - 35, y - 60);
-            graphics.lineBetween(x + 35, y - 140, x + 35, y - 60);
-
-            // Mannequin silhouettes in window
-            graphics.fillStyle(0xC0C0C0, 0.6);
-            graphics.fillCircle(x - 40, y - 115, 8); // Head
-            graphics.fillRect(x - 46, y - 105, 12, 20); // Body
-            graphics.fillRect(x - 48, y - 85, 16, 20); // Dress
-
-            graphics.fillCircle(x + 40, y - 115, 8); // Head 2
-            graphics.fillRect(x + 34, y - 105, 12, 20); // Body 2
-            graphics.fillRect(x + 32, y - 85, 16, 20); // Dress 2
-
-            // Upper windows (3 narrow elegant windows)
-            for (let col = 0; col < 3; col++) {
-                const wx = x - 50 + (col * 50);
-                const wy = y - building.height + 25;
-
-                graphics.fillStyle(0x000000, 0.3);
-                graphics.fillRect(wx - 10 + 2, wy + 2, 20, 40);
-
-                graphics.fillStyle(windowColor, 1);
-                graphics.fillRect(wx - 10, wy, 20, 40);
-
-                graphics.fillStyle(0xFFFFFF, 0.2);
-                graphics.fillRect(wx - 10, wy, 20, 20);
-
-                graphics.lineStyle(2, 0x000000, 1);
-                graphics.strokeRect(wx - 10, wy, 20, 40);
-            }
-
-            // Elegant awning - uses variation color
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 75, y - 140, 150, 8);
-
-            graphics.fillStyle(scheme.awning, 1);
-            graphics.fillRect(x - 75, y - 148, 150, 8);
-
-            graphics.fillStyle(0xC2185B, 1); // Darker pink
-            graphics.beginPath();
-            graphics.moveTo(x - 75, y - 140);
-            graphics.lineTo(x + 75, y - 140);
-            graphics.lineTo(x + 70, y - 135);
-            graphics.lineTo(x - 70, y - 135);
-            graphics.closePath();
-            graphics.fillPath();
-
-            // Glass door
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
-
-            graphics.fillStyle(0x87CEEB, 0.4);
-            graphics.fillRect(x - 20, y - 55, 40, 55);
-
-            graphics.fillStyle(0xFFFFFF, 0.3);
-            graphics.fillRect(x - 20, y - 55, 40, 27);
-
-            graphics.lineStyle(2, 0xC0C0C0, 1);
-            graphics.strokeRect(x - 20, y - 55, 40, 55);
-
-            // Door handle
-            graphics.fillStyle(0xFFD700, 1);
-            graphics.fillCircle(x + 10, y - 28, 4);
-
-            // Roof
-            graphics.fillStyle(0x696969, 1);
-            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
-
-        } else if (type === 'electronicsShop') {
-            // ELECTRONICS SHOP: Modern tech store with grid windows and neon accents
-
-            // Color variations for electronics shop
-            const colorSchemes = [
-                { building: 0x1E88E5, awning: 0x1976D2, window: 0xE3F2FD },  // Classic Blue (original)
-                { building: 0x424242, awning: 0x212121, window: 0xF5F5F5 },  // Sleek Gray/Black
-                { building: 0x00897B, awning: 0x00695C, window: 0xE0F2F1 },  // Teal/Cyan
-                { building: 0x5E35B1, awning: 0x4527A0, window: 0xEDE7F6 }   // Purple/Violet
-            ];
-            const scheme = colorSchemes[facadeVariation % 4];
-
-            // Override the building base color with variation color
-            graphics.fillStyle(scheme.building, 1);
-            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
-
-            const windowColor = scheme.window;
-
-            // Modern grid display window (multiple screens look)
-            for (let row = 0; row < 2; row++) {
-                for (let col = 0; col < 3; col++) {
-                    const wx = x - 50 + (col * 40);
-                    const wy = y - 130 + (row * 35);
-
-                    graphics.fillStyle(0x000000, 0.4);
-                    graphics.fillRect(wx + 2, wy + 2, 35, 30);
-
-                    graphics.fillStyle(windowColor, 1);
-                    graphics.fillRect(wx, wy, 35, 30);
-
-                    // Screen glow effect
-                    graphics.fillStyle(0x2196F3, 0.3);
-                    graphics.fillRect(wx + 2, wy + 2, 31, 26);
-
-                    graphics.lineStyle(2, 0x000000, 1);
-                    graphics.strokeRect(wx, wy, 35, 30);
-                }
-            }
-
-            // Neon accent strip
-            graphics.fillStyle(0x00E5FF, 0.8);
-            graphics.fillRect(x - 70, y - 135, 140, 3);
-
-            // Upper windows (modern square style)
-            for (let col = 0; col < 2; col++) {
-                const wx = x - 35 + (col * 70);
-                const wy = y - building.height + 30;
-
-                graphics.fillStyle(0x000000, 0.3);
-                graphics.fillRect(wx - 15 + 2, wy + 2, 30, 30);
-
-                graphics.fillStyle(windowColor, 1);
-                graphics.fillRect(wx - 15, wy, 30, 30);
-
-                graphics.fillStyle(0x2196F3, 0.2);
-                graphics.fillRect(wx - 15, wy, 30, 15);
-
-                graphics.lineStyle(2, 0x000000, 1);
-                graphics.strokeRect(wx - 15, wy, 30, 30);
-            }
-
-            // Modern blue awning
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 70, y - 140, 140, 8);
-
-            graphics.fillStyle(scheme.awning, 1);
-            graphics.fillRect(x - 70, y - 148, 140, 8);
-
-            // Darker shade for 3D effect
-            const awningR = (scheme.awning >> 16) & 0xFF;
-            const awningG = (scheme.awning >> 8) & 0xFF;
-            const awningB = scheme.awning & 0xFF;
-            const darkerAwning = ((awningR * 0.85) << 16) | ((awningG * 0.85) << 8) | (awningB * 0.85);
-            graphics.fillStyle(darkerAwning, 1);
-            graphics.beginPath();
-            graphics.moveTo(x - 70, y - 140);
-            graphics.lineTo(x + 70, y - 140);
-            graphics.lineTo(x + 65, y - 135);
-            graphics.lineTo(x - 65, y - 135);
-            graphics.closePath();
-            graphics.fillPath();
-
-            // Modern glass door
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
-
-            graphics.fillStyle(0x87CEEB, 0.3);
-            graphics.fillRect(x - 20, y - 55, 40, 55);
-
-            graphics.lineStyle(2, 0x424242, 1);
-            graphics.strokeRect(x - 20, y - 55, 40, 55);
-            graphics.lineBetween(x, y - 55, x, y);
-
-            // Door handle
-            graphics.fillStyle(0xC0C0C0, 1);
-            graphics.fillRect(x + 8, y - 30, 3, 15);
-
-            // Roof
-            graphics.fillStyle(0x616161, 1);
-            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
-
-        } else if (type === 'groceryStore') {
-            // GROCERY STORE: Market style with produce crates outside and multiple windows
-
-            // Color variations for grocery store
-            const colorSchemes = [
-                { building: 0x81C784, awning: 0x66BB6A, awningDark: 0x4CAF50, window: 0xE8F5E9 },  // Classic Green (original)
-                { building: 0xFFB74D, awning: 0xFF9800, awningDark: 0xF57C00, window: 0xFFF3E0 },  // Orange/Warm
-                { building: 0x9575CD, awning: 0x7E57C2, awningDark: 0x5E35B1, window: 0xF3E5F5 },  // Purple/Lavender
-                { building: 0x4DD0E1, awning: 0x26C6DA, awningDark: 0x00ACC1, window: 0xE0F7FA }   // Cyan/Aqua
-            ];
-            const scheme = colorSchemes[facadeVariation % 4];
-
-            // Override the building base color with variation color
-            graphics.fillStyle(scheme.building, 1);
-            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
-
-            const windowColor = scheme.window;
-
-            // Multiple small market-style windows
-            for (let col = 0; col < 4; col++) {
-                const wx = x - 60 + (col * 40);
-                const wy = y - 125;
-
-                graphics.fillStyle(0x000000, 0.3);
-                graphics.fillRect(wx + 2, wy + 2, 30, 40);
-
-                graphics.fillStyle(windowColor, 1);
-                graphics.fillRect(wx, wy, 30, 40);
-
-                graphics.fillStyle(0xFFFFFF, 0.2);
-                graphics.fillRect(wx, wy, 30, 20);
-
-                graphics.lineStyle(2, 0x000000, 1);
-                graphics.strokeRect(wx, wy, 30, 40);
-                graphics.lineBetween(wx, wy + 20, wx + 30, wy + 20);
-            }
-
-            // Produce crates outside (left side)
-            graphics.fillStyle(0x8D6E63, 1); // Wood crate
-            graphics.strokeStyle(0x5D4037, 1);
-            graphics.lineStyle(2, 0x5D4037, 1);
-            graphics.strokeRect(x - 85, y - 30, 20, 25);
-            graphics.strokeRect(x - 85, y - 25, 20, 20);
-
-            // Produce in crate (red apples)
-            graphics.fillStyle(0xF44336, 1);
-            graphics.fillCircle(x - 80, y - 18, 5);
-            graphics.fillCircle(x - 72, y - 18, 5);
-            graphics.fillCircle(x - 76, y - 24, 5);
-
-            // Another crate (right side)
-            graphics.lineStyle(2, 0x5D4037, 1);
-            graphics.strokeRect(x + 65, y - 30, 20, 25);
-            graphics.strokeRect(x + 65, y - 25, 20, 20);
-
-            // Produce in crate (oranges)
-            graphics.fillStyle(0xFF9800, 1);
-            graphics.fillCircle(x + 70, y - 18, 5);
-            graphics.fillCircle(x + 78, y - 18, 5);
-            graphics.fillCircle(x + 74, y - 24, 5);
-
-            // Upper windows (3 windows)
-            for (let col = 0; col < 3; col++) {
-                const wx = x - 45 + (col * 45);
-                const wy = y - building.height + 30;
-
-                graphics.fillStyle(0x000000, 0.3);
-                graphics.fillRect(wx - 12 + 2, wy + 2, 24, 30);
-
-                graphics.fillStyle(windowColor, 1);
-                graphics.fillRect(wx - 12, wy, 24, 30);
-
-                graphics.fillStyle(0xFFFFFF, 0.2);
-                graphics.fillRect(wx - 12, wy, 24, 15);
-
-                graphics.lineStyle(2, 0x000000, 1);
-                graphics.strokeRect(wx - 12, wy, 24, 30);
-            }
-
-            // Green striped market awning
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 70, y - 125, 140, 8);
-
-            graphics.fillStyle(scheme.awning, 1);
-            graphics.fillRect(x - 70, y - 133, 140, 8);
-
-            graphics.fillStyle(scheme.awningDark, 1);
-            graphics.beginPath();
-            graphics.moveTo(x - 70, y - 125);
-            graphics.lineTo(x + 70, y - 125);
-            graphics.lineTo(x + 65, y - 120);
-            graphics.lineTo(x - 65, y - 120);
-            graphics.closePath();
-            graphics.fillPath();
-
-            // Awning stripes - darker shade for stripes
-            const stripeR = (scheme.awningDark >> 16) & 0xFF;
-            const stripeG = (scheme.awningDark >> 8) & 0xFF;
-            const stripeB = scheme.awningDark & 0xFF;
-            const darkerStripe = ((stripeR * 0.7) << 16) | ((stripeG * 0.7) << 8) | (stripeB * 0.7);
-            graphics.lineStyle(2, darkerStripe, 1);
-            for (let i = 0; i < 7; i++) {
-                graphics.lineBetween(x - 70 + (i * 23), y - 133, x - 70 + (i * 23), y - 125);
-            }
-
-            // Wood door
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
-
-            graphics.fillStyle(0x8D6E63, 1);
-            graphics.fillRect(x - 20, y - 55, 40, 55);
-
-            graphics.lineStyle(2, 0x5D4037, 1);
-            graphics.strokeRect(x - 20, y - 55, 40, 55);
-
-            // Door handle
-            graphics.fillStyle(0xFFD700, 1);
-            graphics.fillCircle(x + 10, y - 28, 4);
-
-            // Roof
-            graphics.fillStyle(0x795548, 1);
-            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
-
-        } else if (type === 'bookstore') {
-            // BOOKSTORE: Cozy vintage shop with shutters and book displays
-
-            // Color variations for bookstore
-            const colorSchemes = [
-                { building: 0xA1887F, awning: 0x8D6E63, awningDark: 0x6D4C41, shutter: 0x6D4C41, window: 0xFFF9E6 },  // Classic Brown (original)
-                { building: 0x9FA8DA, awning: 0x7986CB, awningDark: 0x5C6BC0, shutter: 0x3F51B5, window: 0xE8EAF6 },  // Indigo/Navy
-                { building: 0xA5D6A7, awning: 0x81C784, awningDark: 0x66BB6A, shutter: 0x4CAF50, window: 0xF1F8E9 },  // Green/Sage
-                { building: 0xFFAB91, awning: 0xFF8A65, awningDark: 0xFF7043, shutter: 0xFF5722, window: 0xFFF3E0 }   // Coral/Terracotta
-            ];
-            const scheme = colorSchemes[facadeVariation % 4];
-
-            // Override the building base color with variation color
-            graphics.fillStyle(scheme.building, 1);
-            graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
-
-            const windowColor = scheme.window;
-
-            // Large storefront window with book display
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 65 + 3, y - 125 + 3, 130, 65);
-
-            graphics.fillStyle(windowColor, 1);
-            graphics.fillRect(x - 65, y - 125, 130, 65);
-
-            // Window reflection
-            graphics.fillStyle(0xFFFFFF, 0.15);
-            graphics.fillRect(x - 65, y - 125, 130, 32);
-
-            graphics.lineStyle(3, 0x4E342E, 1); // Brown frame
-            graphics.strokeRect(x - 65, y - 125, 130, 65);
-
-            // Window panes (6 panes)
-            graphics.lineStyle(2, 0x4E342E, 1);
-            graphics.lineBetween(x - 65, y - 103, x + 65, y - 103);
-            graphics.lineBetween(x - 22, y - 125, x - 22, y - 60);
-            graphics.lineBetween(x + 22, y - 125, x + 22, y - 60);
-
-            // Book stacks in window
-            graphics.fillStyle(0x8B4513, 0.6); // Books
-            graphics.fillRect(x - 50, y - 85, 8, 20);
-            graphics.fillRect(x - 40, y - 80, 8, 15);
-            graphics.fillRect(x - 30, y - 88, 8, 23);
-
-            graphics.fillRect(x + 25, y - 85, 8, 20);
-            graphics.fillRect(x + 35, y - 80, 8, 15);
-            graphics.fillRect(x + 45, y - 88, 8, 23);
-
-            // Upper windows with shutters (2 windows)
-            for (let col = 0; col < 2; col++) {
-                const wx = x - 35 + (col * 70);
-                const wy = y - building.height + 30;
-
-                // Shutters (left side)
-                graphics.fillStyle(scheme.shutter, 1);
-                graphics.fillRect(wx - 30, wy, 10, 35);
-                graphics.lineStyle(1, 0x4E342E, 1);
-                graphics.strokeRect(wx - 30, wy, 10, 35);
-                for (let i = 0; i < 7; i++) {
-                    graphics.lineBetween(wx - 30, wy + (i * 5), wx - 20, wy + (i * 5));
-                }
-
-                // Window
-                graphics.fillStyle(0x000000, 0.3);
-                graphics.fillRect(wx - 15 + 2, wy + 2, 30, 35);
-
-                graphics.fillStyle(windowColor, 1);
-                graphics.fillRect(wx - 15, wy, 30, 35);
-
-                graphics.fillStyle(0xFFFFFF, 0.15);
-                graphics.fillRect(wx - 15, wy, 30, 17);
-
-                graphics.lineStyle(2, 0x4E342E, 1);
-                graphics.strokeRect(wx - 15, wy, 30, 35);
-                graphics.lineBetween(wx, wy, wx, wy + 35);
-
-                // Shutters (right side)
-                graphics.fillStyle(scheme.shutter, 1);
-                graphics.fillRect(wx + 20, wy, 10, 35);
-                graphics.lineStyle(1, 0x4E342E, 1);
-                graphics.strokeRect(wx + 20, wy, 10, 35);
-                for (let i = 0; i < 7; i++) {
-                    graphics.lineBetween(wx + 20, wy + (i * 5), wx + 30, wy + (i * 5));
-                }
-            }
-
-            // Brown cozy awning
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 70, y - 125, 140, 8);
-
-            graphics.fillStyle(scheme.awning, 1);
-            graphics.fillRect(x - 70, y - 133, 140, 8);
-
-            graphics.fillStyle(scheme.awningDark, 1);
-            graphics.beginPath();
-            graphics.moveTo(x - 70, y - 125);
-            graphics.lineTo(x + 70, y - 125);
-            graphics.lineTo(x + 65, y - 120);
-            graphics.lineTo(x - 65, y - 120);
-            graphics.closePath();
-            graphics.fillPath();
-
-            // Vintage wood door
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillRect(x - 20 + 3, y - 55 + 3, 40, 55);
-
-            graphics.fillStyle(0x5D4037, 1);
-            graphics.fillRect(x - 20, y - 55, 40, 55);
-
-            // Door panels
-            graphics.lineStyle(2, 0x4E342E, 1);
-            graphics.strokeRect(x - 20, y - 55, 40, 55);
-            graphics.strokeRect(x - 15, y - 48, 30, 20);
-            graphics.strokeRect(x - 15, y - 25, 30, 20);
-
-            // Brass door handle
-            graphics.fillStyle(0xB8860B, 1);
-            graphics.fillCircle(x + 10, y - 28, 4);
-            graphics.fillStyle(0xFFD700, 0.6);
-            graphics.fillCircle(x + 9, y - 29, 2);
-
-            // Roof
-            graphics.fillStyle(0x5D4037, 1);
-            graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
-
-        } else if (type === 'restaurant') {
-            // Restaurant: Fancy with arched windows
-            const windowColor = 0xFFF8DC;
-
-            // 3 arched windows on upper floor (symmetrical)
-            for (let col = 0; col < 3; col++) {
-                const wx = x - 50 + (col * 50);
-                const wy = y - building.height + 40;
-
-                // Window shadow (depth)
-                graphics.fillStyle(0x000000, 0.3);
-                graphics.fillRect(wx - 15 + 2, wy + 2, 30, 40);
-                graphics.fillCircle(wx + 2, wy + 2, 15);
-
-                // Window rectangle
-                graphics.fillStyle(windowColor, 1);
-                graphics.fillRect(wx - 15, wy, 30, 40);
-
-                // Arched top
-                graphics.fillCircle(wx, wy, 15);
-
-                // Window reflection
-                graphics.fillStyle(0xFFFFFF, 0.25);
-                graphics.fillRect(wx - 15, wy, 30, 20);
-                graphics.fillCircle(wx, wy, 7);
-
-                // Frame
-                graphics.lineStyle(2, 0x8B4513, 1);
-                graphics.strokeRect(wx - 15, wy, 30, 40);
-                graphics.strokeCircle(wx, wy, 15);
-            }
-
-            // Large entrance shadow (3D depth)
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillRect(x - 30 + 4, y - 70 + 4, 60, 70);
-
-            // Large entrance (centered)
-            graphics.fillStyle(0x8B4513, 1);
-            graphics.fillRect(x - 30, y - 70, 60, 70);
-            graphics.lineStyle(3, 0x654321, 1);
-            graphics.strokeRect(x - 30, y - 70, 60, 70);
-
-            // Double doors
-            graphics.lineStyle(2, 0x654321, 1);
-            graphics.lineBetween(x, y - 70, x, y);
-            graphics.fillStyle(windowColor, 1);
-            graphics.fillRect(x - 20, y - 60, 15, 30);
-            graphics.fillRect(x + 5, y - 60, 15, 30);
-
-            // Door glass reflection
-            graphics.fillStyle(0xFFFFFF, 0.3);
-            graphics.fillRect(x - 20, y - 60, 15, 15);
-            graphics.fillRect(x + 5, y - 60, 15, 15);
-
-            // Door handles with shadow
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillCircle(x - 7, y - 34, 3);
-            graphics.fillCircle(x + 9, y - 34, 3);
-            graphics.fillStyle(0xFFD700, 1);
-            graphics.fillCircle(x - 8, y - 35, 3);
-            graphics.fillCircle(x + 8, y - 35, 3);
-            graphics.fillStyle(0xFFFF99, 0.5);
-            graphics.fillCircle(x - 9, y - 36, 1.5);
-            graphics.fillCircle(x + 7, y - 36, 1.5);
-
-            // 3D Restaurant sign/awning between windows and doors
-            // Sign shadow
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillRect(x - 65 + 2, y - 105 + 2, 130, 20);
-
-            // Sign main
-            graphics.fillStyle(0x8B0000, 1);
-            graphics.fillRect(x - 65, y - 105, 130, 20);
-
-            // Sign 3D edge (bottom perspective)
-            graphics.fillStyle(0x660000, 1);
-            graphics.beginPath();
-            graphics.moveTo(x - 65, y - 85);
-            graphics.lineTo(x + 65, y - 85);
-            graphics.lineTo(x + 63, y - 80);
-            graphics.lineTo(x - 63, y - 80);
-            graphics.closePath();
-            graphics.fillPath();
-
-            // Sign outline
-            graphics.lineStyle(2, 0x000000, 1);
-            graphics.strokeRect(x - 65, y - 105, 130, 20);
-
-            // 3D Decorative peaked roof with angular perspective
-            // Roof shadow base
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillTriangle(
-                x - building.width/2 - 8, y - building.height,
-                x, y - building.height - 30,
-                x + building.width/2 + 8, y - building.height
-            );
-
-            // Left side of roof (lighter)
-            graphics.fillStyle(0xA0522D, 1);
-            graphics.fillTriangle(
-                x - building.width/2 - 8, y - building.height,
-                x, y - building.height - 30,
-                x, y - building.height
-            );
-
-            // Right side of roof (darker for 3D effect)
-            graphics.fillStyle(0x8B4513, 1);
-            graphics.fillTriangle(
-                x, y - building.height - 30,
-                x + building.width/2 + 8, y - building.height,
-                x, y - building.height
-            );
-
-            // Roof outline
-            graphics.lineStyle(2, 0x654321, 1);
-            graphics.strokeTriangle(
-                x - building.width/2 - 8, y - building.height,
-                x, y - building.height - 30,
-                x + building.width/2 + 8, y - building.height
-            );
-
-            // Roof ridge line (3D edge)
-            graphics.lineStyle(1, 0x000000, 0.5);
-            graphics.lineBetween(x, y - building.height, x, y - building.height - 30);
-
-            // Decorative roof trim (3D angular eaves)
-            graphics.fillStyle(0x654321, 1);
-            graphics.beginPath();
-            graphics.moveTo(x - building.width/2 - 8, y - building.height);
-            graphics.lineTo(x - building.width/2 - 15, y - building.height + 5);
-            graphics.lineTo(x + building.width/2 + 15, y - building.height + 5);
-            graphics.lineTo(x + building.width/2 + 8, y - building.height);
-            graphics.closePath();
-            graphics.fillPath();
-        }
+            });
+
+            this.buildingButtonsContainer.add(btn);
+            this.buildingButtons[building.type] = { button: btn, originalColor: building.color };
+        });
     }
 
     updateBuildingButtonStates() {
@@ -3749,37 +2779,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    updateMoneyUI() {
-        // Update resource UI with current money, wood, bricks
-        let resourceText = `💰 Cash: $${this.money}  🪵 ${this.wood}  🧱 ${this.bricks}  👥 ${this.population}/${this.populationCapacity}`;
-        if (this.creativeMode) resourceText += `  [CREATIVE MODE]`;
-        if (this.bankBalance > 0) resourceText += `\n🏦 Bank: $${this.bankBalance}`;
-        if (this.loanAmount > 0) resourceText += `\n💳 Debt: $${this.loanAmount}`;
-        this.resourceUI.setText(resourceText);
-
-        // Update permanent cash on hand display if visible
-        if (this.cashOnHandDisplay && this.cashOnHandDisplay.visible) {
-            this.cashOnHandDisplay.setText(`Cash on Hand: $${this.money}`);
-        }
-    }
-
-    updateSpeedButtons() {
-        // Update speed button styles to highlight active speed
-        const activeColor = '#2E7D32';  // Green for active
-        const inactiveColor = '#424242'; // Gray for inactive
-
-        // Update speed buttons
-        this.speed1xButton.setStyle({ backgroundColor: this.timeSpeed === 1 ? activeColor : inactiveColor });
-        this.speed2xButton.setStyle({ backgroundColor: this.timeSpeed === 2 ? activeColor : inactiveColor });
-        this.speed3xButton.setStyle({ backgroundColor: this.timeSpeed === 3 ? activeColor : inactiveColor });
-
-        // Dim all buttons if paused
-        if (this.isPaused) {
-            this.speed1xButton.setStyle({ backgroundColor: inactiveColor });
-            this.speed2xButton.setStyle({ backgroundColor: inactiveColor });
-            this.speed3xButton.setStyle({ backgroundColor: inactiveColor });
-        }
-    }
+    // UI functions moved to UIManager.js
 
     update() {
         // Update game time based on real time passed and speed multiplier (only if not paused)
@@ -4012,13 +3012,19 @@ class MainScene extends Phaser.Scene {
             if (building.type === 'hotel' && building.rooms) {
                 const hotelType = this.buildingTypes.hotel;
                 const floorHeight = buildingType.height / 5; // 80px per floor
-                const currentNight = Math.floor(this.gameTime / (24 * 60)); // Current night number
 
-                // Check if we've crossed into a new night
-                const lastNight = Math.floor(building.lastNightCheck / (24 * 60));
-                if (currentNight > lastNight) {
-                    // New night has started! Process all rooms
-                    console.log(`🌙 New night at hotel! Night #${currentNight}`);
+                // Calculate current hour and day
+                const totalMinutes = Math.floor(this.gameTime);
+                const currentHour = Math.floor((totalMinutes % (24 * 60)) / 60);
+                const currentDay = Math.floor(this.gameTime / (24 * 60));
+
+                // Check if it's check-in time (6pm-10pm) and we haven't processed today
+                const lastProcessedDay = Math.floor(building.lastNightCheck / (24 * 60));
+                const isCheckinTime = currentHour >= 18 && currentHour < 22; // 6pm-10pm
+
+                if (isCheckinTime && currentDay > lastProcessedDay) {
+                    // Check-in time! Process all rooms
+                    console.log(`🌙 Check-in time at hotel! Hour: ${currentHour}:00, Day: ${currentDay}`);
 
                     for (let roomIndex = 0; roomIndex < building.rooms.length; roomIndex++) {
                         const room = building.rooms[roomIndex];
@@ -4043,7 +3049,7 @@ class MainScene extends Phaser.Scene {
 
                                     // Update hotel UI if player is viewing this hotel
                                     if (this.insideHotel && this.currentHotel === building) {
-                                        this.updateHotelUI();
+                                        this.hotelSystem.updateHotelUI();
                                     }
                                 }
                             }
@@ -4115,16 +3121,17 @@ class MainScene extends Phaser.Scene {
                 if (currentDay > lastDay) {
                     // New day has started! Pay employee wage
                     this.money -= building.dailyWage;
+                    this.money = Math.round(this.money);
                     console.log(`💵 Paid $${building.dailyWage} wage to shop employee. Day #${currentDay}`);
 
                     building.lastWageCheck = this.gameTime;
 
                     // Update money UI
-                    this.updateMoneyUI();
+                    this.uiManager.updateMoneyUI();
 
                     // Update shop UI if player is viewing this shop
                     if (this.insideShop && this.currentShop === building) {
-                        this.updateShopInventoryUI();
+                        this.shopSystem.updateShopInventoryUI();
                     }
                 }
             }
@@ -4138,13 +3145,14 @@ class MainScene extends Phaser.Scene {
                 // Pay wage at start of new day
                 if (currentDay > lastWageDay) {
                     this.money -= building.dailyWage;
+                    this.money = Math.round(this.money);
                     console.log(`💵 Paid $${building.dailyWage} wage to hotel employee. Day #${currentDay}`);
                     building.lastWageCheck = this.gameTime;
-                    this.updateMoneyUI();
+                    this.uiManager.updateMoneyUI();
 
                     // Update hotel UI if player is viewing this hotel
                     if (this.insideHotel && this.currentHotel === building) {
-                        this.updateHotelUI();
+                        this.hotelSystem.updateHotelUI();
                     }
                 }
 
@@ -4158,7 +3166,7 @@ class MainScene extends Phaser.Scene {
 
                         // Update hotel UI if player is viewing this hotel
                         if (this.insideHotel && this.currentHotel === building) {
-                            this.updateHotelUI();
+                            this.hotelSystem.updateHotelUI();
                         }
                     }
                     building.lastAutoClean = this.gameTime;
@@ -4173,13 +3181,14 @@ class MainScene extends Phaser.Scene {
                 // Pay maid wage at start of new day
                 if (currentDay > lastMaidWageDay) {
                     this.money -= building.maidDailyWage;
+                    this.money = Math.round(this.money);
                     console.log(`💵 Paid $${building.maidDailyWage} wage to hotel maid. Day #${currentDay}`);
                     building.lastMaidWageCheck = this.gameTime;
-                    this.updateMoneyUI();
+                    this.uiManager.updateMoneyUI();
 
                     // Update hotel UI if player is viewing this hotel
                     if (this.insideHotel && this.currentHotel === building) {
-                        this.updateHotelUI();
+                        this.hotelSystem.updateHotelUI();
                     }
                 }
 
@@ -4188,7 +3197,7 @@ class MainScene extends Phaser.Scene {
             }
 
             // Restaurant waiter wage payment
-            if (building.type === 'restaurant' && building.tables) {
+            if (this.isRestaurant(building.type) && building.tables) {
                 const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
                 const lastWageDay = Math.floor((building.lastWageCheck || 0) / (24 * 60));
 
@@ -4198,23 +3207,25 @@ class MainScene extends Phaser.Scene {
 
                     if (building.hasDayWaiter && building.dayWaiterWage > 0) {
                         this.money -= building.dayWaiterWage;
+                        this.money = Math.round(this.money);
                         totalWages += building.dayWaiterWage;
                         console.log(`💵 Paid $${building.dayWaiterWage} wage to day waiter. Day #${currentDay}`);
                     }
 
                     if (building.hasNightWaiter && building.nightWaiterWage > 0) {
                         this.money -= building.nightWaiterWage;
+                        this.money = Math.round(this.money);
                         totalWages += building.nightWaiterWage;
                         console.log(`💵 Paid $${building.nightWaiterWage} wage to night waiter. Day #${currentDay}`);
                     }
 
                     if (totalWages > 0) {
                         building.lastWageCheck = this.gameTime;
-                        this.updateMoneyUI();
+                        this.uiManager.updateMoneyUI();
 
                         // Update restaurant UI if player is viewing this restaurant
                         if (this.insideRestaurant && this.currentRestaurant === building) {
-                            this.updateRestaurantUI();
+                            this.restaurantSystem.updateRestaurantUI();
                         }
                     }
                 }
@@ -4234,13 +3245,13 @@ class MainScene extends Phaser.Scene {
 
                     // Update shop UI if player is viewing this shop
                     if (this.insideShop && this.currentShop === building) {
-                        this.updateShopInventoryUI();
+                        this.shopSystem.updateShopInventoryUI();
                     }
                 }
             }
 
             // Restaurant waiter cleaning (clean dirty tables when on duty)
-            if (building.type === 'restaurant' && building.tables) {
+            if (this.isRestaurant(building.type) && building.tables) {
                 const totalMinutes = Math.floor(this.gameTime);
                 const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
                 const isDayTime = hour >= 6 && hour < 20; // 6am-8pm is day shift
@@ -4268,7 +3279,7 @@ class MainScene extends Phaser.Scene {
 
                             // Update UI if player is viewing this restaurant
                             if (this.insideRestaurant && this.currentRestaurant === building) {
-                                this.updateRestaurantUI();
+                                this.restaurantSystem.updateRestaurantUI();
                             }
                         }
                     }
@@ -4282,7 +3293,7 @@ class MainScene extends Phaser.Scene {
         }
 
         // Update resource UI
-        this.updateMoneyUI();
+        this.uiManager.updateMoneyUI();
 
         // Update buses
         if (!this.isPaused) {
@@ -4296,7 +3307,7 @@ class MainScene extends Phaser.Scene {
         // Update citizens
         if (!this.isPaused) {
             try {
-                this.updateCitizens();
+                this.citizenSystem.updateCitizens();
             } catch (error) {
                 console.error('Error updating citizens:', error);
             }
@@ -4305,11 +3316,11 @@ class MainScene extends Phaser.Scene {
             if (this.pendingCitizens > 0) {
                 const now = Date.now();
                 if (now - this.lastCitizenSpawnTime >= 5000) {
-                    this.spawnNewCitizen();
+                    this.citizenSystem.spawnNewCitizen();
                     this.pendingCitizens--;
                     this.population++;
                     this.lastCitizenSpawnTime = now;
-                    this.updateMoneyUI();
+                    this.uiManager.updateMoneyUI();
                     console.log(`👤 New citizen arrived! Population: ${this.population}/${this.populationCapacity}`);
                 }
             }
@@ -4434,7 +3445,7 @@ class MainScene extends Phaser.Scene {
 
                 // Enter shop
                 if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                    this.enterShop(this.nearShop);
+                    this.shopSystem.enterShop(this.nearShop);
                 }
             } else {
                 if (this.shopPrompt) {
@@ -4476,7 +3487,7 @@ class MainScene extends Phaser.Scene {
 
                 // Enter hotel
                 if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                    this.enterHotel(this.nearHotel);
+                    this.hotelSystem.enterHotel(this.nearHotel);
                 }
             } else {
                 if (this.hotelPrompt) {
@@ -4490,7 +3501,7 @@ class MainScene extends Phaser.Scene {
             this.nearRestaurant = null;
             let closestRestaurantDistance = 150;
             for (let building of this.buildings) {
-                if (building.type === 'restaurant') {
+                if (this.isRestaurant(building.type)) {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestRestaurantDistance) {
                         this.nearRestaurant = building;
@@ -4518,7 +3529,7 @@ class MainScene extends Phaser.Scene {
 
                 // Enter restaurant
                 if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                    this.enterRestaurant(this.nearRestaurant);
+                    this.restaurantSystem.enterRestaurant(this.nearRestaurant);
                 }
             } else {
                 if (this.restaurantPrompt) {
@@ -4530,29 +3541,77 @@ class MainScene extends Phaser.Scene {
         // Exit shop if inside
         if (this.insideShop) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
-                this.exitShop();
+                this.shopSystem.exitShop();
             }
         }
 
         // Exit hotel if inside
         if (this.insideHotel) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
-                this.exitHotel();
+                this.hotelSystem.exitHotel();
             }
         }
 
         // Exit restaurant if inside
         if (this.insideRestaurant) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
-                this.exitRestaurant();
+                this.restaurantSystem.exitRestaurant();
             }
         }
 
-        // Update mailbox indicators
-        const hasMail = this.pendingApplications.length > 0;
+        // Check if player is near an apartment building (only when NOT inside anything)
+        if (!this.insideApartment && !this.insideShop && !this.insideHotel && !this.insideRestaurant) {
+            this.nearApartment = null;
+            let closestApartmentDistance = 150;
+            for (let building of this.buildings) {
+                if (building.type === 'apartment') {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestApartmentDistance) {
+                        this.nearApartment = building;
+                        closestApartmentDistance = distance;
+                    }
+                }
+            }
+
+            // Apartment interaction - View tenants
+            if (this.nearApartment && !this.buildMode && !this.deleteMode && !this.bankMenuOpen) {
+                // Show prompt above the apartment building
+                const apartmentType = this.buildingTypes[this.nearApartment.type];
+                if (!this.apartmentPrompt) {
+                    this.apartmentPrompt = this.add.text(this.nearApartment.x, this.nearApartment.y - apartmentType.height - 100, 'Press E to view Tenants', {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#795548',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.apartmentPrompt.x = this.nearApartment.x;
+                    this.apartmentPrompt.y = this.nearApartment.y - apartmentType.height - 100;
+                    this.apartmentPrompt.setVisible(true);
+                }
+
+                // Enter apartment view
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.enterApartment(this.nearApartment);
+                }
+            } else {
+                if (this.apartmentPrompt) {
+                    this.apartmentPrompt.setVisible(false);
+                }
+            }
+        }
+
+        // Exit apartment if inside
+        if (this.insideApartment) {
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
+                this.exitApartment();
+            }
+        }
+
+        // Update mailbox indicators - DISABLED (apartments now auto-fill)
         for (let mailbox of this.mailboxes) {
             if (mailbox.indicator) {
-                mailbox.indicator.setVisible(hasMail);
+                mailbox.indicator.setVisible(false);
             }
         }
 
@@ -4567,33 +3626,10 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // Mailbox interaction
-        if (this.nearMailbox && !this.mailboxMenuOpen && !this.buildMode && !this.restartConfirmShowing) {
-            // Show prompt above mailbox if there are applications
-            if (this.pendingApplications.length > 0) {
-                if (!this.mailboxPrompt) {
-                    this.mailboxPrompt = this.add.text(this.nearMailbox.x, this.nearMailbox.y - 90, `Press E - ${this.pendingApplications.length} Application(s)`, {
-                        fontSize: '12px',
-                        color: '#ffffff',
-                        backgroundColor: '#D32F2F',
-                        padding: { x: 5, y: 3 }
-                    }).setOrigin(0.5).setDepth(1000);
-                } else {
-                    this.mailboxPrompt.setText(`Press E - ${this.pendingApplications.length} Application(s)`);
-                    this.mailboxPrompt.x = this.nearMailbox.x;
-                    this.mailboxPrompt.y = this.nearMailbox.y - 90;
-                    this.mailboxPrompt.setVisible(true);
-                }
-
-                // Open mailbox menu
-                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                    this.openMailboxMenu();
-                }
-            }
-        } else {
-            if (this.mailboxPrompt) {
-                this.mailboxPrompt.setVisible(false);
-            }
+        // Mailbox interaction - DISABLED (apartments now auto-fill)
+        // Mailboxes are still visible but not interactive
+        if (this.mailboxPrompt) {
+            this.mailboxPrompt.setVisible(false);
         }
 
         // Handle bank menu
@@ -4628,11 +3664,11 @@ class MainScene extends Phaser.Scene {
             // Navigate between applications
             if (Phaser.Input.Keyboard.JustDown(this.cursors.left) || Phaser.Input.Keyboard.JustDown(this.aKey)) {
                 this.currentApplicationIndex = (this.currentApplicationIndex - 1 + numApplications) % numApplications;
-                this.updateMailboxUI();
+                this.uiManager.updateMailboxUI();
             }
             if (Phaser.Input.Keyboard.JustDown(this.cursors.right) || Phaser.Input.Keyboard.JustDown(this.dKey)) {
                 this.currentApplicationIndex = (this.currentApplicationIndex + 1) % numApplications;
-                this.updateMailboxUI();
+                this.uiManager.updateMailboxUI();
             }
 
             // Accept application
@@ -4972,7 +4008,7 @@ class MainScene extends Phaser.Scene {
         console.log(`✅ Deleted ${building.type} - buildings array now has ${this.buildings.length} items`);
 
         // Save game
-        this.saveGame();
+        this.saveSystem.saveGame();
     }
 
     placeBuilding() {
@@ -4991,6 +4027,7 @@ class MainScene extends Phaser.Scene {
 
             // Deduct resources
             this.money -= building.cost;
+            this.money = Math.round(this.money);
             this.wood -= building.wood;
             this.bricks -= building.bricks;
         }
@@ -5060,9 +4097,10 @@ class MainScene extends Phaser.Scene {
                 fontFamily: 'Arial',
                 resolution: 2
             }).setOrigin(0.5).setDepth(11);
-        } else if (this.selectedBuilding === 'restaurant') {
-            // Add "RESTAURANT" text on the red sign
-            const restaurantSign = this.add.text(x, y - 95, 'RESTAURANT', {
+        } else if (this.isRestaurant(this.selectedBuilding)) {
+            // Add restaurant name text on the red sign
+            const restaurantName = this.buildingTypes[this.selectedBuilding].name.toUpperCase();
+            const restaurantSign = this.add.text(x, y - 95, restaurantName, {
                 fontSize: '16px',
                 color: '#FFFFFF',
                 fontStyle: 'bold',
@@ -5147,10 +4185,10 @@ class MainScene extends Phaser.Scene {
             }
             buildingData.vacancySigns = [];  // Will store vacancy sign graphics
 
-            // Generate applications for all vacant units immediately
-            console.log('Generating applications for new apartment building with', building.units, 'units');
+            // Auto-fill all vacant units
+            console.log('Auto-filling new apartment building with', building.units, 'units');
             for (let i = 0; i < building.units; i++) {
-                this.generateApplicationsForVacantUnit(buildingData, i);
+                this.autoFillVacantUnit(buildingData, i);
             }
         }
 
@@ -5192,7 +4230,7 @@ class MainScene extends Phaser.Scene {
         }
 
         // Initialize restaurant tables if it's a restaurant
-        if (this.selectedBuilding === 'restaurant') {
+        if (this.isRestaurant(this.selectedBuilding)) {
             buildingData.tables = [];
             buildingData.hasDayWaiter = false;  // No day waiter until hired
             buildingData.hasNightWaiter = false;  // No night waiter until hired
@@ -5229,7 +4267,7 @@ class MainScene extends Phaser.Scene {
         }
 
         // Auto-save after building
-        this.saveGame();
+        this.saveSystem.saveGame();
     }
 
     addPopulationCapacity(buildingType) {
@@ -5246,341 +4284,93 @@ class MainScene extends Phaser.Scene {
         this.populationCapacity += newCitizens;
         this.pendingCitizens += newCitizens;
         console.log(`📈 Population capacity increased! +${newCitizens} citizens (${this.population}/${this.populationCapacity})`);
-        this.updateMoneyUI();
+        this.uiManager.updateMoneyUI();
     }
 
-    saveGame() {
-        try {
-            const saveData = {
-                money: this.money,
-                wood: this.wood,
-                bricks: this.bricks,
-                bankBalance: this.bankBalance,
-                loanAmount: this.loanAmount,
-                gameTime: this.gameTime,
-                timeSpeed: this.timeSpeed,
-                buildings: this.buildings.map(b => ({
-                    type: b.type,
-                    x: b.x,
-                    y: b.y,
-                    accumulatedIncome: b.accumulatedIncome || 0,
-                    lastIncomeTime: b.lastIncomeTime || Date.now(),
-                    storedResources: b.storedResources || 0,
-                    lastResourceTime: b.lastResourceTime || Date.now(),
-                    placedDistrict: b.placedDistrict || null,
-                    districtBonus: b.districtBonus || 1.0,
-                    facadeVariation: b.facadeVariation || 0,
-                    // Save apartment units
-                    units: b.units || undefined,
-                    // Save hotel rooms
-                    rooms: b.rooms || undefined,
-                    lastNightCheck: b.lastNightCheck || undefined,
-                    lastAutoClean: b.lastAutoClean || undefined,
-                    hasMaid: b.hasMaid,
-                    maidDailyWage: b.maidDailyWage,
-                    lastMaidWageCheck: b.lastMaidWageCheck,
-                    lastMaidClean: b.lastMaidClean,
-                    // Save shop inventory
-                    inventory: b.inventory || undefined,
-                    hasEmployee: b.hasEmployee,
-                    isOpen: b.isOpen,
-                    dailyWage: b.dailyWage,
-                    lastWageCheck: b.lastWageCheck,
-                    // Save restaurant tables
-                    tables: b.tables || undefined,
-                    hasDayWaiter: b.hasDayWaiter,
-                    hasNightWaiter: b.hasNightWaiter,
-                    dayWaiterWage: b.dayWaiterWage,
-                    nightWaiterWage: b.nightWaiterWage,
-                    mealPrice: b.mealPrice
-                })),
-                population: this.population,
-                populationCapacity: this.populationCapacity,
-                pendingCitizens: this.pendingCitizens
-            };
-            localStorage.setItem('mainstreetmayor_save', JSON.stringify(saveData));
-            console.log(`Game saved! ${this.buildings.length} buildings:`, this.buildings.map(b => `${b.type} at x=${b.x}`));
-        } catch (error) {
-            console.error('Error saving game:', error);
-            // Game continues even if save fails
-        }
-    }
-
-    loadGame() {
-        const saveDataStr = localStorage.getItem('mainstreetmayor_save');
-        if (!saveDataStr) {
-            console.log('No save data found');
-            return false;
-        }
-
-        try {
-            const saveData = JSON.parse(saveDataStr);
-
-            // Restore resources
-            this.money = saveData.money;
-            this.wood = saveData.wood;
-            this.bricks = saveData.bricks;
-
-            // Restore bank data
-            this.bankBalance = saveData.bankBalance || 0;
-            this.loanAmount = saveData.loanAmount || 0;
-
-            // Restore population data
-            this.population = saveData.population || 20;
-            this.populationCapacity = saveData.populationCapacity || 20;
-            this.pendingCitizens = saveData.pendingCitizens || 0;
-
-            // Restore time data
-            this.gameTime = saveData.gameTime || 0;
-            this.timeSpeed = saveData.timeSpeed || 1;
-            this.lastRealTime = Date.now(); // Reset to current time on load
-
-            // Restore buildings
-            if (saveData.buildings && saveData.buildings.length > 0) {
-                console.log(`Loading ${saveData.buildings.length} buildings from save:`, saveData.buildings);
-                saveData.buildings.forEach((buildingData, index) => {
-                    // Migration: Convert old 'shop' type to 'clothingShop'
-                    if (buildingData.type === 'shop') {
-                        console.log(`Migrating old 'shop' building to 'clothingShop'`);
-                        buildingData.type = 'clothingShop';
-                    }
-                    console.log(`Loading building ${index}: ${buildingData.type} at x=${buildingData.x}`);
-                    this.loadBuilding(
-                        buildingData.type,
-                        buildingData.x,
-                        buildingData.y,
-                        buildingData.accumulatedIncome || 0,
-                        buildingData.lastIncomeTime || Date.now(),
-                        buildingData.storedResources || 0,
-                        buildingData.lastResourceTime || Date.now(),
-                        buildingData.units,
-                        buildingData.rooms,
-                        buildingData.lastNightCheck,
-                        buildingData.placedDistrict || null,
-                        buildingData.districtBonus || 1.0,
-                        buildingData.inventory,
-                        buildingData.hasEmployee,
-                        buildingData.isOpen,
-                        buildingData.dailyWage,
-                        buildingData.lastWageCheck,
-                        buildingData.lastAutoClean,
-                        buildingData.facadeVariation || 0,
-                        buildingData.hasMaid,
-                        buildingData.maidDailyWage,
-                        buildingData.lastMaidWageCheck,
-                        buildingData.lastMaidClean,
-                        buildingData.tables,
-                        buildingData.hasDayWaiter,
-                        buildingData.hasNightWaiter,
-                        buildingData.dayWaiterWage,
-                        buildingData.nightWaiterWage,
-                        buildingData.mealPrice
-                    );
-                });
-                console.log(`Successfully loaded ${this.buildings.length} buildings`);
-            }
-
-            console.log('Game loaded!');
-            return true;
-        } catch (e) {
-            console.error('Error loading save data:', e);
-            return false;
-        }
-    }
-
-    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0, hasMaid = null, maidDailyWage = null, lastMaidWageCheck = null, lastMaidClean = null, tables = null, hasDayWaiter = null, hasNightWaiter = null, dayWaiterWage = null, nightWaiterWage = null, mealPrice = null) {
-        const building = this.buildingTypes[type];
-        if (!building) {
-            console.error(`Building type ${type} not found!`);
-            return;
-        }
-
-        // Always use current ground level instead of saved Y coordinate
-        const buildingY = this.gameHeight - 100;
-
-        console.log(`Drawing ${type} at x=${x}, y=${buildingY}, width=${building.width}, height=${building.height}`);
-
-        const newBuilding = this.add.graphics();
-        newBuilding.setDepth(10); // Buildings are on top of background
-        newBuilding.fillStyle(building.color, 1);
-        newBuilding.fillRect(x - building.width/2, buildingY - building.height, building.width, building.height);
-        newBuilding.lineStyle(3, 0x000000, 1);
-        newBuilding.strokeRect(x - building.width/2, buildingY - building.height, building.width, building.height);
-
-        // Draw detailed building features (windows, doors, roof, etc.)
-        try {
-            this.buildingRenderer.drawBuildingDetails(newBuilding, type, x, buildingY, facadeVariation);
-            console.log(`Successfully drew details for ${type}`);
-        } catch (error) {
-            console.error(`Error drawing details for ${type}:`, error);
-        }
-
-        // Add building-specific signs (no floating labels)
-        if (type === 'house') {
-            // Add "HOUSE" sign above door
-            const houseSign = this.add.text(x, buildingY - 60, 'HOUSE', {
-                fontSize: '12px',
-                color: '#FFFFFF',
-                backgroundColor: '#8B4513',
-                padding: { x: 5, y: 3 },
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'apartment') {
-            // Add "APARTMENTS" sign at top (above windows)
-            const aptSign = this.add.text(x, buildingY - building.height + 5, 'APARTMENTS', {
-                fontSize: '14px',
-                color: '#000000',
-                backgroundColor: '#FFD700',
-                padding: { x: 8, y: 4 },
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'bank') {
-            // Add dollar sign symbol
-            const dollarSign = this.add.text(x, buildingY - building.height / 2, '$', {
-                fontSize: '80px',
-                color: '#FFD700',
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-
-            // Add columns to make it look more like a bank
-            newBuilding.fillStyle(0xFFFFFF, 0.3);
-            newBuilding.fillRect(x - building.width/2 + 20, buildingY - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x - building.width/2 + 60, buildingY - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x + building.width/2 - 80, buildingY - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x + building.width/2 - 40, buildingY - building.height + 40, 20, building.height - 80);
-        } else if (this.isShop(type)) {
-            // Add shop name text sign above awning
-            const shopName = this.buildingTypes[type].name.toUpperCase();
-            const shopSign = this.add.text(x, buildingY - 140, shopName, {
-                fontSize: '16px',
-                color: '#FFFFFF',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'restaurant') {
-            // Add "RESTAURANT" text on the red sign
-            const restaurantSign = this.add.text(x, buildingY - 95, 'RESTAURANT', {
-                fontSize: '16px',
-                color: '#FFFFFF',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'hotel') {
-            // Add "HOTEL" text on the gold sign
-            const hotelSign = this.add.text(x, buildingY - building.height + 20, 'HOTEL', {
-                fontSize: '14px',
-                color: '#000000',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'market') {
-            // Add market awning
-            const awning = this.add.text(x, buildingY - building.height / 2, '🏪', {
-                fontSize: '60px'
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'lumbermill') {
-            // Add tree/wood icon
-            const woodIcon = this.add.text(x, buildingY - building.height / 2, '🌲', {
-                fontSize: '60px'
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'brickfactory') {
-            // Add brick icon
-            const brickIcon = this.add.text(x, buildingY - building.height / 2, '🧱', {
-                fontSize: '60px'
-            }).setOrigin(0.5).setDepth(11);
-        }
-
-        // Add loaded building with income and resource tracking (use buildingY for current ground level)
-        const buildingData = {
-            graphics: newBuilding,
-            type: type,
-            x: x,
-            y: buildingY,
-            accumulatedIncome: accumulatedIncome,
-            lastIncomeTime: lastIncomeTime,
-            storedResources: storedResources,
-            lastResourceTime: lastResourceTime,
-            placedDistrict: placedDistrict,
-            districtBonus: districtBonus,
-            facadeVariation: facadeVariation
-        };
-
-        // Add visual indicator if building is in correct district
-        const inCorrectDistrict = placedDistrict === building.district;
-        if (inCorrectDistrict) {
-            const bonusIndicator = this.add.text(x, buildingY - building.height - 30, '⭐', {
-                fontSize: '20px'
-            }).setOrigin(0.5).setDepth(12);
-            buildingData.bonusIndicator = bonusIndicator;
-        }
-
-        // Restore apartment units if they exist
-        if (units) {
-            buildingData.units = units;
-            buildingData.vacancySigns = [];
-        }
-
-        // Restore hotel rooms if they exist
-        if (rooms) {
-            buildingData.rooms = rooms;
-            buildingData.lastNightCheck = lastNightCheck || this.gameTime;
-            buildingData.hasEmployee = hasEmployee !== null ? hasEmployee : false;
-            buildingData.dailyWage = dailyWage !== null ? dailyWage : 0;
-            buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.gameTime;
-            buildingData.lastAutoClean = lastAutoClean !== null ? lastAutoClean : this.gameTime;
-            buildingData.hasMaid = hasMaid !== null ? hasMaid : false;
-            buildingData.maidDailyWage = maidDailyWage !== null ? maidDailyWage : 0;
-            buildingData.lastMaidWageCheck = lastMaidWageCheck !== null ? lastMaidWageCheck : this.gameTime;
-            buildingData.lastMaidClean = lastMaidClean !== null ? lastMaidClean : this.gameTime;
-        }
-
-        // Initialize shop inventory if it's a shop (use saved data or defaults)
-        if (this.isShop(type)) {
-            buildingData.inventory = inventory || {
-                stock: 50,
-                maxStock: 100,
-                restockCost: 5,
-                salesPerCustomer: 5
-            };
-            buildingData.hasEmployee = hasEmployee !== null ? hasEmployee : false;
-            buildingData.isOpen = isOpen !== null ? isOpen : false;
-            buildingData.dailyWage = dailyWage !== null ? dailyWage : 0;
-            buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.gameTime;
-        }
-
-        // Restore restaurant tables if they exist
-        if (tables) {
-            buildingData.tables = tables;
-            buildingData.hasDayWaiter = hasDayWaiter !== null ? hasDayWaiter : false;
-            buildingData.hasNightWaiter = hasNightWaiter !== null ? hasNightWaiter : false;
-            buildingData.dayWaiterWage = dayWaiterWage !== null ? dayWaiterWage : 0;
-            buildingData.nightWaiterWage = nightWaiterWage !== null ? nightWaiterWage : 0;
-            buildingData.mealPrice = mealPrice !== null ? mealPrice : 25;
-            buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.gameTime;
-        }
-
-        // Add window lights for nighttime
-        const buildingType = this.buildingTypes[type];
-        this.addWindowLights(buildingData, buildingType);
-
-        this.buildings.push(buildingData);
-    }
+    // Restaurant functions moved to RestaurantSystem.js
+    // Hotel functions moved to HotelSystem.js
+    // Shop functions moved to ShopSystem.js
+    // Save/load functions moved to SaveSystem.js
 
     openBankMenu() {
         this.bankMenuOpen = true;
-        this.updateBankUI();
+        this.uiManager.updateBankUI();
         this.bankUI.setVisible(true);
     }
 
     closeBankMenu() {
         this.bankMenuOpen = false;
         this.bankUI.setVisible(false);
+    }
+
+    enterApartment(apartment) {
+        console.log('Viewing apartment tenants:', apartment);
+
+        this.insideApartment = true;
+        this.currentApartment = apartment;
+
+        // Update and show apartment UI
+        this.updateApartmentUI();
+        this.apartmentUI.setVisible(true);
+
+        // Hide apartment prompt
+        if (this.apartmentPrompt) {
+            this.apartmentPrompt.setVisible(false);
+        }
+
+        // Disable player movement
+        this.player.setVelocityX(0);
+        this.player.setVelocityY(0);
+    }
+
+    exitApartment() {
+        console.log('Exiting apartment view');
+        this.insideApartment = false;
+        this.currentApartment = null;
+
+        // Hide apartment UI
+        this.apartmentUI.setVisible(false);
+    }
+
+    updateApartmentUI() {
+        if (!this.currentApartment || !this.currentApartment.units) {
+            console.log('No apartment or units data');
+            return;
+        }
+
+        let menuText = '=== APARTMENT BUILDING ===\n\n';
+
+        // List all units
+        for (let i = 0; i < this.currentApartment.units.length; i++) {
+            const unit = this.currentApartment.units[i];
+            menuText += `Unit ${i + 1}: `;
+
+            if (unit.rented && unit.tenant) {
+                // Show tenant details
+                menuText += `${unit.tenant.name}\n`;
+                menuText += `  Job: ${unit.tenant.job}\n`;
+                menuText += `  Rent: $${unit.tenant.rentOffer}/day\n`;
+                menuText += `  Credit: ${unit.tenant.creditScore}`;
+
+                // Credit rating
+                if (unit.tenant.creditScore >= 750) menuText += ' ⭐ (Excellent)';
+                else if (unit.tenant.creditScore >= 650) menuText += ' ✓ (Good)';
+                else if (unit.tenant.creditScore >= 550) menuText += ' ⚠ (Fair)';
+                else menuText += ' ❌ (Poor)';
+
+                menuText += '\n';
+            } else {
+                menuText += 'VACANT (Auto-filling...)\n';
+            }
+
+            if (i < this.currentApartment.units.length - 1) {
+                menuText += '\n';
+            }
+        }
+
+        menuText += '\nE/ESC: Close';
+
+        this.apartmentUI.setText(menuText);
     }
 
     showFloatingMessage(x, y, text, color) {
@@ -5604,651 +4394,16 @@ class MainScene extends Phaser.Scene {
         });
     }
 
-    enterShop(shop) {
-        console.log('Entering shop:', shop);
-
-        // Automatically collect any accumulated income when entering
-        let collectedIncome = 0;
-        if (shop.accumulatedIncome && shop.accumulatedIncome > 0) {
-            collectedIncome = Math.floor(shop.accumulatedIncome);
-            this.money += collectedIncome;
-            shop.accumulatedIncome = 0;
-            shop.lastIncomeTime = Date.now();
-
-            console.log(`💰 Collected $${collectedIncome} from shop! Total money: $${this.money}`);
-            this.updateMoneyUI();
-
-            // Hide income indicator
-            if (shop.incomeIndicator && shop.incomeIndicator.scene) {
-                shop.incomeIndicator.setVisible(false);
-            }
-        }
-
-        this.insideShop = true;
-        this.currentShop = shop;
-
-        // Update shop name label
-        this.shopNameLabel.setText(shop.type.toUpperCase());
-
-        // Show shop interior
-        this.shopInteriorContainer.setVisible(true);
-
-        // Show shop buttons (they're not in the container)
-        this.shopRestockButton.setVisible(true);
-        this.shopHireButton.setVisible(true);
-        this.shopWageText.setVisible(true);
-
-        // Update inventory display
-        this.updateShopInventoryUI();
-
-        // Show collection message with current balance
-        const shopTypeName = this.buildingTypes[shop.type]?.name || 'Shop';
-        this.showBuildingEntryMessage(shopTypeName, collectedIncome);
-
-        // Hide shop prompt
-        if (this.shopPrompt) {
-            this.shopPrompt.setVisible(false);
-        }
-
-        // Disable player movement
-        this.player.setVelocityX(0);
-        this.player.setVelocityY(0);
-    }
-
-    exitShop() {
-        console.log('Exiting shop');
-        this.insideShop = false;
-        this.currentShop = null;
-
-        // Hide shop interior
-        this.shopInteriorContainer.setVisible(false);
-
-        // Hide shop buttons (they're not in the container)
-        this.shopRestockButton.setVisible(false);
-        this.shopHireButton.setVisible(false);
-        this.shopWageText.setVisible(false);
-
-        // Hide cash on hand display
-        if (this.cashOnHandDisplay) {
-            this.cashOnHandDisplay.setVisible(false);
-        }
-    }
-
-    enterHotel(hotel) {
-        console.log('Entering hotel:', hotel);
-
-        // Automatically collect any accumulated income when entering
-        let collectedIncome = 0;
-        if (hotel.accumulatedIncome && hotel.accumulatedIncome > 0) {
-            collectedIncome = Math.floor(hotel.accumulatedIncome);
-            this.money += collectedIncome;
-            hotel.accumulatedIncome = 0;
-
-            console.log(`💰 Collected $${collectedIncome} from hotel! Total money: $${this.money}`);
-            this.updateMoneyUI();
-
-            // Hide income indicator
-            if (hotel.incomeIndicator && hotel.incomeIndicator.scene) {
-                hotel.incomeIndicator.setVisible(false);
-            }
-        }
-
-        this.insideHotel = true;
-        this.currentHotel = hotel;
-
-        // Show hotel interior
-        this.hotelInteriorContainer.setVisible(true);
-
-        // Update hotel info
-        this.updateHotelUI();
-
-        // Show collection message with current balance
-        this.showBuildingEntryMessage('Hotel', collectedIncome);
-
-        // Hide hotel prompt
-        if (this.hotelPrompt) {
-            this.hotelPrompt.setVisible(false);
-        }
-
-        // Disable player movement
-        this.player.setVelocityX(0);
-        this.player.setVelocityY(0);
-    }
-
-    exitHotel() {
-        console.log('Exiting hotel');
-        this.insideHotel = false;
-        this.currentHotel = null;
-
-        // Hide hotel interior
-        this.hotelInteriorContainer.setVisible(false);
-
-        // Hide cash on hand display
-        if (this.cashOnHandDisplay) {
-            this.cashOnHandDisplay.setVisible(false);
-        }
-    }
-
-    enterRestaurant(restaurant) {
-        console.log('Entering restaurant');
-
-        // Collect accumulated income
-        if (restaurant.accumulatedIncome >= 1) {
-            const collectedIncome = Math.floor(restaurant.accumulatedIncome);
-            this.money += collectedIncome;
-            this.showFloatingMessage(restaurant.x, restaurant.y - 150, `+$${collectedIncome}`, '#4CAF50');
-            console.log(`Collected $${collectedIncome} from restaurant`);
-            restaurant.accumulatedIncome = 0;
-            restaurant.lastIncomeTime = Date.now();
-            this.updateMoneyUI();
-        }
-
-        this.insideRestaurant = true;
-        this.currentRestaurant = restaurant;
-
-        // Show restaurant interior
-        this.restaurantInteriorContainer.setVisible(true);
-
-        // Show cash on hand display
-        if (!this.cashOnHandDisplay) {
-            this.cashOnHandDisplay = this.add.text(this.gameWidth / 2, this.gameHeight - 50, '', {
-                fontSize: '20px',
-                color: '#FFFFFF',
-                backgroundColor: '#000000',
-                padding: { x: 20, y: 10 },
-                align: 'center'
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(20000);
-        }
-
-        this.cashOnHandDisplay.setText(`Cash on Hand: $${this.money}`);
-        this.cashOnHandDisplay.setVisible(true);
-
-        // Update restaurant UI
-        this.updateRestaurantUI();
-
-        // Disable player movement
-        this.player.setVelocityX(0);
-        this.player.setVelocityY(0);
-    }
-
-    exitRestaurant() {
-        console.log('Exiting restaurant');
-        this.insideRestaurant = false;
-        this.currentRestaurant = null;
-
-        // Hide restaurant interior
-        this.restaurantInteriorContainer.setVisible(false);
-
-        // Hide cash on hand display
-        if (this.cashOnHandDisplay) {
-            this.cashOnHandDisplay.setVisible(false);
-        }
-    }
-
-    updateRestaurantUI() {
-        if (!this.currentRestaurant || !this.currentRestaurant.tables) {
-            console.log('No restaurant or tables data');
-            return;
-        }
-
-        // Count table statuses
-        let availableCount = 0;
-        let occupiedCount = 0;
-        let dirtyCount = 0;
-
-        for (let table of this.currentRestaurant.tables) {
-            if (table.status === 'available') availableCount++;
-            else if (table.status === 'occupied') occupiedCount++;
-            else if (table.status === 'dirty') dirtyCount++;
-        }
-
-        // Update info text
-        const dayWaiterStatus = this.currentRestaurant.hasDayWaiter ? '✓ Day Waiter (6am-8pm)' : '✗ No Day Waiter';
-        const nightWaiterStatus = this.currentRestaurant.hasNightWaiter ? '✓ Night Waiter (8pm-6am)' : '✗ No Night Waiter';
-
-        const infoLines = [
-            `Total Tables: ${this.currentRestaurant.tables.length}`,
-            `Available: ${availableCount} | Occupied: ${occupiedCount} | Dirty: ${dirtyCount}`,
-            ``,
-            `${dayWaiterStatus}`,
-            `${nightWaiterStatus}`,
-            `Meal Price: $${this.currentRestaurant.mealPrice || 25}`
-        ];
-        this.restaurantInfoText.setText(infoLines.join('\n'));
-
-        // Show/hide waiter sprite (show if either waiter is hired)
-        if (this.restaurantWaiterSprite) {
-            this.restaurantWaiterSprite.setVisible(this.currentRestaurant.hasDayWaiter || this.currentRestaurant.hasNightWaiter);
-        }
-
-        // Update hire buttons and wage text
-        if (this.currentRestaurant.hasDayWaiter) {
-            this.restaurantHireDayButton.setVisible(false);
-        } else {
-            this.restaurantHireDayButton.setVisible(true);
-        }
-
-        if (this.currentRestaurant.hasNightWaiter) {
-            this.restaurantHireNightButton.setVisible(false);
-        } else {
-            this.restaurantHireNightButton.setVisible(true);
-        }
-
-        // Show total wages if any waiter is hired
-        const totalWages = (this.currentRestaurant.dayWaiterWage || 0) + (this.currentRestaurant.nightWaiterWage || 0);
-        if (totalWages > 0) {
-            this.restaurantWageText.setText(`Total Daily Wages: $${totalWages}`);
-            this.restaurantWageText.setVisible(true);
-        } else {
-            this.restaurantWageText.setVisible(false);
-        }
-    }
-
-    hireRestaurantWaiter(shift) {
-        if (!this.currentRestaurant) {
-            console.log('No restaurant to hire waiter for');
-            return;
-        }
-
-        if (shift === 'day' && this.currentRestaurant.hasDayWaiter) {
-            console.log('Restaurant already has a day waiter');
-            return;
-        }
-
-        if (shift === 'night' && this.currentRestaurant.hasNightWaiter) {
-            console.log('Restaurant already has a night waiter');
-            return;
-        }
-
-        const hiringCost = 800;
-        if (this.money < hiringCost) {
-            console.log(`❌ Not enough money to hire ${shift} waiter! Need $${hiringCost}, have $${this.money}`);
-            return;
-        }
-
-        // Hire waiter
-        this.money -= hiringCost;
-        const dailyWage = 40; // $40 per game day
-
-        if (shift === 'day') {
-            this.currentRestaurant.hasDayWaiter = true;
-            this.currentRestaurant.dayWaiterWage = dailyWage;
-            console.log(`✓ Hired DAY waiter for $${hiringCost}. Daily wage: $${dailyWage}`);
-        } else if (shift === 'night') {
-            this.currentRestaurant.hasNightWaiter = true;
-            this.currentRestaurant.nightWaiterWage = dailyWage;
-            console.log(`✓ Hired NIGHT waiter for $${hiringCost}. Daily wage: $${dailyWage}`);
-        }
-
-        this.updateMoneyUI();
-        this.updateRestaurantUI();
-
-        // Save game
-        this.saveGame();
-    }
-
-    updateHotelUI() {
-        if (!this.currentHotel || !this.currentHotel.rooms) {
-            console.log('No hotel or rooms data');
-            return;
-        }
-
-        // Count dirty and clean rooms
-        let dirtyCount = 0;
-        let cleanCount = 0;
-        let occupiedCount = 0;
-
-        for (let room of this.currentHotel.rooms) {
-            if (room.status === 'dirty') dirtyCount++;
-            else if (room.status === 'clean') cleanCount++;
-            else if (room.status === 'occupied') occupiedCount++;
-        }
-
-        const hotelType = this.buildingTypes.hotel;
-        const totalCost = dirtyCount * hotelType.cleaningCost;
-
-        // Update info text
-        const employeeStatus = this.currentHotel.hasEmployee ? '✓ Front Desk' : '✗ No Front Desk';
-        const autoCleanInfo = this.currentHotel.hasEmployee ? '(Cleans 1 room/day)' : '';
-        const maidStatus = this.currentHotel.hasMaid ? '✓ Maid' : '✗ No Maid';
-        const maidCleanInfo = this.currentHotel.hasMaid ? '(Cleans immediately after checkout)' : '';
-
-        const infoLines = [
-            `Total Rooms: ${this.currentHotel.rooms.length}`,
-            `Occupied: ${occupiedCount} | Clean: ${cleanCount} | Dirty: ${dirtyCount}`,
-            ``,
-            `${employeeStatus} ${autoCleanInfo}`,
-            `${maidStatus} ${maidCleanInfo}`,
-            `Cleaning Cost: $${hotelType.cleaningCost} per room`
-        ];
-        this.hotelInfoText.setText(infoLines.join('\n'));
-
-        // Show/hide employee sprite at front desk
-        if (this.hotelEmployeeSprite) {
-            this.hotelEmployeeSprite.setVisible(this.currentHotel.hasEmployee);
-        }
-
-        // Show/hide maid sprite
-        if (this.hotelMaidSprite) {
-            this.hotelMaidSprite.setVisible(this.currentHotel.hasMaid);
-        }
-
-        // Update clean button (only show if NO maid - maid cleans automatically!)
-        if (dirtyCount > 0 && !this.currentHotel.hasMaid) {
-            this.hotelCleanButton.setText(`🧹 CLEAN ALL DIRTY ROOMS ($${totalCost})`);
-            if (this.money >= totalCost) {
-                this.hotelCleanButton.setStyle({ backgroundColor: '#E91E63' });
-                this.hotelCleanButton.setInteractive();
-            } else {
-                this.hotelCleanButton.setText(`🧹 CLEAN ALL DIRTY ROOMS ($${totalCost}) - NOT ENOUGH MONEY`);
-                this.hotelCleanButton.setStyle({ backgroundColor: '#D32F2F' });
-                this.hotelCleanButton.disableInteractive();
-            }
-            this.hotelCleanButton.setVisible(true);
-        } else {
-            this.hotelCleanButton.setVisible(false);
-        }
-
-        // Update hire button / wage display
-        const hiringCost = 1000;
-        if (this.currentHotel.hasEmployee) {
-            this.hotelHireButton.setVisible(false);
-            this.hotelWageText.setText(`Front Desk Daily Wage: $${this.currentHotel.dailyWage || 50}`);
-            this.hotelWageText.setVisible(true);
-        } else {
-            this.hotelWageText.setVisible(false);
-            this.hotelHireButton.setVisible(true);
-            if (this.money < hiringCost) {
-                this.hotelHireButton.setText(`HIRE EMPLOYEE ($${hiringCost}) - NOT ENOUGH MONEY`);
-                this.hotelHireButton.setStyle({ backgroundColor: '#D32F2F' });
-                this.hotelHireButton.disableInteractive();
-            } else {
-                this.hotelHireButton.setText(`HIRE EMPLOYEE ($${hiringCost})`);
-                this.hotelHireButton.setStyle({ backgroundColor: '#1976D2' });
-                this.hotelHireButton.setInteractive();
-            }
-        }
-
-        // Update maid hire button / wage display
-        if (this.currentHotel.hasMaid) {
-            this.hotelHireMaidButton.setVisible(false);
-            this.hotelMaidWageText.setText(`Maid Daily Wage: $${this.currentHotel.maidDailyWage || 50}`);
-            this.hotelMaidWageText.setVisible(true);
-        } else {
-            this.hotelMaidWageText.setVisible(false);
-            this.hotelHireMaidButton.setVisible(true);
-            if (this.money < hiringCost) {
-                this.hotelHireMaidButton.setText(`HIRE MAID ($${hiringCost}) - NOT ENOUGH MONEY`);
-                this.hotelHireMaidButton.setStyle({ backgroundColor: '#D32F2F' });
-                this.hotelHireMaidButton.disableInteractive();
-            } else {
-                this.hotelHireMaidButton.setText(`HIRE MAID ($${hiringCost})`);
-                this.hotelHireMaidButton.setStyle({ backgroundColor: '#7B1FA2' });
-                this.hotelHireMaidButton.setInteractive();
-            }
-        }
-    }
-
-    cleanHotelRooms() {
-        if (!this.currentHotel || !this.currentHotel.rooms) {
-            console.log('No hotel to clean');
-            return;
-        }
-
-        // Count dirty rooms
-        let dirtyCount = 0;
-        for (let room of this.currentHotel.rooms) {
-            if (room.status === 'dirty') dirtyCount++;
-        }
-
-        if (dirtyCount === 0) {
-            console.log('No dirty rooms to clean');
-            return;
-        }
-
-        const hotelType = this.buildingTypes.hotel;
-        const totalCost = dirtyCount * hotelType.cleaningCost;
-
-        if (this.money < totalCost) {
-            console.log(`❌ Not enough money! Need $${totalCost}, have $${this.money}`);
-            return;
-        }
-
-        // Clean all dirty rooms
-        for (let room of this.currentHotel.rooms) {
-            if (room.status === 'dirty') {
-                room.status = 'clean';
-            }
-        }
-
-        // Deduct money
-        this.money -= totalCost;
-        console.log(`🧹 Cleaned ${dirtyCount} rooms for $${totalCost}. Cash remaining: $${this.money}`);
-
-        // Update UI
-        this.updateHotelUI();
-
-        // Save game
-        this.saveGame();
-    }
-
-    hireHotelEmployee() {
-        if (!this.currentHotel) {
-            console.log('No hotel to hire for');
-            return;
-        }
-
-        if (this.currentHotel.hasEmployee) {
-            console.log('Hotel already has an employee');
-            return;
-        }
-
-        const hiringCost = 1000;
-        if (this.money < hiringCost) {
-            console.log(`❌ Not enough money to hire! Need $${hiringCost}, have $${this.money}`);
-            return;
-        }
-
-        // Hire employee
-        this.money -= hiringCost;
-        this.currentHotel.hasEmployee = true;
-        this.currentHotel.dailyWage = 50; // $50 per game day
-        this.currentHotel.lastWageCheck = this.gameTime;
-        this.currentHotel.lastAutoClean = this.gameTime;
-
-        console.log(`✓ Hired hotel employee for $${hiringCost}. Daily wage: $${this.currentHotel.dailyWage}`);
-
-        // Update UI
-        this.updateHotelUI();
-
-        // Save game
-        this.saveGame();
-    }
-
-    hireHotelMaid() {
-        if (!this.currentHotel) {
-            console.log('No hotel to hire maid for');
-            return;
-        }
-
-        if (this.currentHotel.hasMaid) {
-            console.log('Hotel already has a maid');
-            return;
-        }
-
-        const hiringCost = 1000;
-        if (this.money < hiringCost) {
-            console.log(`❌ Not enough money to hire maid! Need $${hiringCost}, have $${this.money}`);
-            return;
-        }
-
-        // Hire maid
-        this.money -= hiringCost;
-        this.currentHotel.hasMaid = true;
-        this.currentHotel.maidDailyWage = 50; // $50 per game day
-        this.currentHotel.lastMaidWageCheck = this.gameTime;
-        this.currentHotel.lastMaidClean = this.gameTime;
-
-        console.log(`✓ Hired hotel maid for $${hiringCost}. Daily wage: $${this.currentHotel.maidDailyWage}`);
-
-        // Update UI
-        this.updateHotelUI();
-
-        // Save game
-        this.saveGame();
-    }
-
-    updateShopInventoryUI() {
-        if (!this.currentShop || !this.currentShop.inventory) {
-            console.log('No shop or inventory data');
-            return;
-        }
-
-        const inv = this.currentShop.inventory;
-
-        // Update player money display
-        this.shopMoneyText.setText(`💰 Cash: $${this.money}`);
-
-        // Update stock level display
-        const stockPercent = Math.floor((inv.stock / inv.maxStock) * 100);
-        let stockColor = '#4CAF50'; // Green
-        if (stockPercent < 30) stockColor = '#F44336'; // Red
-        else if (stockPercent < 60) stockColor = '#FF9800'; // Orange
-
-        this.shopStockText.setText(`Stock: ${inv.stock}/${inv.maxStock} (${stockPercent}%)`);
-        this.shopStockText.setStyle({ backgroundColor: stockColor });
-
-        // Update employee status
-        const employeeStatus = this.currentShop.hasEmployee ? 'Employee: YES' : 'Employee: NO';
-        const employeeColor = this.currentShop.hasEmployee ? '#4CAF50' : '#F44336';
-        this.shopEmployeeText.setText(employeeStatus);
-        this.shopEmployeeText.setStyle({ backgroundColor: employeeColor });
-
-        // Update shop open/closed status
-        const totalMinutes = Math.floor(this.gameTime);
-        const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
-        const openHours = '7am-9pm';
-
-        let shopStatus = this.currentShop.isOpen ? `OPEN (${openHours})` : `CLOSED (${openHours})`;
-        if (!this.currentShop.hasEmployee) {
-            shopStatus = 'CLOSED (No Employee)';
-        }
-
-        const statusColor = this.currentShop.isOpen ? '#4CAF50' : '#9E9E9E';
-        this.shopStatusText.setText(shopStatus);
-        this.shopStatusText.setStyle({ backgroundColor: statusColor });
-
-        // Update hire employee button
-        const hiringCost = 1000;
-        if (this.currentShop.hasEmployee) {
-            this.shopHireButton.setVisible(false);
-            this.shopWageText.setText(`Daily Wage: $${this.currentShop.dailyWage || 50}`);
-            this.shopWageText.setVisible(true);
-        } else {
-            this.shopWageText.setVisible(false);
-            this.shopHireButton.setVisible(true);
-            if (this.money < hiringCost) {
-                this.shopHireButton.setText(`HIRE EMPLOYEE ($${hiringCost}) - NOT ENOUGH MONEY`);
-                this.shopHireButton.setStyle({ backgroundColor: '#D32F2F' });
-                this.shopHireButton.disableInteractive();
-            } else {
-                this.shopHireButton.setText(`HIRE EMPLOYEE ($${hiringCost})`);
-                this.shopHireButton.setStyle({ backgroundColor: '#1976D2' });
-                this.shopHireButton.setInteractive();
-            }
-        }
-
-        // Update restock button
-        const restockAmount = inv.maxStock - inv.stock;
-        const restockCost = restockAmount * inv.restockCost;
-
-        if (restockAmount === 0) {
-            this.shopRestockButton.setText('FULLY STOCKED');
-            this.shopRestockButton.setStyle({ backgroundColor: '#9E9E9E' });
-            this.shopRestockButton.disableInteractive();
-        } else if (this.money < restockCost) {
-            this.shopRestockButton.setText(`RESTOCK ($${restockCost}) - NOT ENOUGH MONEY`);
-            this.shopRestockButton.setStyle({ backgroundColor: '#D32F2F' });
-            this.shopRestockButton.disableInteractive();
-        } else {
-            this.shopRestockButton.setText(`RESTOCK ${restockAmount} units ($${restockCost})`);
-            this.shopRestockButton.setStyle({ backgroundColor: '#2E7D32' });
-            this.shopRestockButton.setInteractive();
-        }
-    }
-
-    restockShop() {
-        if (!this.currentShop || !this.currentShop.inventory) {
-            console.log('No shop or inventory data');
-            return;
-        }
-
-        const inv = this.currentShop.inventory;
-        const restockAmount = inv.maxStock - inv.stock;
-        const restockCost = restockAmount * inv.restockCost;
-
-        // Check if already fully stocked
-        if (restockAmount === 0) {
-            console.log('Shop already fully stocked');
-            return;
-        }
-
-        // Check if player has enough money
-        if (this.money < restockCost) {
-            console.log('Not enough money to restock');
-            return;
-        }
-
-        // Restock the shop
-        inv.stock = inv.maxStock;
-        this.money -= restockCost;
-
-        console.log(`Restocked shop for $${restockCost}. New stock: ${inv.stock}`);
-
-        // Update UI
-        this.updateMoneyUI();
-        this.updateShopInventoryUI();
-    }
-
-    hireEmployee() {
-        if (!this.currentShop) {
-            console.log('No current shop');
-            return;
-        }
-
-        const hiringCost = 1000;
-
-        // Check if already has employee
-        if (this.currentShop.hasEmployee) {
-            console.log('Shop already has an employee');
-            return;
-        }
-
-        // Check if player has enough money
-        if (this.money < hiringCost) {
-            console.log('Not enough money to hire employee');
-            return;
-        }
-
-        // Hire the employee
-        this.currentShop.hasEmployee = true;
-        this.currentShop.isOpen = true;
-        this.currentShop.dailyWage = 50; // $50 per day
-        this.money -= hiringCost;
-
-        console.log(`Hired employee for $${hiringCost}. Shop is now open. Daily wage: $${this.currentShop.dailyWage}`);
-
-        // Update UI
-        this.updateMoneyUI();
-        this.updateShopInventoryUI();
-    }
+    // Restaurant functions moved to RestaurantSystem.js
+    // Hotel functions moved to HotelSystem.js
+    // Shop functions moved to ShopSystem.js
 
     openMailboxMenu() {
         if (this.pendingApplications.length === 0) return;
 
         this.mailboxMenuOpen = true;
         this.currentApplicationIndex = 0;
-        this.updateMailboxUI();
+        this.uiManager.updateMailboxUI();
         this.mailboxUI.setVisible(true);
     }
 
@@ -6257,48 +4412,6 @@ class MainScene extends Phaser.Scene {
         this.mailboxUI.setVisible(false);
     }
 
-    updateMailboxUI() {
-        // Safety check: only update if menu exists and is visible
-        if (!this.mailboxUI || !this.mailboxUI.visible || !this.mailboxMenuOpen) {
-            return;
-        }
-
-        if (this.pendingApplications.length === 0) {
-            this.closeMailboxMenu();
-            return;
-        }
-
-        const currentBatch = this.pendingApplications[0];
-        const applications = currentBatch.applications;
-        const currentApp = applications[this.currentApplicationIndex];
-
-        let menuText = `=== RENTAL APPLICATION ===\n`;
-        menuText += `Unit: Apartment #${currentBatch.unitIndex + 1}\n`;
-        menuText += `Application ${this.currentApplicationIndex + 1} of ${applications.length}\n\n`;
-        menuText += `Applicant: ${currentApp.name}\n`;
-        menuText += `Occupation: ${currentApp.job}\n`;
-        menuText += `Employment: ${currentApp.employmentLength} months\n`;
-        menuText += `Credit Score: ${currentApp.creditScore}\n`;
-        menuText += `Monthly Rent Offer: $${currentApp.rentOffer}/min\n\n`;
-
-        // Credit rating
-        let rating = '';
-        if (currentApp.creditScore >= 750) rating = '⭐ Excellent (Very Low Risk)';
-        else if (currentApp.creditScore >= 650) rating = '✓ Good (Low Risk)';
-        else if (currentApp.creditScore >= 550) rating = '⚠ Fair (Moderate Risk)';
-        else rating = '❌ Poor (HIGH RISK!)';
-        menuText += `Rating: ${rating}\n\n`;
-
-        menuText += `← → : View other applications\n`;
-        menuText += `ENTER : Accept this applicant\n`;
-        menuText += `ESC : Close mailbox\n`;
-
-        try {
-            this.mailboxUI.setText(menuText);
-        } catch (error) {
-            console.error('Error updating mailbox UI:', error);
-        }
-    }
 
     acceptApplication() {
         if (this.pendingApplications.length === 0) return;
@@ -6331,34 +4444,25 @@ class MainScene extends Phaser.Scene {
         // Close menu or show next batch
         if (this.pendingApplications.length > 0) {
             this.currentApplicationIndex = 0;
-            this.updateMailboxUI();
+            this.uiManager.updateMailboxUI();
         } else {
             this.closeMailboxMenu();
         }
 
         // Save game
-        this.saveGame();
+        this.saveSystem.saveGame();
     }
 
-    updateBankUI() {
-        let menuText = '=== MAIN STREET BANK ===\n';
-        menuText += `💰 Cash on Hand: $${this.money}\n`;
-        menuText += `🏦 Bank Balance: $${this.bankBalance}\n`;
-        menuText += `💳 Loan Debt: $${this.loanAmount}\n\n`;
-        menuText += '1: Deposit $100\n';
-        menuText += '2: Withdraw $100\n';
-        menuText += '3: Borrow $500 (10% interest)\n';
-        menuText += 'E/Enter: Close';
-        this.bankUI.setText(menuText);
-    }
 
     depositMoney(amount) {
         if (this.money >= amount) {
             this.money -= amount;
+            this.money = Math.round(this.money);
             this.bankBalance += amount;
+            this.bankBalance = Math.round(this.bankBalance);
             console.log(`Deposited $${amount}. Bank balance: $${this.bankBalance}`);
-            this.updateBankUI();
-            this.saveGame();
+            this.uiManager.updateBankUI();
+            this.saveSystem.saveGame();
         } else {
             console.log('Not enough cash to deposit!');
         }
@@ -6367,10 +4471,12 @@ class MainScene extends Phaser.Scene {
     withdrawMoney(amount) {
         if (this.bankBalance >= amount) {
             this.bankBalance -= amount;
+            this.bankBalance = Math.round(this.bankBalance);
             this.money += amount;
+            this.money = Math.round(this.money);
             console.log(`Withdrew $${amount}. Bank balance: $${this.bankBalance}`);
-            this.updateBankUI();
-            this.saveGame();
+            this.uiManager.updateBankUI();
+            this.saveSystem.saveGame();
         } else {
             console.log('Not enough money in bank!');
         }
@@ -6379,10 +4485,12 @@ class MainScene extends Phaser.Scene {
     borrowMoney(amount) {
         const totalLoan = Math.round(amount * (1 + this.loanInterestRate));
         this.money += amount;
+        this.money = Math.round(this.money);
         this.loanAmount += totalLoan;
+        this.loanAmount = Math.round(this.loanAmount);
         console.log(`Borrowed $${amount}. You owe $${totalLoan} (including 10% interest). Total debt: $${this.loanAmount}`);
-        this.updateBankUI();
-        this.saveGame();
+        this.uiManager.updateBankUI();
+        this.saveSystem.saveGame();
     }
 
     resetGame() {
@@ -6396,7 +4504,7 @@ class MainScene extends Phaser.Scene {
 
     openResourceBuildingMenu() {
         this.resourceBuildingMenuOpen = true;
-        this.updateResourceBuildingUI();
+        this.uiManager.updateResourceBuildingUI();
         this.resourceBuildingUI.setVisible(true);
     }
 
@@ -6405,51 +4513,15 @@ class MainScene extends Phaser.Scene {
         this.resourceBuildingUI.setVisible(false);
     }
 
-    updateResourceBuildingUI() {
-        let menuText = '';
-
-        if (this.nearResourceBuilding.type === 'market') {
-            menuText = '=== MARKET ===\n';
-            menuText += `💰 Cash: $${this.money}\n`;
-            menuText += `🪵 Wood: ${this.wood}\n`;
-            menuText += `🧱 Bricks: ${this.bricks}\n\n`;
-            menuText += '1: Buy 10 Wood ($50)\n';
-            menuText += '2: Buy 10 Bricks ($75)\n';
-            menuText += 'E/Enter: Close';
-        } else if (this.nearResourceBuilding.type === 'lumbermill') {
-            const available = Math.floor(this.nearResourceBuilding.storedResources);
-            menuText = '=== LUMBER MILL ===\n';
-            menuText += `🪵 Available: ${available} wood\n`;
-            menuText += `Your Wood: ${this.wood}\n\n`;
-            if (available >= 1) {
-                menuText += `1: Collect ${available} Wood (Free!)\n`;
-            } else {
-                menuText += '⏳ Regenerating... (1 wood/min)\n';
-            }
-            menuText += 'E/Enter: Close';
-        } else if (this.nearResourceBuilding.type === 'brickfactory') {
-            const available = Math.floor(this.nearResourceBuilding.storedResources);
-            menuText = '=== BRICK FACTORY ===\n';
-            menuText += `🧱 Available: ${available} bricks\n`;
-            menuText += `Your Bricks: ${this.bricks}\n\n`;
-            if (available >= 1) {
-                menuText += `1: Collect ${available} Bricks (Free!)\n`;
-            } else {
-                menuText += '⏳ Regenerating... (1 brick/min)\n';
-            }
-            menuText += 'E/Enter: Close';
-        }
-
-        this.resourceBuildingUI.setText(menuText);
-    }
 
     buyWood(amount, cost) {
         if (this.money >= cost) {
             this.money -= cost;
+            this.money = Math.round(this.money);
             this.wood += amount;
             console.log(`Bought ${amount} wood for $${cost}. Wood: ${this.wood}, Money: $${this.money}`);
-            this.updateResourceBuildingUI();
-            this.saveGame();
+            this.uiManager.updateResourceBuildingUI();
+            this.saveSystem.saveGame();
         } else {
             console.log('Not enough money!');
         }
@@ -6458,10 +4530,11 @@ class MainScene extends Phaser.Scene {
     buyBricks(amount, cost) {
         if (this.money >= cost) {
             this.money -= cost;
+            this.money = Math.round(this.money);
             this.bricks += amount;
             console.log(`Bought ${amount} bricks for $${cost}. Bricks: ${this.bricks}, Money: $${this.money}`);
-            this.updateResourceBuildingUI();
-            this.saveGame();
+            this.uiManager.updateResourceBuildingUI();
+            this.saveSystem.saveGame();
         } else {
             console.log('Not enough money!');
         }
@@ -6480,8 +4553,8 @@ class MainScene extends Phaser.Scene {
                 this.nearResourceBuilding.resourceIndicator.setVisible(false);
             }
 
-            this.updateResourceBuildingUI();
-            this.saveGame();
+            this.uiManager.updateResourceBuildingUI();
+            this.saveSystem.saveGame();
         } else {
             console.log('No wood available yet. Wait for regeneration.');
         }
@@ -6500,8 +4573,8 @@ class MainScene extends Phaser.Scene {
                 this.nearResourceBuilding.resourceIndicator.setVisible(false);
             }
 
-            this.updateResourceBuildingUI();
-            this.saveGame();
+            this.uiManager.updateResourceBuildingUI();
+            this.saveSystem.saveGame();
         } else {
             console.log('No bricks available yet. Wait for regeneration.');
         }
@@ -6529,6 +4602,7 @@ class MainScene extends Phaser.Scene {
 
         if (income > 0) {
             this.money += income;
+            this.money = Math.round(this.money);
 
             const buildingType = this.buildingTypes[building.type];
             console.log(`Collected $${income} from ${buildingType.name}! Total money: $${this.money}`);
@@ -6538,54 +4612,10 @@ class MainScene extends Phaser.Scene {
                 building.incomeIndicator.setVisible(false);
             }
 
-            this.saveGame();
+            this.saveSystem.saveGame();
         }
     }
 
-    showBuildingEntryMessage(buildingName, collectedIncome) {
-        // Create temporary collection message if needed
-        if (!this.buildingEntryMessage) {
-            this.buildingEntryMessage = this.add.text(this.gameWidth / 2, 100, '', {
-                fontSize: '20px',
-                color: '#FFFFFF',
-                backgroundColor: '#000000',
-                padding: { x: 20, y: 10 },
-                align: 'center'
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(20000);
-        }
-
-        // Create permanent cash on hand display if needed
-        if (!this.cashOnHandDisplay) {
-            this.cashOnHandDisplay = this.add.text(this.gameWidth / 2, 150, '', {
-                fontSize: '18px',
-                color: '#FFFFFF',
-                backgroundColor: '#1B5E20',
-                padding: { x: 15, y: 8 },
-                align: 'center'
-            }).setOrigin(0.5).setScrollFactor(0).setDepth(20000);
-        }
-
-        // Build temporary message (entered + collected)
-        let tempMessage = `Entered ${buildingName}`;
-        if (collectedIncome > 0) {
-            tempMessage += `\n💰 Collected: $${collectedIncome}`;
-        }
-
-        // Show temporary message
-        this.buildingEntryMessage.setText(tempMessage);
-        this.buildingEntryMessage.setVisible(true);
-
-        // Update and show permanent cash display
-        this.cashOnHandDisplay.setText(`Cash on Hand: $${this.money}`);
-        this.cashOnHandDisplay.setVisible(true);
-
-        // Hide temporary message after 4 seconds
-        this.time.delayedCall(4000, () => {
-            if (this.buildingEntryMessage) {
-                this.buildingEntryMessage.setVisible(false);
-            }
-        });
-    }
 
     updateBuses() {
         const deltaTime = 1/60; // Approximate 60 FPS
@@ -6626,7 +4656,7 @@ class MainScene extends Phaser.Scene {
                     if (Math.random() < 0.2) {
                         const touristCount = 1 + Math.floor(Math.random() * 3); // 1-3 tourists
                         for (let t = 0; t < touristCount; t++) {
-                            this.spawnTourist(stop.x);
+                            this.citizenSystem.spawnTourist(stop.x);
                         }
                         console.log(`🚌 ${touristCount} tourist(s) arrived from out of town!`);
                     }
@@ -6671,264 +4701,7 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    updateCitizens() {
-        const deltaTime = 1/60; // Approximate 60 FPS
-
-        for (let citizen of this.citizens) {
-            // Handle tourist timer - tourists leave after their time is up
-            if (citizen.isTourist && citizen.touristTimer !== undefined) {
-                citizen.touristTimer -= deltaTime;
-                if (citizen.touristTimer <= 0 && citizen.state === 'walking') {
-                    // Time to leave - head to nearest bus stop
-                    let nearestStop = null;
-                    let nearestDistance = Infinity;
-                    if (this.busStops && this.busStops.length > 0) {
-                        for (let stop of this.busStops) {
-                            const dist = Math.abs(citizen.x - stop.x);
-                            if (dist < nearestDistance) {
-                                nearestDistance = dist;
-                                nearestStop = stop;
-                            }
-                        }
-                    }
-
-                    if (nearestStop) {
-                        citizen.targetBusStop = nearestStop;
-                        citizen.state = 'walking';
-                        console.log('👋 Tourist heading to bus stop to leave town');
-                    }
-                }
-            }
-
-            if (citizen.state === 'walking') {
-                // Walk in current direction
-                const distance = citizen.walkSpeed * deltaTime;
-                citizen.x += distance * citizen.direction;
-                citizen.container.x = citizen.x;
-
-                // Randomly decide to go to a bus stop
-                if (Math.random() < 0.001 && this.busStops && this.busStops.length > 0) { // 0.1% chance per frame
-                    // Find nearest bus stop
-                    let nearestStop = null;
-                    let nearestDistance = Infinity;
-                    for (let stop of this.busStops) {
-                        const dist = Math.abs(citizen.x - stop.x);
-                        if (dist < nearestDistance) {
-                            nearestDistance = dist;
-                            nearestStop = stop;
-                        }
-                    }
-
-                    if (nearestStop) {
-                        citizen.targetBusStop = nearestStop;
-                        citizen.direction = citizen.x < nearestStop.x ? 1 : -1;
-                    }
-                }
-
-                // Check if reached bus stop
-                if (citizen.targetBusStop) {
-                    const distanceToStop = Math.abs(citizen.x - citizen.targetBusStop.x);
-                    if (distanceToStop < 30) {
-                        // Arrived at bus stop
-                        citizen.state = 'waiting';
-                        citizen.waitTimer = 0;
-                        citizen.targetBusStop.waitingCitizens.push(citizen);
-                        citizen.targetBusStop = null;
-                    }
-                }
-
-                // Randomly reverse direction at edges or randomly
-                if (citizen.x > 11900 || citizen.x < 100 || Math.random() < 0.002) {
-                    citizen.direction *= -1;
-                }
-
-                // Randomly visit nearby buildings (prioritize shops)
-                if (Math.random() < 0.0005 && this.buildings.length > 0) {
-                    // Find nearby shops that are open and have stock
-                    const nearbyShops = this.buildings.filter(b =>
-                        this.isShop(b.type) &&
-                        Math.abs(b.x - citizen.x) < 800 &&
-                        b.isOpen &&
-                        b.inventory &&
-                        b.inventory.stock >= b.inventory.salesPerCustomer
-                    );
-
-                    // Get current hour for restaurant shift check
-                    const totalMinutes = Math.floor(this.gameTime);
-                    const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
-                    const isDayTime = hour >= 6 && hour < 20; // 6am-8pm is day shift
-
-                    // Find nearby restaurants with available tables and appropriate waiter
-                    const nearbyRestaurants = this.buildings.filter(b =>
-                        b.type === 'restaurant' &&
-                        Math.abs(b.x - citizen.x) < 800 &&
-                        b.tables &&
-                        b.tables.some(t => t.status === 'available') &&
-                        ((isDayTime && b.hasDayWaiter) || (!isDayTime && b.hasNightWaiter))
-                    );
-
-                    // Choose target building (40% shop, 30% restaurant, 30% any)
-                    let targetBuilding = null;
-                    const randomChoice = Math.random();
-
-                    if (randomChoice < 0.4 && nearbyShops.length > 0) {
-                        // 40% chance to visit shop
-                        targetBuilding = nearbyShops[Math.floor(Math.random() * nearbyShops.length)];
-                        citizen.isShoppingVisit = true;
-                        citizen.isDiningVisit = false;
-                    } else if (randomChoice < 0.7 && nearbyRestaurants.length > 0) {
-                        // 30% chance to visit restaurant
-                        targetBuilding = nearbyRestaurants[Math.floor(Math.random() * nearbyRestaurants.length)];
-                        citizen.isShoppingVisit = false;
-                        citizen.isDiningVisit = true;
-                    } else {
-                        // 30% chance to visit any building
-                        const nearbyBuildings = this.buildings.filter(b =>
-                            Math.abs(b.x - citizen.x) < 500
-                        );
-                        if (nearbyBuildings.length > 0) {
-                            targetBuilding = nearbyBuildings[Math.floor(Math.random() * nearbyBuildings.length)];
-                            citizen.isShoppingVisit = false;
-                            citizen.isDiningVisit = false;
-                        }
-                    }
-
-                    if (targetBuilding) {
-                        citizen.targetBuilding = targetBuilding;
-                        citizen.direction = citizen.x < targetBuilding.x ? 1 : -1;
-                    }
-                }
-
-                // Check if reached target building
-                if (citizen.targetBuilding) {
-                    // Safety check: make sure building still exists
-                    if (!this.buildings.includes(citizen.targetBuilding)) {
-                        citizen.targetBuilding = null;
-                        citizen.direction = Math.random() > 0.5 ? 1 : -1;
-                    } else {
-                        const distanceToBuilding = Math.abs(citizen.x - citizen.targetBuilding.x);
-                        if (distanceToBuilding < 50) {
-                            // Special handling for restaurants - find available table
-                            if (citizen.isDiningVisit && citizen.targetBuilding.type === 'restaurant' && citizen.targetBuilding.tables) {
-                                const availableTable = citizen.targetBuilding.tables.find(t => t.status === 'available');
-                                if (availableTable) {
-                                    // Occupy the table
-                                    availableTable.status = 'occupied';
-                                    availableTable.customer = citizen;
-                                    availableTable.mealStartTime = this.gameTime;
-                                    availableTable.mealDuration = 15 + Math.random() * 20; // 15-35 game minutes
-
-                                    citizen.state = 'visiting';
-                                    citizen.visitTimer = availableTable.mealDuration / 60; // Convert game minutes to real seconds
-                                    citizen.occupiedTable = availableTable;
-                                    citizen.container.setVisible(false); // Hide while dining
-                                    console.log(`🍽️ Customer seated at restaurant, will dine for ${Math.floor(availableTable.mealDuration)} game minutes`);
-                                } else {
-                                    // No tables available, leave
-                                    citizen.targetBuilding = null;
-                                    citizen.direction = Math.random() > 0.5 ? 1 : -1;
-                                }
-                            } else {
-                                // Regular building visit
-                                citizen.state = 'visiting';
-                                citizen.visitTimer = 5 + Math.random() * 10; // Visit for 5-15 seconds
-                                citizen.container.setVisible(false); // Hide while inside building
-                            }
-                        }
-                    }
-                }
-            } else if (citizen.state === 'waiting') {
-                // Citizen is waiting at bus stop - just stand still
-                citizen.waitTimer += deltaTime;
-
-                // Small chance to give up waiting and start walking again
-                if (citizen.waitTimer > 30 && Math.random() < 0.01) {
-                    citizen.state = 'walking';
-                    // Remove from bus stop waiting list
-                    for (let stop of this.busStops) {
-                        const index = stop.waitingCitizens.indexOf(citizen);
-                        if (index > -1) {
-                            stop.waitingCitizens.splice(index, 1);
-                            break;
-                        }
-                    }
-                }
-            } else if (citizen.state === 'visiting') {
-                // Citizen is inside a building
-                citizen.visitTimer -= deltaTime;
-                if (citizen.visitTimer <= 0) {
-                    // Safety check: make sure building still exists
-                    if (citizen.targetBuilding && !this.buildings.includes(citizen.targetBuilding)) {
-                        citizen.targetBuilding = null;
-                        citizen.state = 'walking';
-                        citizen.container.setVisible(true);
-                        citizen.direction = Math.random() > 0.5 ? 1 : -1;
-                        continue;
-                    }
-
-                    // Process shop purchase if this was a shopping visit
-                    if (citizen.isShoppingVisit && citizen.targetBuilding && this.isShop(citizen.targetBuilding.type)) {
-                        const shop = citizen.targetBuilding;
-                        if (shop.inventory && shop.isOpen && shop.inventory.stock >= shop.inventory.salesPerCustomer) {
-                            // Customer makes a purchase
-                            shop.inventory.stock -= shop.inventory.salesPerCustomer;
-                            const salePrice = shop.inventory.salesPerCustomer * 15; // $15 per unit sold
-                            this.money += salePrice;
-                            this.updateMoneyUI();
-
-                            console.log(`Customer purchased from shop! Stock: ${shop.inventory.stock}, Income: $${salePrice}`);
-
-                            // Update UI if player is currently viewing this shop
-                            if (this.insideShop && this.currentShop === shop) {
-                                this.updateShopInventoryUI();
-                            }
-                        }
-                        citizen.isShoppingVisit = false;
-                    }
-
-                    // Process restaurant payment if this was a dining visit
-                    if (citizen.isDiningVisit && citizen.targetBuilding && citizen.targetBuilding.type === 'restaurant') {
-                        const restaurant = citizen.targetBuilding;
-                        const mealPrice = restaurant.mealPrice || 25;
-
-                        // Customer pays for meal
-                        restaurant.accumulatedIncome = (restaurant.accumulatedIncome || 0) + mealPrice;
-                        console.log(`🍽️ Customer paid $${mealPrice} for meal. Restaurant income: $${Math.floor(restaurant.accumulatedIncome)}`);
-
-                        // Mark table as dirty if citizen has an occupied table
-                        if (citizen.occupiedTable) {
-                            citizen.occupiedTable.status = 'dirty';
-                            citizen.occupiedTable.customer = null;
-                            citizen.occupiedTable.mealStartTime = null;
-                            citizen.occupiedTable.mealDuration = 0;
-                            citizen.occupiedTable = null;
-                            console.log(`🍽️ Table marked as dirty after customer left`);
-
-                            // Update UI if player is currently viewing this restaurant
-                            if (this.insideRestaurant && this.currentRestaurant === restaurant) {
-                                this.updateRestaurantUI();
-                            }
-                        }
-
-                        citizen.isDiningVisit = false;
-                    }
-
-                    // Finished visiting - come back out
-                    citizen.state = 'walking';
-                    citizen.container.setVisible(true);
-                    if (citizen.targetBuilding) {
-                        citizen.x = citizen.targetBuilding.x + (Math.random() * 100 - 50);
-                        citizen.container.x = citizen.x;
-                    }
-                    citizen.targetBuilding = null;
-                    citizen.direction = Math.random() > 0.5 ? 1 : -1;
-                }
-            } else if (citizen.state === 'riding') {
-                // Citizen is on a bus - already handled in updateBuses
-                // The bus will drop them off and change state back to walking
-            }
-        }
-    }
+    // Citizen update function moved to CitizenSystem.js
 }
 
 const config = {
