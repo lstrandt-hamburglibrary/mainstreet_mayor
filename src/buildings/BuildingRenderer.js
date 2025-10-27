@@ -53,6 +53,12 @@ export class BuildingRenderer {
             this.drawLumberMill(graphics, building, x, y, facadeVariation);
         } else if (type === 'brickfactory') {
             this.drawBrickFactory(graphics, building, x, y, facadeVariation);
+        } else if (type === 'park') {
+            this.drawPark(graphics, building, x, y, facadeVariation);
+        } else if (type === 'playground') {
+            this.drawPlayground(graphics, building, x, y, facadeVariation);
+        } else if (type === 'fountain') {
+            this.drawFountain(graphics, building, x, y, facadeVariation);
         }
     }
 
@@ -899,5 +905,133 @@ export class BuildingRenderer {
         // TODO: Implement brick factory building design
         graphics.fillStyle(building.color, 1);
         graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawPark(graphics, building, x, y, facadeVariation) {
+        // Trees with trunks that go to the ground
+        for (let i = 0; i < 3; i++) {
+            const treeX = x - 60 + (i * 60);
+            const treeFoliageY = y - building.height + 40; // Where the foliage sits
+            const trunkHeight = building.height - 40; // Trunk goes from foliage to ground
+
+            // Tree trunk (goes all the way to the ground)
+            graphics.fillStyle(0x5D4037, 1);
+            graphics.fillRect(treeX - 6, treeFoliageY, 12, trunkHeight);
+
+            // Tree foliage (layered circles for fuller look)
+            graphics.fillStyle(0x2E7D32, 1);
+            graphics.fillCircle(treeX, treeFoliageY, 22);
+            graphics.fillCircle(treeX - 15, treeFoliageY + 5, 16);
+            graphics.fillCircle(treeX + 15, treeFoliageY + 5, 16);
+            graphics.fillCircle(treeX, treeFoliageY - 15, 18);
+        }
+
+        // White fence in front of trees (about 1/3 up the tree height)
+        const fenceHeight = (building.height - 40) / 3; // About 1/3 of tree trunk height
+        const fenceBottom = y;
+        const fenceTop = fenceBottom - fenceHeight;
+        const picketWidth = 4;
+        const picketSpacing = 10;
+
+        // Draw horizontal rails first (behind pickets)
+        graphics.fillStyle(0xF5F5F5, 1);
+        graphics.fillRect(x - building.width/2, fenceTop + fenceHeight * 0.3, building.width, 3);
+        graphics.fillRect(x - building.width/2, fenceTop + fenceHeight * 0.7, building.width, 3);
+
+        // Draw white pickets
+        graphics.fillStyle(0xFFFFFF, 1);
+        for (let i = 0; i < building.width / picketSpacing; i++) {
+            const picketX = x - building.width/2 + (i * picketSpacing);
+
+            // Picket post
+            graphics.fillRect(picketX, fenceTop, picketWidth, fenceHeight);
+
+            // Pointed top
+            graphics.beginPath();
+            graphics.moveTo(picketX, fenceTop);
+            graphics.lineTo(picketX + picketWidth/2, fenceTop - 5);
+            graphics.lineTo(picketX + picketWidth, fenceTop);
+            graphics.closePath();
+            graphics.fillPath();
+        }
+    }
+
+    drawPlayground(graphics, building, x, y, facadeVariation) {
+        // Mulch base
+        graphics.fillStyle(0xA1887F, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Swing set
+        const swingX = x - 50;
+        const swingY = y - building.height + 40;
+
+        graphics.fillStyle(0xFF9800, 1);
+        // Swing frame
+        graphics.fillRect(swingX - 40, swingY, 5, 60);
+        graphics.fillRect(swingX + 35, swingY, 5, 60);
+        graphics.fillRect(swingX - 40, swingY, 80, 5);
+
+        // Swings
+        graphics.lineStyle(2, 0x424242, 1);
+        graphics.lineBetween(swingX - 25, swingY, swingX - 25, swingY + 40);
+        graphics.lineBetween(swingX + 20, swingY, swingX + 20, swingY + 40);
+        graphics.fillStyle(0xF44336, 1);
+        graphics.fillRect(swingX - 30, swingY + 40, 10, 3);
+        graphics.fillRect(swingX + 15, swingY + 40, 10, 3);
+
+        // Slide
+        const slideX = x + 40;
+        const slideY = y - building.height + 50;
+
+        graphics.fillStyle(0x2196F3, 1);
+        // Slide platform
+        graphics.fillRect(slideX - 15, slideY, 30, 5);
+        graphics.fillRect(slideX - 10, slideY + 5, 5, 35);
+        graphics.fillRect(slideX + 5, slideY + 5, 5, 35);
+        // Slide surface
+        graphics.fillTriangle(
+            slideX - 15, slideY + 40,
+            slideX + 15, slideY + 40,
+            slideX + 40, slideY + 60
+        );
+
+        // Border
+        graphics.lineStyle(3, 0xFF6F00, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawFountain(graphics, building, x, y, facadeVariation) {
+        // Stone base
+        graphics.fillStyle(0x90A4AE, 1);
+        graphics.fillCircle(x, y - building.height/2, building.width/2);
+
+        // Inner basin
+        graphics.fillStyle(0x607D8B, 1);
+        graphics.fillCircle(x, y - building.height/2, building.width/2 - 10);
+
+        // Water
+        graphics.fillStyle(0x2196F3, 0.6);
+        graphics.fillCircle(x, y - building.height/2 + 5, building.width/2 - 15);
+
+        // Center pillar
+        graphics.fillStyle(0xB0BEC5, 1);
+        graphics.fillRect(x - 10, y - building.height/2 - 30, 20, 30);
+
+        // Water spray (decorative dots)
+        graphics.fillStyle(0x64B5F6, 0.8);
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const sprayX = x + Math.cos(angle) * 15;
+            const sprayY = y - building.height/2 - 35 + Math.sin(angle) * 10;
+            graphics.fillCircle(sprayX, sprayY, 3);
+        }
+
+        // Highlight
+        graphics.fillStyle(0xFFFFFF, 0.3);
+        graphics.fillCircle(x - 15, y - building.height/2 - 10, 20);
+
+        // Border
+        graphics.lineStyle(3, 0x455A64, 1);
+        graphics.strokeCircle(x, y - building.height/2, building.width/2);
     }
 }

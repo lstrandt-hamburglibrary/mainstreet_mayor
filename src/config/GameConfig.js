@@ -232,6 +232,49 @@ export const BuildingTypes = {
         regenRate: 1,
         maxStorage: 15,
         district: 'industrial'
+    },
+    park: {
+        name: 'Park',
+        cost: 500,
+        wood: 10,
+        bricks: 0,
+        width: 200,
+        height: 150,
+        color: 0x4CAF50, // Green
+        incomeRate: 0,
+        maxIncome: 0,
+        district: 'recreation',
+        boostRadius: 300,
+        boostPercent: 0.15 // 15% boost to nearby buildings
+    },
+    playground: {
+        name: 'Playground',
+        cost: 800,
+        wood: 15,
+        bricks: 10,
+        width: 180,
+        height: 140,
+        color: 0xFF9800, // Orange
+        incomeRate: 0,
+        maxIncome: 0,
+        district: 'recreation',
+        boostRadius: 250,
+        boostPercent: 0.20, // 20% boost
+        boostType: 'residential' // Only boosts residential buildings
+    },
+    fountain: {
+        name: 'Fountain',
+        cost: 1200,
+        wood: 0,
+        bricks: 25,
+        width: 120,
+        height: 120,
+        color: 0x2196F3, // Blue
+        incomeRate: 0,
+        maxIncome: 0,
+        district: 'recreation',
+        boostRadius: 200,
+        boostPercent: 0.25 // 25% boost to all nearby buildings
     }
 };
 

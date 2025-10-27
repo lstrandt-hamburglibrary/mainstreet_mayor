@@ -353,7 +353,7 @@ export class CitizenSystem {
                             const salePrice = shop.inventory.salesPerCustomer * 15; // $15 per unit sold
                             this.scene.money += salePrice;
                             this.scene.money = Math.round(this.scene.money);
-                            this.scene.updateMoneyUI();
+                            this.scene.uiManager.updateMoneyUI();
 
                             console.log(`Customer purchased from shop! Stock: ${shop.inventory.stock}, Income: $${salePrice}`);
 

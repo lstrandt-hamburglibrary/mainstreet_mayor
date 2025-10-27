@@ -20,7 +20,7 @@ export class ShopSystem {
             shop.lastIncomeTime = Date.now();
 
             console.log(`💰 Collected $${collectedIncome} from shop! Total money: $${this.scene.money}`);
-            this.scene.updateMoneyUI();
+            this.scene.uiManager.updateMoneyUI();
 
             // Hide income indicator
             if (shop.incomeIndicator && shop.incomeIndicator.scene) {
@@ -47,7 +47,7 @@ export class ShopSystem {
 
         // Show collection message with current balance
         const shopTypeName = this.scene.buildingTypes[shop.type]?.name || 'Shop';
-        this.scene.showBuildingEntryMessage(shopTypeName, collectedIncome);
+        this.scene.uiManager.showBuildingEntryMessage(shopTypeName, collectedIncome);
 
         // Hide shop prompt
         if (this.scene.shopPrompt) {
@@ -184,7 +184,7 @@ export class ShopSystem {
         console.log(`Restocked shop for $${restockCost}. New stock: ${inv.stock}`);
 
         // Update UI
-        this.scene.updateMoneyUI();
+        this.scene.uiManager.updateMoneyUI();
         this.updateShopInventoryUI();
     }
 
@@ -218,7 +218,7 @@ export class ShopSystem {
         console.log(`Hired employee for $${hiringCost}. Shop is now open. Daily wage: $${this.scene.currentShop.dailyWage}`);
 
         // Update UI
-        this.scene.updateMoneyUI();
+        this.scene.uiManager.updateMoneyUI();
         this.updateShopInventoryUI();
     }
 }

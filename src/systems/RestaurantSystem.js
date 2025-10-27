@@ -19,7 +19,7 @@ export class RestaurantSystem {
             console.log(`Collected $${collectedIncome} from restaurant`);
             restaurant.accumulatedIncome = 0;
             restaurant.lastIncomeTime = Date.now();
-            this.scene.updateMoneyUI();
+            this.scene.uiManager.updateMoneyUI();
         }
 
         this.scene.insideRestaurant = true;
@@ -219,7 +219,7 @@ export class RestaurantSystem {
             console.log(`✓ Hired NIGHT waiter for $${hiringCost}. Daily wage: $${dailyWage}`);
         }
 
-        this.scene.updateMoneyUI();
+        this.scene.uiManager.updateMoneyUI();
         this.updateRestaurantUI();
 
         // Save game

@@ -19,7 +19,7 @@ export class HotelSystem {
             hotel.accumulatedIncome = 0;
 
             console.log(`💰 Collected $${collectedIncome} from hotel! Total money: $${this.scene.money}`);
-            this.scene.updateMoneyUI();
+            this.scene.uiManager.updateMoneyUI();
 
             // Hide income indicator
             if (hotel.incomeIndicator && hotel.incomeIndicator.scene) {
@@ -37,7 +37,7 @@ export class HotelSystem {
         this.updateHotelUI();
 
         // Show collection message with current balance
-        this.scene.showBuildingEntryMessage('Hotel', collectedIncome);
+        this.scene.uiManager.showBuildingEntryMessage('Hotel', collectedIncome);
 
         // Hide hotel prompt
         if (this.scene.hotelPrompt) {

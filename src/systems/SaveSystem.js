@@ -160,10 +160,14 @@ export class SaveSystem {
 
         const newBuilding = this.scene.add.graphics();
         newBuilding.setDepth(10); // Buildings are on top of background
-        newBuilding.fillStyle(building.color, 1);
-        newBuilding.fillRect(x - building.width/2, buildingY - building.height, building.width, building.height);
-        newBuilding.lineStyle(3, 0x000000, 1);
-        newBuilding.strokeRect(x - building.width/2, buildingY - building.height, building.width, building.height);
+
+        // Don't draw base rectangle for parks/recreation items (they draw everything custom)
+        if (type !== 'park' && type !== 'playground' && type !== 'fountain') {
+            newBuilding.fillStyle(building.color, 1);
+            newBuilding.fillRect(x - building.width/2, buildingY - building.height, building.width, building.height);
+            newBuilding.lineStyle(3, 0x000000, 1);
+            newBuilding.strokeRect(x - building.width/2, buildingY - building.height, building.width, building.height);
+        }
 
         // Draw detailed building features (windows, doors, roof, etc.)
         try {
