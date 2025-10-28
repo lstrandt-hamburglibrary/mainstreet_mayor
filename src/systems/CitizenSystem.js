@@ -57,14 +57,13 @@ export class CitizenSystem {
     }
 
     bookHotelForTourist(tourist) {
-        // Find nearby hotels with available clean rooms
+        // Find ALL hotels with available clean rooms (search entire map)
         const nearbyHotels = this.scene.buildings.filter(b =>
             b.type === 'hotel' &&
-            b.rooms &&
-            Math.abs(b.x - tourist.x) < 1500 // Within reasonable distance
+            b.rooms
         );
 
-        console.log(`🏨 Tourist at x=${Math.floor(tourist.x)}, found ${nearbyHotels.length} hotels nearby`);
+        console.log(`🏨 Tourist at x=${Math.floor(tourist.x)}, found ${nearbyHotels.length} hotels in town`);
 
         // Look for a hotel with an available clean room
         for (let hotel of nearbyHotels) {
