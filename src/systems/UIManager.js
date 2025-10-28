@@ -8,8 +8,12 @@ export class UIManager {
     }
 
     updateMoneyUI() {
-        // Update resource UI with current money, wood, bricks
-        let resourceText = `💰 Cash: $${Math.round(this.scene.money)}  🪵 ${this.scene.wood}  🧱 ${this.scene.bricks}  👥 ${this.scene.population}/${this.scene.populationCapacity}`;
+        // Count residents vs tourists
+        const residentCount = this.scene.citizens.filter(c => !c.isTourist).length;
+        const touristCount = this.scene.citizens.filter(c => c.isTourist).length;
+
+        // Update resource UI with current money, wood, bricks, and population
+        let resourceText = `💰 Cash: $${Math.round(this.scene.money)}  🪵 ${this.scene.wood}  🧱 ${this.scene.bricks}  👥 Residents: ${residentCount}/${this.scene.populationCapacity}  🧳 Tourists: ${touristCount}`;
         if (this.scene.creativeMode) resourceText += `  [CREATIVE MODE]`;
         if (this.scene.bankBalance > 0) resourceText += `\n🏦 Bank: $${Math.round(this.scene.bankBalance)}`;
         if (this.scene.loanAmount > 0) resourceText += `\n💳 Debt: $${Math.round(this.scene.loanAmount)}`;
