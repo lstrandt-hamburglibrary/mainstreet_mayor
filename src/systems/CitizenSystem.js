@@ -69,6 +69,7 @@ export class CitizenSystem {
             const availableRoom = hotel.rooms.find(r => r.status === 'clean' && !r.isOccupied);
             if (availableRoom) {
                 // Book the room
+                availableRoom.status = 'occupied';
                 availableRoom.isOccupied = true;
                 availableRoom.nightsOccupied = 0;
                 availableRoom.guest = tourist;
