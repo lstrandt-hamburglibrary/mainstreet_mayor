@@ -86,7 +86,9 @@ export class CitizenSystem {
                 this.scene.uiManager.addNotification('🏨 Tourist checked into hotel');
 
                 // Update hotel UI if player is viewing this hotel
+                console.log(`🏨 Checking if need to update UI: insideHotel=${this.scene.insideHotel}, currentHotel=${this.scene.currentHotel ? 'yes' : 'no'}, matchesThisHotel=${this.scene.currentHotel === hotel}`);
                 if (this.scene.insideHotel && this.scene.currentHotel === hotel) {
+                    console.log('🏨 Updating hotel UI!');
                     this.scene.hotelSystem.updateHotelUI();
                 }
 
