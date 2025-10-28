@@ -272,6 +272,12 @@ export class CitizenSystem {
                 // Randomly visit nearby buildings (prioritize shops)
                 if (Math.random() < 0.0005 && this.scene.buildings.length > 0) {
                     // Find nearby shops that are open and have stock
+                    const allShops = this.scene.buildings.filter(b => this.scene.isShop(b.type));
+                    console.log(`🛍️ Checking ${allShops.length} shops for visit...`);
+                    allShops.forEach(s => {
+                        console.log(`  ${s.type}: isOpen=${s.isOpen}, hasInventory=${!!s.inventory}, stock=${s.inventory?.stock}, needsStock=${s.inventory?.salesPerCustomer}`);
+                    });
+
                     const nearbyShops = this.scene.buildings.filter(b =>
                         this.scene.isShop(b.type) &&
                         Math.abs(b.x - citizen.x) < 800 &&
@@ -279,6 +285,7 @@ export class CitizenSystem {
                         b.inventory &&
                         b.inventory.stock >= b.inventory.salesPerCustomer
                     );
+                    console.log(`  -> ${nearbyShops.length} shops are available for visit`);
 
                     // Get current hour for restaurant shift check
                     const totalMinutes = Math.floor(this.scene.gameTime);
