@@ -294,16 +294,14 @@ export class CitizenSystem {
                         ((isDayTime && b.hasDayWaiter) || (!isDayTime && b.hasNightWaiter))
                     );
 
-                    // Find nearby entertainment (arcades - always open)
+                    // Find nearby entertainment (arcades - always open) - search whole town
                     const nearbyEntertainment = this.scene.buildings.filter(b =>
-                        this.scene.isEntertainment(b.type) &&
-                        Math.abs(b.x - citizen.x) < 800
+                        this.scene.isEntertainment(b.type)
                     );
 
-                    // Find nearby services (libraries, museums)
+                    // Find nearby services (libraries, museums) - search whole town
                     const nearbyServices = this.scene.buildings.filter(b =>
-                        this.scene.isService(b.type) &&
-                        Math.abs(b.x - citizen.x) < 800
+                        this.scene.isService(b.type)
                     );
 
                     // Choose target building (25% shop, 25% restaurant, 20% entertainment, 20% service, 10% any)
