@@ -64,8 +64,14 @@ export class CitizenSystem {
             Math.abs(b.x - tourist.x) < 1500 // Within reasonable distance
         );
 
+        console.log(`🏨 Tourist at x=${Math.floor(tourist.x)}, found ${nearbyHotels.length} hotels nearby`);
+
         // Look for a hotel with an available clean room
         for (let hotel of nearbyHotels) {
+            const cleanRooms = hotel.rooms.filter(r => r.status === 'clean');
+            const availableRooms = hotel.rooms.filter(r => r.status === 'clean' && !r.isOccupied);
+            console.log(`🏨 Hotel at x=${hotel.x}: ${cleanRooms.length} clean rooms, ${availableRooms.length} available (not occupied)`);
+
             const availableRoom = hotel.rooms.find(r => r.status === 'clean' && !r.isOccupied);
             if (availableRoom) {
                 // Book the room
