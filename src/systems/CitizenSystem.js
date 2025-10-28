@@ -280,12 +280,11 @@ export class CitizenSystem {
 
                     const nearbyShops = this.scene.buildings.filter(b =>
                         this.scene.isShop(b.type) &&
-                        Math.abs(b.x - citizen.x) < 800 &&
                         b.isOpen &&
                         b.inventory &&
                         b.inventory.stock >= b.inventory.salesPerCustomer
                     );
-                    console.log(`  -> ${nearbyShops.length} shops are available for visit`);
+                    console.log(`  -> ${nearbyShops.length} shops are available for visit (town-wide search)`);
 
                     // Get current hour for restaurant shift check
                     const totalMinutes = Math.floor(this.scene.gameTime);
