@@ -51,6 +51,38 @@ export class CitizenSystem {
         tourist.isTourist = true;
         tourist.touristTimer = 180 + Math.random() * 120; // Stay for 3-5 minutes (game time)
         tourist.spawnedAtStop = x; // Remember where they arrived
+
+        // Try to book a hotel room
+        this.bookHotelForTourist(tourist);
+    }
+
+    bookHotelForTourist(tourist) {
+        // Find nearby hotels with available clean rooms
+        const nearbyHotels = this.scene.buildings.filter(b =>
+            b.type === 'hotel' &&
+            b.rooms &&
+            Math.abs(b.x - tourist.x) < 1500 // Within reasonable distance
+        );
+
+        // Look for a hotel with an available clean room
+        for (let hotel of nearbyHotels) {
+            const availableRoom = hotel.rooms.find(r => r.status === 'clean' && !r.isOccupied);
+            if (availableRoom) {
+                // Book the room
+                availableRoom.isOccupied = true;
+                availableRoom.nightsOccupied = 0;
+                availableRoom.guest = tourist;
+
+                tourist.hotelRoom = availableRoom;
+                tourist.hotel = hotel;
+
+                console.log('🏨 Tourist checked into hotel room!');
+                return true;
+            }
+        }
+
+        console.log('🏨 No available hotel rooms for tourist');
+        return false;
     }
 
     createCitizen(startX, startY) {

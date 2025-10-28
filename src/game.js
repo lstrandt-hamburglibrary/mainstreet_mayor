@@ -3219,18 +3219,23 @@ class MainScene extends Phaser.Scene {
                     for (let roomIndex = 0; roomIndex < building.rooms.length; roomIndex++) {
                         const room = building.rooms[roomIndex];
 
-                        if (room.status === 'occupied') {
+                        if (room.status === 'occupied' || room.isOccupied) {
                             // Guest stays one more night
                             room.nightsOccupied++;
 
-                            // Random checkout: 33% chance each night after first night
-                            if (room.nightsOccupied >= 1 && Math.random() < 0.33) {
-                                // Guest checks out - room becomes dirty and generates income
-                                const income = hotelType.nightlyRate * room.nightsOccupied;
-                                building.accumulatedIncome += income;
+                            // Generate nightly income
+                            const nightlyIncome = hotelType.nightlyRate;
+                            building.accumulatedIncome += nightlyIncome;
+                            console.log(`💵 Room ${roomIndex + 1} earned $${nightlyIncome} for night #${room.nightsOccupied}`);
+
+                            // Random checkout for non-tourist guests: 33% chance each night after first night
+                            // Tourist guests stay until their timer expires (handled in bus boarding)
+                            if (!room.guest && room.nightsOccupied >= 1 && Math.random() < 0.33) {
+                                // Guest checks out - room becomes dirty
                                 room.status = 'dirty';
+                                room.isOccupied = false;
                                 room.nightsOccupied = 0;
-                                console.log(`Guest checked out of room ${roomIndex + 1} after ${room.nightsOccupied} nights. Earned $${income}`);
+                                console.log(`Guest checked out of room ${roomIndex + 1}`);
 
                                 // If maid is hired, clean the room immediately
                                 if (building.hasMaid) {
@@ -3243,8 +3248,8 @@ class MainScene extends Phaser.Scene {
                                     }
                                 }
                             }
-                        } else if (room.status === 'clean') {
-                            // Room is clean - new guest checks in
+                        } else if (room.status === 'clean' && !room.isOccupied) {
+                            // Room is clean and not occupied by tourist - new guest checks in (random)
                             room.status = 'occupied';
                             room.nightsOccupied = 0; // Will become 1 on next night check
                             console.log(`New guest checked into room ${roomIndex + 1}`);
@@ -4851,6 +4856,14 @@ class MainScene extends Phaser.Scene {
                     const waitingCitizens = stop.waitingCitizens.slice(); // Copy array
                     for (let citizen of waitingCitizens) {
                         if (bus.passengers.length < 20) { // Bus capacity
+                            // If tourist is checking out of hotel, mark room as dirty
+                            if (citizen.isTourist && citizen.hotelRoom && citizen.hotel) {
+                                citizen.hotelRoom.isOccupied = false;
+                                citizen.hotelRoom.status = 'dirty';
+                                citizen.hotelRoom.guest = null;
+                                console.log('🏨 Tourist checked out - room is now dirty');
+                            }
+
                             bus.passengers.push({
                                 citizen: citizen,
                                 targetStopIndex: Math.floor(Math.random() * this.busStops.length)
