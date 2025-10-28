@@ -43,8 +43,16 @@ export class BuildingRenderer {
             this.drawGroceryStore(graphics, building, x, y, facadeVariation);
         } else if (type === 'bookstore') {
             this.drawBookstore(graphics, building, x, y, facadeVariation);
+        } else if (type === 'bakery') {
+            this.drawBakery(graphics, building, x, y, facadeVariation);
         } else if (type === 'restaurant' || type === 'chinese_restaurant' || type === 'italian_restaurant' || type === 'diner' || type === 'sub_shop') {
             this.drawRestaurant(graphics, building, x, y, facadeVariation, type);
+        } else if (type === 'arcade') {
+            this.drawArcade(graphics, building, x, y, facadeVariation);
+        } else if (type === 'library') {
+            this.drawLibrary(graphics, building, x, y, facadeVariation);
+        } else if (type === 'museum') {
+            this.drawMuseum(graphics, building, x, y, facadeVariation);
         } else if (type === 'bank') {
             this.drawBank(graphics, building, x, y, facadeVariation);
         } else if (type === 'market') {
@@ -1033,5 +1041,240 @@ export class BuildingRenderer {
         // Border
         graphics.lineStyle(3, 0x455A64, 1);
         graphics.strokeCircle(x, y - building.height/2, building.width/2);
+    }
+
+    drawBakery(graphics, building, x, y, facadeVariation) {
+        const scheme = ColorSchemes.bakery[facadeVariation % 4];
+
+        // Building base
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Awning
+        graphics.fillStyle(scheme.awning, 1);
+        graphics.fillRect(x - building.width/2 - 10, y - 140, building.width + 20, 30);
+
+        // Awning stripes
+        graphics.lineStyle(3, this.darkenColor(scheme.awning, 0.8), 1);
+        for (let i = 0; i < 5; i++) {
+            const stripeX = x - building.width/2 + (i * 50);
+            graphics.lineBetween(stripeX, y - 140, stripeX, y - 110);
+        }
+
+        // Display window
+        graphics.fillStyle(scheme.window, 1);
+        graphics.fillRect(x - 60, y - 100, 120, 60);
+
+        // Window frame
+        graphics.lineStyle(3, 0x8B4513, 1);
+        graphics.strokeRect(x - 60, y - 100, 120, 60);
+
+        // Baked goods display (simple shapes representing items)
+        // Donuts
+        graphics.lineStyle(2, 0xD2691E, 1);
+        graphics.strokeCircle(x - 40, y - 70, 8);
+        graphics.strokeCircle(x - 20, y - 70, 8);
+
+        // Pies
+        graphics.fillStyle(0xCD853F, 1);
+        graphics.fillCircle(x + 10, y - 75, 10);
+        graphics.fillCircle(x + 35, y - 75, 10);
+
+        // Lattice on pies
+        graphics.lineStyle(1, 0x8B4513, 1);
+        for (let i = -10; i < 10; i += 3) {
+            graphics.lineBetween(x + 10 + i, y - 85, x + 10 + i, y - 65);
+        }
+
+        // Door
+        graphics.fillStyle(0x8B4513, 1);
+        graphics.fillRect(x - 20, y - 40, 40, 40);
+        graphics.lineStyle(2, 0x654321, 1);
+        graphics.strokeRect(x - 20, y - 40, 40, 40);
+
+        // Door window
+        graphics.fillStyle(scheme.window, 0.7);
+        graphics.fillRoundedRect(x - 15, y - 35, 30, 20, 3);
+
+        // Border
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawArcade(graphics, building, x, y, facadeVariation) {
+        const scheme = ColorSchemes.arcade[facadeVariation % 4];
+
+        // Building base (dark for arcade vibe)
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Neon sign border effect
+        graphics.lineStyle(4, scheme.neon, 1);
+        graphics.strokeRect(x - building.width/2 + 10, y - building.height + 10, building.width - 20, 40);
+
+        graphics.lineStyle(2, scheme.accent, 1);
+        graphics.strokeRect(x - building.width/2 + 15, y - building.height + 15, building.width - 30, 30);
+
+        // Windows (small, dark)
+        for (let row = 0; row < 2; row++) {
+            for (let col = 0; col < 3; col++) {
+                const wx = x - 60 + (col * 60);
+                const wy = y - building.height + 80 + (row * 60);
+
+                graphics.fillStyle(scheme.window, 1);
+                graphics.fillRect(wx - 20, wy, 40, 35);
+
+                // Neon glow effect
+                graphics.fillStyle(scheme.neon, 0.3);
+                graphics.fillRect(wx - 20, wy, 40, 35);
+            }
+        }
+
+        // Arcade game screen representations
+        const gameX = x - 40;
+        const gameY = y - 60;
+
+        // Game screen 1
+        graphics.fillStyle(0x00FFFF, 0.6);
+        graphics.fillRect(gameX, gameY, 30, 25);
+
+        // Game screen 2
+        graphics.fillStyle(0xFF00FF, 0.6);
+        graphics.fillRect(gameX + 50, gameY, 30, 25);
+
+        // Door
+        graphics.fillStyle(0x1A1A1A, 1);
+        graphics.fillRect(x - 25, y - 45, 50, 45);
+
+        // Neon door accent
+        graphics.lineStyle(2, scheme.accent, 1);
+        graphics.strokeRect(x - 25, y - 45, 50, 45);
+
+        // Border
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawLibrary(graphics, building, x, y, facadeVariation) {
+        const scheme = ColorSchemes.library[facadeVariation % 4];
+
+        // Building base
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Classical columns (library aesthetic)
+        graphics.fillStyle(scheme.columns, 1);
+        for (let i = 0; i < 4; i++) {
+            const colX = x - 75 + (i * 50);
+            // Column
+            graphics.fillRect(colX - 8, y - building.height + 40, 16, building.height - 80);
+            // Capital (top of column)
+            graphics.fillRect(colX - 12, y - building.height + 40, 24, 12);
+            // Base
+            graphics.fillRect(colX - 12, y - 40, 24, 12);
+        }
+
+        // Windows between columns
+        graphics.fillStyle(scheme.window, 1);
+        for (let i = 0; i < 3; i++) {
+            const winX = x - 50 + (i * 50);
+            graphics.fillRect(winX - 15, y - building.height + 80, 30, 100);
+
+            // Window panes
+            graphics.lineStyle(2, 0x8B4513, 1);
+            graphics.strokeRect(winX - 15, y - building.height + 80, 30, 100);
+            graphics.lineBetween(winX - 15, y - building.height + 130, winX + 15, y - building.height + 130);
+        }
+
+        // Door (grand entrance)
+        graphics.fillStyle(scheme.door, 1);
+        graphics.fillRect(x - 30, y - 65, 60, 65);
+
+        // Door frame
+        graphics.lineStyle(3, scheme.columns, 1);
+        graphics.strokeRect(x - 35, y - 70, 70, 70);
+
+        // Door panels
+        graphics.lineStyle(2, this.darkenColor(scheme.door, 0.7), 1);
+        graphics.strokeRect(x - 25, y - 60, 20, 55);
+        graphics.strokeRect(x + 5, y - 60, 20, 55);
+
+        // Steps
+        graphics.fillStyle(0x9E9E9E, 1);
+        for (let i = 0; i < 3; i++) {
+            graphics.fillRect(x - 70, y - (i * 5), 140, 5);
+        }
+
+        // Border
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawMuseum(graphics, building, x, y, facadeVariation) {
+        const scheme = ColorSchemes.museum[facadeVariation % 4];
+
+        // Building base
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Golden dome/roof
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.fillEllipse(x, y - building.height + 20, building.width - 20, 40);
+
+        // Dome highlight
+        graphics.fillStyle(0xFFFFFF, 0.3);
+        graphics.fillEllipse(x - 30, y - building.height + 15, 40, 15);
+
+        // Classical columns (grand museum entrance)
+        graphics.fillStyle(scheme.columns, 1);
+        for (let i = 0; i < 5; i++) {
+            const colX = x - 90 + (i * 45);
+            // Column
+            graphics.fillRect(colX - 10, y - building.height + 80, 20, building.height - 120);
+            // Ornate capital
+            graphics.fillRect(colX - 15, y - building.height + 80, 30, 15);
+            graphics.fillRect(colX - 12, y - building.height + 95, 24, 10);
+            // Base
+            graphics.fillRect(colX - 15, y - 40, 30, 15);
+        }
+
+        // Windows (tall, elegant)
+        graphics.fillStyle(scheme.window, 1);
+        for (let i = 0; i < 4; i++) {
+            const winX = x - 70 + (i * 45);
+            graphics.fillRect(winX - 12, y - building.height + 120, 24, 120);
+
+            // Arched top
+            graphics.beginPath();
+            graphics.arc(winX, y - building.height + 120, 12, Math.PI, 0, false);
+            graphics.fillPath();
+
+            // Window frame
+            graphics.lineStyle(2, scheme.accent, 1);
+            graphics.strokeRect(winX - 12, y - building.height + 120, 24, 120);
+        }
+
+        // Grand entrance door
+        graphics.fillStyle(scheme.accent, 1);
+        graphics.fillRect(x - 35, y - 70, 70, 70);
+
+        // Door frame (ornate)
+        graphics.lineStyle(4, scheme.roof, 1);
+        graphics.strokeRect(x - 40, y - 75, 80, 75);
+
+        // Door decoration
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.fillRect(x - 30, y - 65, 25, 60);
+        graphics.fillRect(x + 5, y - 65, 25, 60);
+
+        // Steps (grand staircase)
+        graphics.fillStyle(0xF5F5DC, 1);
+        for (let i = 0; i < 5; i++) {
+            graphics.fillRect(x - 100, y - (i * 7), 200, 7);
+        }
+
+        // Border
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
     }
 }

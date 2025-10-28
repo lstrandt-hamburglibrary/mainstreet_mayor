@@ -245,22 +245,52 @@ export class CitizenSystem {
                         ((isDayTime && b.hasDayWaiter) || (!isDayTime && b.hasNightWaiter))
                     );
 
-                    // Choose target building (40% shop, 30% restaurant, 30% any)
+                    // Find nearby entertainment (arcades - always open)
+                    const nearbyEntertainment = this.scene.buildings.filter(b =>
+                        this.scene.isEntertainment(b.type) &&
+                        Math.abs(b.x - citizen.x) < 800
+                    );
+
+                    // Find nearby services (libraries, museums)
+                    const nearbyServices = this.scene.buildings.filter(b =>
+                        this.scene.isService(b.type) &&
+                        Math.abs(b.x - citizen.x) < 800
+                    );
+
+                    // Choose target building (25% shop, 25% restaurant, 20% entertainment, 20% service, 10% any)
                     let targetBuilding = null;
                     const randomChoice = Math.random();
 
-                    if (randomChoice < 0.4 && nearbyShops.length > 0) {
-                        // 40% chance to visit shop
+                    if (randomChoice < 0.25 && nearbyShops.length > 0) {
+                        // 25% chance to visit shop
                         targetBuilding = nearbyShops[Math.floor(Math.random() * nearbyShops.length)];
                         citizen.isShoppingVisit = true;
                         citizen.isDiningVisit = false;
-                    } else if (randomChoice < 0.7 && nearbyRestaurants.length > 0) {
-                        // 30% chance to visit restaurant
+                        citizen.isEntertainmentVisit = false;
+                        citizen.isServiceVisit = false;
+                    } else if (randomChoice < 0.50 && nearbyRestaurants.length > 0) {
+                        // 25% chance to visit restaurant
                         targetBuilding = nearbyRestaurants[Math.floor(Math.random() * nearbyRestaurants.length)];
                         citizen.isShoppingVisit = false;
                         citizen.isDiningVisit = true;
+                        citizen.isEntertainmentVisit = false;
+                        citizen.isServiceVisit = false;
+                    } else if (randomChoice < 0.70 && nearbyEntertainment.length > 0) {
+                        // 20% chance to visit entertainment
+                        targetBuilding = nearbyEntertainment[Math.floor(Math.random() * nearbyEntertainment.length)];
+                        citizen.isShoppingVisit = false;
+                        citizen.isDiningVisit = false;
+                        citizen.isEntertainmentVisit = true;
+                        citizen.isServiceVisit = false;
+                    } else if (randomChoice < 0.90 && nearbyServices.length > 0) {
+                        // 20% chance to visit service
+                        targetBuilding = nearbyServices[Math.floor(Math.random() * nearbyServices.length)];
+                        citizen.isShoppingVisit = false;
+                        citizen.isDiningVisit = false;
+                        citizen.isEntertainmentVisit = false;
+                        citizen.isServiceVisit = true;
                     } else {
-                        // 30% chance to visit any building
+                        // 10% chance to visit any building
                         const nearbyBuildings = this.scene.buildings.filter(b =>
                             Math.abs(b.x - citizen.x) < 500
                         );
@@ -268,6 +298,8 @@ export class CitizenSystem {
                             targetBuilding = nearbyBuildings[Math.floor(Math.random() * nearbyBuildings.length)];
                             citizen.isShoppingVisit = false;
                             citizen.isDiningVisit = false;
+                            citizen.isEntertainmentVisit = false;
+                            citizen.isServiceVisit = false;
                         }
                     }
 
@@ -351,11 +383,10 @@ export class CitizenSystem {
                             // Customer makes a purchase
                             shop.inventory.stock -= shop.inventory.salesPerCustomer;
                             const salePrice = shop.inventory.salesPerCustomer * 15; // $15 per unit sold
-                            this.scene.money += salePrice;
-                            this.scene.money = Math.round(this.scene.money);
-                            this.scene.uiManager.updateMoneyUI();
 
-                            console.log(`Customer purchased from shop! Stock: ${shop.inventory.stock}, Income: $${salePrice}`);
+                            // Add to shop's accumulated income (collect when entering shop)
+                            shop.accumulatedIncome = (shop.accumulatedIncome || 0) + salePrice;
+                            console.log(`🛍️ Customer bought items at ${shop.type}. Stock now: ${shop.inventory.stock}. Shop income: $${Math.floor(shop.accumulatedIncome)}`);
 
                             // Update UI if player is currently viewing this shop
                             if (this.scene.insideShop && this.scene.currentShop === shop) {
@@ -390,6 +421,61 @@ export class CitizenSystem {
                         }
 
                         citizen.isDiningVisit = false;
+                    }
+
+                    // Process arcade payment if this was an entertainment visit
+                    if (citizen.isEntertainmentVisit && citizen.targetBuilding && this.scene.isEntertainment(citizen.targetBuilding.type)) {
+                        const arcade = citizen.targetBuilding;
+                        const buildingType = this.scene.buildingTypes[arcade.type];
+                        const gamePlayPrice = buildingType.gamePlayPrice || 10;
+
+                        // Customer pays for game plays
+                        arcade.accumulatedIncome = (arcade.accumulatedIncome || 0) + gamePlayPrice;
+                        console.log(`🕹️ Customer played games at ${arcade.type}. Arcade income: $${Math.floor(arcade.accumulatedIncome)}`);
+
+                        citizen.isEntertainmentVisit = false;
+                    }
+
+                    // Process library/museum payment if this was a service visit
+                    if (citizen.isServiceVisit && citizen.targetBuilding && this.scene.isService(citizen.targetBuilding.type)) {
+                        const service = citizen.targetBuilding;
+                        const buildingType = this.scene.buildingTypes[service.type];
+                        let totalIncome = 0;
+
+                        if (service.type === 'library') {
+                            // 15% chance of late fee
+                            if (Math.random() < (buildingType.lateFeeChance || 0.15)) {
+                                const lateFee = buildingType.lateFeeAmount || 5;
+                                totalIncome += lateFee;
+                                console.log(`📚 Customer paid $${lateFee} late fee at library`);
+                            }
+                        } else if (service.type === 'museum') {
+                            // Admission ticket (always)
+                            totalIncome += buildingType.admissionPrice || 15;
+
+                            // 40% chance of gift shop purchase
+                            if (Math.random() < (buildingType.giftShopChance || 0.40)) {
+                                const giftShopPrice = buildingType.giftShopPrice || 20;
+                                totalIncome += giftShopPrice;
+                                console.log(`🎁 Customer bought from museum gift shop: $${giftShopPrice}`);
+                            }
+
+                            // 30% chance of cafe purchase
+                            if (Math.random() < (buildingType.cafeChance || 0.30)) {
+                                const cafePrice = buildingType.cafePrice || 12;
+                                totalIncome += cafePrice;
+                                console.log(`☕ Customer visited museum cafe: $${cafePrice}`);
+                            }
+
+                            console.log(`🏛️ Customer visit to museum. Total: $${totalIncome}`);
+                        }
+
+                        if (totalIncome > 0) {
+                            service.accumulatedIncome = (service.accumulatedIncome || 0) + totalIncome;
+                            console.log(`${service.type} income: $${Math.floor(service.accumulatedIncome)}`);
+                        }
+
+                        citizen.isServiceVisit = false;
                     }
 
                     // Finished visiting - come back out

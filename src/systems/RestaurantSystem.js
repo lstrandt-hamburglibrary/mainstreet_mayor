@@ -10,16 +10,22 @@ export class RestaurantSystem {
     enterRestaurant(restaurant) {
         console.log('Entering restaurant');
 
-        // Collect accumulated income
-        if (restaurant.accumulatedIncome >= 1) {
-            const collectedIncome = Math.floor(restaurant.accumulatedIncome);
+        // Automatically collect any accumulated income when entering
+        let collectedIncome = 0;
+        if (restaurant.accumulatedIncome && restaurant.accumulatedIncome > 0) {
+            collectedIncome = Math.floor(restaurant.accumulatedIncome);
             this.scene.money += collectedIncome;
             this.scene.money = Math.round(this.scene.money);
-            this.scene.showFloatingMessage(restaurant.x, restaurant.y - 150, `+$${collectedIncome}`, '#4CAF50');
-            console.log(`Collected $${collectedIncome} from restaurant`);
             restaurant.accumulatedIncome = 0;
             restaurant.lastIncomeTime = Date.now();
+
+            console.log(`💰 Collected $${collectedIncome} from restaurant! Total money: $${this.scene.money}`);
             this.scene.uiManager.updateMoneyUI();
+
+            // Hide income indicator
+            if (restaurant.incomeIndicator && restaurant.incomeIndicator.scene) {
+                restaurant.incomeIndicator.setVisible(false);
+            }
         }
 
         this.scene.insideRestaurant = true;
@@ -28,10 +34,17 @@ export class RestaurantSystem {
         // Show restaurant interior
         this.scene.restaurantInteriorContainer.setVisible(true);
 
-        // Main resource UI stays visible (shows cash, wood, bricks, population)
-
         // Update restaurant UI
         this.updateRestaurantUI();
+
+        // Show collection message with current balance
+        const restaurantName = this.scene.buildingTypes[restaurant.type]?.name || 'Restaurant';
+        this.scene.uiManager.showBuildingEntryMessage(restaurantName, collectedIncome);
+
+        // Hide restaurant prompt
+        if (this.scene.restaurantPrompt) {
+            this.scene.restaurantPrompt.setVisible(false);
+        }
 
         // Disable player movement
         this.scene.player.setVelocityX(0);

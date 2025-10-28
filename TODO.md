@@ -12,29 +12,28 @@
 
 ### Entertainment
 - [ ] **Movie Theater** - Attract more tourists!
-- [ ] **Arcade** - Gaming entertainment venue
+- [x] **Arcade** - Gaming entertainment venue (open 24 hours)
 - [ ] **Bowling Alley** - Recreation and entertainment
 
 ### Food & Dining
 - [ ] **Café** - Coffee shop for morning visitors
-- [ ] **Bakery** - Fresh baked goods
+- [x] **Bakery** - Fresh baked goods (opens 6am, menu includes donuts, pie, cookies)
 - [ ] **Pizza Place** - Quick dining option
 
 ### Services
 - [ ] **Barber Shop** - Personal care service
 - [ ] **Gym** - Fitness center
-- [ ] **Library** - Educational and cultural building
+- [x] **Library** - Educational and cultural building (book sales and programs)
 
 ### Special Buildings
 - [ ] **Town Hall** - Government center, possibly enables new features
-- [ ] **Museum** - Cultural attraction for tourists
+- [x] **Museum** - Cultural attraction for tourists
 - [ ] **Art Gallery** - High-end cultural venue
 
 ## 📊 Management Features
 
 - [ ] **City Statistics Screen** - Charts showing population growth, income over time, busiest buildings
 - [ ] **Building Info Tooltips** - Hover over buildings to see income, customers, status
-- [ ] **Time Controls** - Fast forward time, or pause to plan
 
 ## 🗺️ Map & Navigation
 
@@ -45,7 +44,6 @@
 
 ## 🎨 Visual Improvements
 
-- [ ] **Day/Night Cycle Improvements** - Street lamps that turn on at night, darker sky
 - [ ] **Decorations** - Trees, benches, street signs you can place
 - [ ] **Seasons** - Different colors and effects for Spring/Summer/Fall/Winter
 
@@ -147,6 +145,11 @@ _Add your own ideas here!_
 
 ## Recently Completed ✅
 
+- [x] **New Buildings** - Arcade, Bakery, Library, Museum with unique designs
+- [x] **Shop Income System** - Shops now work like restaurants (collect customer purchases when entering)
+- [x] **Restaurant meal pricing** - Different restaurants have different meal prices
+- [x] Time Controls - Fast forward (1x/2x/3x speed) and pause
+- [x] Day/Night Cycle with Street Lamps - Street lamps turn on at night
 - [x] Color variations for all building types (houses, apartments, hotels, shops)
 - [x] Hotel maid employee system (cleans rooms progressively throughout the day)
 - [x] Employee and maid sprites with legs, positioned on floor

@@ -338,7 +338,9 @@ export class SaveSystem {
             buildingData.hasNightWaiter = hasNightWaiter !== null ? hasNightWaiter : false;
             buildingData.dayWaiterWage = dayWaiterWage !== null ? dayWaiterWage : 0;
             buildingData.nightWaiterWage = nightWaiterWage !== null ? nightWaiterWage : 0;
-            buildingData.mealPrice = mealPrice !== null ? mealPrice : 25;
+            // Use saved mealPrice, or get from building type, or default to 25
+            const buildingType = this.scene.buildingTypes[type];
+            buildingData.mealPrice = mealPrice !== null ? mealPrice : (buildingType.mealPrice || 25);
             buildingData.lastWageCheck = lastWageCheck !== null ? lastWageCheck : this.scene.gameTime;
         }
 

@@ -689,13 +689,21 @@ class MainScene extends Phaser.Scene {
                 { type: 'clothingShop', label: '👔 Clothing', price: '$200', color: '#FF69B4' },
                 { type: 'electronicsShop', label: '💻 Electronics', price: '$250', color: '#2196F3' },
                 { type: 'groceryStore', label: '🥬 Grocery', price: '$180', color: '#8BC34A' },
-                { type: 'bookstore', label: '📚 Bookstore', price: '$150', color: '#9C27B0' }
+                { type: 'bookstore', label: '📚 Bookstore', price: '$150', color: '#9C27B0' },
+                { type: 'bakery', label: '🥐 Bakery', price: '$180', color: '#FFE4B5' }
             ],
             restaurants: [
                 { type: 'chinese_restaurant', label: '🥡 Chinese', price: '$300', color: '#DC143C' },
                 { type: 'italian_restaurant', label: '🍝 Italian', price: '$320', color: '#228B22' },
                 { type: 'diner', label: '🍔 Diner', price: '$250', color: '#4682B4' },
                 { type: 'sub_shop', label: '🥖 Sub Shop', price: '$200', color: '#FFD700' }
+            ],
+            entertainment: [
+                { type: 'arcade', label: '🕹️ Arcade', price: '$350', color: '#FF00FF' }
+            ],
+            services: [
+                { type: 'library', label: '📖 Library', price: '$400', color: '#8B4513' },
+                { type: 'museum', label: '🏛️ Museum', price: '$800', color: '#D4AF37' }
             ],
             resources: [
                 { type: 'bank', label: '🏦 Bank', price: '$500', color: '#2E7D32' },
@@ -1771,11 +1779,19 @@ class MainScene extends Phaser.Scene {
     }
 
     isShop(buildingType) {
-        return ['clothingShop', 'electronicsShop', 'groceryStore', 'bookstore'].includes(buildingType);
+        return ['clothingShop', 'electronicsShop', 'groceryStore', 'bookstore', 'bakery'].includes(buildingType);
     }
 
     isRestaurant(buildingType) {
         return ['chinese_restaurant', 'italian_restaurant', 'diner', 'sub_shop'].includes(buildingType);
+    }
+
+    isEntertainment(buildingType) {
+        return ['arcade'].includes(buildingType);
+    }
+
+    isService(buildingType) {
+        return ['library', 'museum'].includes(buildingType);
     }
 
     calculateParkBoost(building) {
@@ -1845,20 +1861,24 @@ class MainScene extends Phaser.Scene {
 
             // Clear and redraw building
             building.graphics.clear();
-            building.graphics.fillStyle(buildingType.color, 1);
-            building.graphics.fillRect(
-                building.x - buildingType.width/2,
-                newBuildingY - buildingType.height,
-                buildingType.width,
-                buildingType.height
-            );
-            building.graphics.lineStyle(3, 0x000000, 1);
-            building.graphics.strokeRect(
-                building.x - buildingType.width/2,
-                newBuildingY - buildingType.height,
-                buildingType.width,
-                buildingType.height
-            );
+
+            // Don't draw base rectangle for parks/recreation items (they draw everything custom)
+            if (building.type !== 'park' && building.type !== 'playground' && building.type !== 'fountain') {
+                building.graphics.fillStyle(buildingType.color, 1);
+                building.graphics.fillRect(
+                    building.x - buildingType.width/2,
+                    newBuildingY - buildingType.height,
+                    buildingType.width,
+                    buildingType.height
+                );
+                building.graphics.lineStyle(3, 0x000000, 1);
+                building.graphics.strokeRect(
+                    building.x - buildingType.width/2,
+                    newBuildingY - buildingType.height,
+                    buildingType.width,
+                    buildingType.height
+                );
+            }
 
             // Redraw building details
             this.buildingRenderer.drawBuildingDetails(building.graphics, building.type, building.x, newBuildingY, building.facadeVariation || 0);
@@ -2710,8 +2730,8 @@ class MainScene extends Phaser.Scene {
     // drawBuildingDetails has been moved to BuildingRenderer.js
 
     cycleBuildCategory() {
-        // Cycle through categories: residential → shops → restaurants → resources → recreation → residential
-        const categories = ['residential', 'shops', 'restaurants', 'resources', 'recreation'];
+        // Cycle through categories: residential → shops → restaurants → entertainment → services → resources → recreation → residential
+        const categories = ['residential', 'shops', 'restaurants', 'entertainment', 'services', 'resources', 'recreation'];
         const currentIndex = categories.indexOf(this.currentCategory);
         const nextIndex = (currentIndex + 1) % categories.length;
         this.currentCategory = categories[nextIndex];
@@ -2721,6 +2741,8 @@ class MainScene extends Phaser.Scene {
             residential: 'Residential',
             shops: 'Shops',
             restaurants: 'Restaurants',
+            entertainment: 'Entertainment',
+            services: 'Services',
             resources: 'Resources',
             recreation: 'Recreation'
         };
@@ -4319,7 +4341,7 @@ class MainScene extends Phaser.Scene {
             buildingData.dayWaiterWage = 0;  // No wage until day waiter is hired
             buildingData.nightWaiterWage = 0;  // No wage until night waiter is hired
             buildingData.lastWageCheck = this.gameTime;  // Track last time we paid wages
-            buildingData.mealPrice = 25;  // Price per meal
+            buildingData.mealPrice = building.mealPrice || 25;  // Price per meal from building type
 
             // Create 6 tables
             for (let i = 0; i < 6; i++) {

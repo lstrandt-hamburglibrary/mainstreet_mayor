@@ -72,8 +72,6 @@ export const BuildingTypes = {
         width: 200,
         height: 240,
         color: 0xFF69B4,
-        incomeRate: 10,
-        maxIncome: 100,
         district: 'downtown',
         shopType: 'clothing'
     },
@@ -85,8 +83,6 @@ export const BuildingTypes = {
         width: 200,
         height: 240,
         color: 0x2196F3,
-        incomeRate: 15,
-        maxIncome: 150,
         district: 'downtown',
         shopType: 'electronics'
     },
@@ -98,8 +94,6 @@ export const BuildingTypes = {
         width: 200,
         height: 240,
         color: 0x8BC34A,
-        incomeRate: 8,
-        maxIncome: 80,
         district: 'downtown',
         shopType: 'grocery'
     },
@@ -111,10 +105,35 @@ export const BuildingTypes = {
         width: 200,
         height: 240,
         color: 0x9C27B0,
-        incomeRate: 7,
-        maxIncome: 70,
         district: 'downtown',
         shopType: 'bookstore'
+    },
+    bakery: {
+        name: 'Bakery',
+        cost: 180,
+        wood: 12,
+        bricks: 10,
+        width: 200,
+        height: 240,
+        color: 0xFFE4B5, // Moccasin/cream
+        district: 'downtown',
+        shopType: 'bakery',
+        openingHour: 6, // Opens at 6am
+        closingHour: 20, // Closes at 8pm
+        menuItems: ['Donuts', 'Pie', 'Cookies', 'Bread', 'Croissants', 'Muffins']
+    },
+    arcade: {
+        name: 'Arcade',
+        cost: 350,
+        wood: 20,
+        bricks: 18,
+        width: 240,
+        height: 260,
+        color: 0xFF00FF, // Magenta/bright
+        district: 'downtown',
+        entertainmentType: 'arcade',
+        open24Hours: true, // Arcade is always open
+        gamePlayPrice: 10 // $10 per customer visit
     },
     chinese_restaurant: {
         name: 'Chinese Restaurant',
@@ -124,8 +143,6 @@ export const BuildingTypes = {
         width: 240,
         height: 220,
         color: 0xDC143C, // Crimson red
-        incomeRate: 15,
-        maxIncome: 150,
         district: 'downtown',
         restaurantType: 'chinese',
         mealPrice: 25
@@ -138,8 +155,6 @@ export const BuildingTypes = {
         width: 240,
         height: 220,
         color: 0x228B22, // Forest green
-        incomeRate: 18,
-        maxIncome: 180,
         district: 'downtown',
         restaurantType: 'italian',
         mealPrice: 30
@@ -152,8 +167,6 @@ export const BuildingTypes = {
         width: 240,
         height: 220,
         color: 0x4682B4, // Steel blue
-        incomeRate: 12,
-        maxIncome: 120,
         district: 'downtown',
         restaurantType: 'diner',
         mealPrice: 20
@@ -166,8 +179,6 @@ export const BuildingTypes = {
         width: 240,
         height: 220,
         color: 0xFFD700, // Gold/yellow
-        incomeRate: 10,
-        maxIncome: 100,
         district: 'downtown',
         restaurantType: 'sub_shop',
         mealPrice: 15
@@ -181,8 +192,6 @@ export const BuildingTypes = {
         width: 240,
         height: 220,
         color: 0xDC143C,
-        incomeRate: 15,
-        maxIncome: 150,
         district: 'downtown',
         restaurantType: 'restaurant',
         mealPrice: 25
@@ -196,6 +205,41 @@ export const BuildingTypes = {
         height: 260,
         color: 0x2E7D32,
         district: 'downtown'
+    },
+    library: {
+        name: 'Library',
+        cost: 400,
+        wood: 25,
+        bricks: 20,
+        width: 240,
+        height: 280,
+        color: 0x8B4513, // Saddle brown
+        district: 'downtown',
+        serviceType: 'library',
+        boostRadius: 300,
+        boostPercent: 0.10, // 10% education boost
+        boostType: 'residential',
+        hasBookSales: true,
+        hasProgramAnnouncements: true,
+        lateFeeChance: 0.15, // 15% chance visitor has late fee
+        lateFeeAmount: 5 // $5 late fee
+    },
+    museum: {
+        name: 'Museum',
+        cost: 800,
+        wood: 30,
+        bricks: 40,
+        width: 280,
+        height: 320,
+        color: 0xD4AF37, // Gold
+        district: 'downtown',
+        specialType: 'museum',
+        attractsTourists: true,
+        admissionPrice: 15, // $15 admission ticket
+        giftShopChance: 0.40, // 40% of visitors buy from gift shop
+        giftShopPrice: 20, // $20 average gift shop purchase
+        cafeChance: 0.30, // 30% of visitors use cafe
+        cafePrice: 12 // $12 average cafe purchase
     },
     market: {
         name: 'Market',
@@ -349,5 +393,29 @@ export const ColorSchemes = {
         { building: 0x6A4C3A, awning: 0x5D4037, window: 0xEFEBE9 },  // Brown/Woody
         { building: 0x455A64, awning: 0x37474F, window: 0xECEFF1 },  // Blue-Gray
         { building: 0xC62828, awning: 0xB71C1C, window: 0xFFEBEE }   // Deep Red/Burgundy
+    ],
+    bakery: [
+        { building: 0xFFE4B5, awning: 0xFFD700, window: 0xFFFAF0 },  // Cream/Gold
+        { building: 0xF5DEB3, awning: 0xDAA520, window: 0xFFFACD },  // Wheat/Goldenrod
+        { building: 0xFFDAB9, awning: 0xFF8C00, window: 0xFFF5EE },  // Peach/Orange
+        { building: 0xFFEBCD, awning: 0xCD853F, window: 0xFFFFF0 }   // Blanched Almond/Peru
+    ],
+    arcade: [
+        { building: 0xFF00FF, neon: 0x00FFFF, window: 0x1A1A1A, accent: 0xFFFF00 },  // Magenta/Cyan neon
+        { building: 0x4B0082, neon: 0xFF1493, window: 0x0F0F0F, accent: 0x00FF00 },  // Indigo/Pink neon
+        { building: 0x000080, neon: 0xFF4500, window: 0x1C1C1C, accent: 0xFF00FF },  // Navy/Red-Orange neon
+        { building: 0x8B008B, neon: 0x00FF7F, window: 0x141414, accent: 0xFFD700 }   // Dark Magenta/Spring Green
+    ],
+    library: [
+        { building: 0x8B4513, columns: 0xF5F5DC, window: 0xFFFAF0, door: 0x654321 },  // Brown/Beige
+        { building: 0x654321, columns: 0xDEB887, window: 0xFFF8DC, door: 0x3E2723 },  // Dark Brown/Burlywood
+        { building: 0x5D4037, columns: 0xD2B48C, window: 0xFFFFF0, door: 0x4E342E },  // Brown/Tan
+        { building: 0x795548, columns: 0xF0E68C, window: 0xFFFAFA, door: 0x6D4C41 }   // Brown/Khaki
+    ],
+    museum: [
+        { building: 0xF5F5DC, columns: 0xFFFFFF, roof: 0xD4AF37, window: 0x87CEEB, accent: 0xB8860B },  // Beige/White/Gold
+        { building: 0xFFFAF0, columns: 0xF8F8FF, roof: 0xDAA520, window: 0xADD8E6, accent: 0xCD853F },  // Floral White/Gold
+        { building: 0xFAF0E6, columns: 0xFFFFF0, roof: 0xFFD700, window: 0xB0E0E6, accent: 0xB8860B },  // Linen/Gold
+        { building: 0xF0E68C, columns: 0xFFFFE0, roof: 0xDAA520, window: 0x87CEFA, accent: 0x9B7653 }   // Khaki/Light Yellow/Gold
     ]
 };
