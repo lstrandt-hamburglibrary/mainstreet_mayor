@@ -49,7 +49,9 @@ export class CitizenSystem {
         // Mark the last spawned citizen as a tourist
         const tourist = this.scene.citizens[this.scene.citizens.length - 1];
         tourist.isTourist = true;
-        tourist.touristTimer = 180 + Math.random() * 120; // Stay for 3-5 minutes (game time)
+        // Stay for 180-300 game minutes (3-5 game hours)
+        tourist.touristTimeRemaining = 180 + Math.random() * 120;
+        tourist.touristStartTime = this.scene.gameTime;
         tourist.spawnedAtStop = x; // Remember where they arrived
 
         // Try to book a hotel room
@@ -200,10 +202,10 @@ export class CitizenSystem {
         const deltaTime = 1/60; // Approximate 60 FPS
 
         for (let citizen of this.scene.citizens) {
-            // Handle tourist timer - tourists leave after their time is up
-            if (citizen.isTourist && citizen.touristTimer !== undefined) {
-                citizen.touristTimer -= deltaTime;
-                if (citizen.touristTimer <= 0 && citizen.state === 'walking') {
+            // Handle tourist timer - tourists leave after their time is up (based on game time)
+            if (citizen.isTourist && citizen.touristTimeRemaining !== undefined) {
+                const timeElapsed = this.scene.gameTime - citizen.touristStartTime;
+                if (timeElapsed >= citizen.touristTimeRemaining && citizen.state === 'walking') {
                     // Time to leave - head to nearest bus stop
                     let nearestStop = null;
                     let nearestDistance = Infinity;
