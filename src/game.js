@@ -2320,14 +2320,15 @@ class MainScene extends Phaser.Scene {
             }).setOrigin(0.5).setDepth(11);
             buildingData.sign = aptSign;
         } else if (this.isEntertainment(type)) {
-            // Entertainment sign (arcade)
-            const entertainmentName = buildingType.name.toUpperCase();
-            const entertainmentSign = this.add.text(x, y - 225, entertainmentName, {
-                fontSize: '18px',
-                color: '#00FFFF',
+            // Entertainment sign (arcade, theme park)
+            const entertainmentName = type === 'themePark' ? 'AMUSEMENT' : buildingType.name.toUpperCase();
+            const signY = type === 'themePark' ? y - 305 : y - 225; // Higher for theme park
+            const entertainmentSign = this.add.text(x, signY, entertainmentName, {
+                fontSize: type === 'themePark' ? '24px' : '18px',
+                color: type === 'themePark' ? '#FFD700' : '#00FFFF',
                 fontStyle: 'bold',
                 fontFamily: 'Arial',
-                backgroundColor: '#000000',
+                backgroundColor: type === 'themePark' ? '#FF1493' : '#000000',
                 padding: { x: 10, y: 5 },
                 resolution: 2
             }).setOrigin(0.5).setDepth(11);
