@@ -86,11 +86,32 @@ export class BuildingRenderer {
         graphics.lineStyle(3, 0x654321, 1);
         graphics.lineBetween(x - building.width/2, y - building.height/2, x + building.width/2, y - building.height/2);
 
-        // Windows (2 columns, 3 rows)
+        // Windows (2 columns, 3 rows) with shutters
+        const shutterColor = this.darkenColor(scheme.roof, 0.7);
         for (let row = 0; row < 3; row++) {
             for (let col = 0; col < 2; col++) {
                 const wx = x - spacing + (col * spacing * 2);
                 const wy = y - building.height + 50 + (row * 50);
+
+                // Left shutter
+                graphics.fillStyle(shutterColor, 1);
+                graphics.fillRect(wx - windowWidth/2 - 8, wy, 6, windowHeight);
+                graphics.lineStyle(1, 0x654321, 1);
+                graphics.strokeRect(wx - windowWidth/2 - 8, wy, 6, windowHeight);
+                // Shutter slats
+                for (let i = 0; i < 5; i++) {
+                    graphics.lineBetween(wx - windowWidth/2 - 8, wy + (i * 5), wx - windowWidth/2 - 2, wy + (i * 5));
+                }
+
+                // Right shutter
+                graphics.fillStyle(shutterColor, 1);
+                graphics.fillRect(wx + windowWidth/2 + 2, wy, 6, windowHeight);
+                graphics.lineStyle(1, 0x654321, 1);
+                graphics.strokeRect(wx + windowWidth/2 + 2, wy, 6, windowHeight);
+                // Shutter slats
+                for (let i = 0; i < 5; i++) {
+                    graphics.lineBetween(wx + windowWidth/2 + 2, wy + (i * 5), wx + windowWidth/2 + 8, wy + (i * 5));
+                }
 
                 // Window shadow
                 graphics.fillStyle(0x000000, 0.3);
@@ -174,6 +195,16 @@ export class BuildingRenderer {
         // Roof ridge line
         graphics.lineStyle(1, 0x000000, 0.5);
         graphics.lineBetween(x, y - building.height, x, y - building.height - 35);
+
+        // House sign plaque above windows (near top of building)
+        graphics.fillStyle(0x000000, 0.3);
+        graphics.fillRect(x - 28 + 2, y - building.height + 17, 56, 18);
+
+        graphics.fillStyle(0xF5F5DC, 1); // Beige plaque
+        graphics.fillRect(x - 28, y - building.height + 15, 56, 18);
+
+        graphics.lineStyle(2, 0x654321, 1);
+        graphics.strokeRect(x - 28, y - building.height + 15, 56, 18);
     }
 
     drawApartment(graphics, building, x, y, facadeVariation) {
@@ -256,6 +287,16 @@ export class BuildingRenderer {
         graphics.fillStyle(0xFFD700, 1);
         graphics.fillCircle(x - 10, entranceY + entranceHeight/2, 3);
         graphics.fillCircle(x + 10, entranceY + entranceHeight/2, 3);
+
+        // Apartment sign at top of building
+        graphics.fillStyle(0x000000, 0.3);
+        graphics.fillRect(x - 55 + 2, y - building.height + 7, 110, 22);
+
+        graphics.fillStyle(0xFFD700, 1); // Gold sign
+        graphics.fillRect(x - 55, y - building.height + 5, 110, 22);
+
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - 55, y - building.height + 5, 110, 22);
 
         // Flat roof
         graphics.fillStyle(0x696969, 1);
@@ -436,6 +477,16 @@ export class BuildingRenderer {
         graphics.fillStyle(0xFFD700, 1);
         graphics.fillCircle(x + 10, y - 28, 4);
 
+        // Sign banner above awning
+        graphics.fillStyle(0x000000, 0.3);
+        graphics.fillRect(x - 80 + 2, y - 110 + 2, 160, 20);
+
+        graphics.fillStyle(scheme.awning, 1); // Match awning color
+        graphics.fillRect(x - 80, y - 110, 160, 20);
+
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - 80, y - 110, 160, 20);
+
         // Roof
         graphics.fillStyle(0x696969, 1);
         graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
@@ -525,6 +576,16 @@ export class BuildingRenderer {
         graphics.fillStyle(0xC0C0C0, 1);
         graphics.fillRect(x + 8, y - 30, 3, 15);
 
+        // Sign banner above awning
+        graphics.fillStyle(0x000000, 0.3);
+        graphics.fillRect(x - 95 + 2, y - 110 + 2, 190, 20);
+
+        graphics.fillStyle(scheme.awning, 1); // Match awning color
+        graphics.fillRect(x - 95, y - 110, 190, 20);
+
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - 95, y - 110, 190, 20);
+
         // Roof
         graphics.fillStyle(0x616161, 1);
         graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
@@ -539,9 +600,11 @@ export class BuildingRenderer {
 
         const windowColor = scheme.window;
 
-        // Market-style windows
+        // Market-style windows (4 windows centered)
+        // 4 windows at 30px each + 3 gaps of 10px = 150px total
+        const windowStartX = x - 75; // Center the 150px span
         for (let col = 0; col < 4; col++) {
-            const wx = x - 60 + (col * 40);
+            const wx = windowStartX + (col * 40); // 30px window + 10px gap
             const wy = y - 125;
 
             graphics.fillStyle(0x000000, 0.3);
@@ -601,25 +664,26 @@ export class BuildingRenderer {
 
         // Awning
         graphics.fillStyle(0x000000, 0.3);
-        graphics.fillRect(x - 70, y - 125, 140, 8);
+        graphics.fillRect(x - 85, y - 125, 170, 8);
 
         graphics.fillStyle(scheme.awning, 1);
-        graphics.fillRect(x - 70, y - 133, 140, 8);
+        graphics.fillRect(x - 85, y - 133, 170, 8);
 
-        graphics.fillStyle(scheme.awningDark, 1);
+        const awningDark = this.darkenColor(scheme.awning, 0.8);
+        graphics.fillStyle(awningDark, 1);
         graphics.beginPath();
-        graphics.moveTo(x - 70, y - 125);
-        graphics.lineTo(x + 70, y - 125);
-        graphics.lineTo(x + 65, y - 120);
-        graphics.lineTo(x - 65, y - 120);
+        graphics.moveTo(x - 85, y - 125);
+        graphics.lineTo(x + 85, y - 125);
+        graphics.lineTo(x + 80, y - 120);
+        graphics.lineTo(x - 80, y - 120);
         graphics.closePath();
         graphics.fillPath();
 
         // Awning stripes
-        const darkerStripe = this.darkenColor(scheme.awningDark, 0.7);
+        const darkerStripe = this.darkenColor(awningDark, 0.7);
         graphics.lineStyle(2, darkerStripe, 1);
-        for (let i = 0; i < 7; i++) {
-            graphics.lineBetween(x - 70 + (i * 23), y - 133, x - 70 + (i * 23), y - 125);
+        for (let i = 0; i < 8; i++) {
+            graphics.lineBetween(x - 85 + (i * 24), y - 133, x - 85 + (i * 24), y - 125);
         }
 
         // Wood door
@@ -751,6 +815,16 @@ export class BuildingRenderer {
         graphics.fillCircle(x + 10, y - 28, 4);
         graphics.fillStyle(0xFFD700, 0.6);
         graphics.fillCircle(x + 9, y - 29, 2);
+
+        // Sign banner above awning
+        graphics.fillStyle(0x000000, 0.3);
+        graphics.fillRect(x - 70 + 2, y - 110 + 2, 140, 20);
+
+        graphics.fillStyle(scheme.awning, 1); // Match awning color
+        graphics.fillRect(x - 70, y - 110, 140, 20);
+
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - 70, y - 110, 140, 20);
 
         // Roof
         graphics.fillStyle(0x5D4037, 1);
@@ -1046,59 +1120,149 @@ export class BuildingRenderer {
     drawBakery(graphics, building, x, y, facadeVariation) {
         const scheme = ColorSchemes.bakery[facadeVariation % 4];
 
-        // Building base
+        // Bottom floor (painted pink)
         graphics.fillStyle(scheme.building, 1);
-        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+        graphics.fillRect(x - building.width/2, y - 120, building.width, 120);
+
+        // Top floor (brick pattern)
+        const brickColor = 0xA0522D; // Sienna/brick color
+        graphics.fillStyle(brickColor, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height - 120);
+
+        // Brick pattern on top floor (clipped to building bounds)
+        graphics.lineStyle(1, 0x8B4513, 0.6);
+        const brickHeight = 8;
+        const brickWidth = 20;
+        const topFloorStart = y - building.height;
+        const topFloorEnd = y - 120;
+        const leftEdge = x - building.width/2;
+        const rightEdge = x + building.width/2;
+
+        for (let by = topFloorStart; by < topFloorEnd; by += brickHeight) {
+            const offset = ((by - topFloorStart) / brickHeight) % 2 === 0 ? 0 : brickWidth / 2;
+            for (let bx = leftEdge; bx < rightEdge; bx += brickWidth) {
+                const brickX = bx + offset;
+                const brickW = Math.min(brickWidth, rightEdge - brickX);
+                if (brickX >= leftEdge && brickX < rightEdge && brickW > 0) {
+                    graphics.strokeRect(brickX, by, brickW, brickHeight);
+                }
+            }
+        }
+
+        // Upper floor windows (2 windows)
+        for (let col = 0; col < 2; col++) {
+            const wx = x - 40 + (col * 80);
+            const wy = y - building.height + 40;
+
+            // Window shadow
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillRect(wx - 15 + 2, wy + 2, 30, 40);
+
+            // Window
+            graphics.fillStyle(scheme.window, 1);
+            graphics.fillRect(wx - 15, wy, 30, 40);
+
+            // Window reflection
+            graphics.fillStyle(0xFFFFFF, 0.2);
+            graphics.fillRect(wx - 15, wy, 30, 20);
+
+            // Window frame
+            graphics.lineStyle(2, 0x654321, 1);
+            graphics.strokeRect(wx - 15, wy, 30, 40);
+            graphics.lineBetween(wx, wy, wx, wy + 40);
+        }
 
         // Awning
         graphics.fillStyle(scheme.awning, 1);
-        graphics.fillRect(x - building.width/2 - 10, y - 140, building.width + 20, 30);
+        graphics.fillRect(x - building.width/2 - 10, y - 120, building.width + 20, 30);
 
         // Awning stripes
         graphics.lineStyle(3, this.darkenColor(scheme.awning, 0.8), 1);
         for (let i = 0; i < 5; i++) {
             const stripeX = x - building.width/2 + (i * 50);
-            graphics.lineBetween(stripeX, y - 140, stripeX, y - 110);
+            graphics.lineBetween(stripeX, y - 120, stripeX, y - 90);
         }
 
         // Display window
         graphics.fillStyle(scheme.window, 1);
-        graphics.fillRect(x - 60, y - 100, 120, 60);
+        graphics.fillRect(x - 60, y - 85, 120, 55);
 
         // Window frame
         graphics.lineStyle(3, 0x8B4513, 1);
-        graphics.strokeRect(x - 60, y - 100, 120, 60);
+        graphics.strokeRect(x - 60, y - 85, 120, 55);
 
-        // Baked goods display (simple shapes representing items)
-        // Donuts
-        graphics.lineStyle(2, 0xD2691E, 1);
-        graphics.strokeCircle(x - 40, y - 70, 8);
-        graphics.strokeCircle(x - 20, y - 70, 8);
+        // Baked goods display - Side view pies (semicircles)
+        // Pie 1
+        graphics.fillStyle(0xCD853F, 1); // Crust color
+        graphics.beginPath();
+        graphics.arc(x - 35, y - 50, 12, Math.PI, 0, false);
+        graphics.lineTo(x - 35 + 12, y - 50);
+        graphics.lineTo(x - 35 - 12, y - 50);
+        graphics.closePath();
+        graphics.fillPath();
 
-        // Pies
-        graphics.fillStyle(0xCD853F, 1);
-        graphics.fillCircle(x + 10, y - 75, 10);
-        graphics.fillCircle(x + 35, y - 75, 10);
-
-        // Lattice on pies
-        graphics.lineStyle(1, 0x8B4513, 1);
-        for (let i = -10; i < 10; i += 3) {
-            graphics.lineBetween(x + 10 + i, y - 85, x + 10 + i, y - 65);
-        }
-
-        // Door
+        // Pie filling (darker)
         graphics.fillStyle(0x8B4513, 1);
-        graphics.fillRect(x - 20, y - 40, 40, 40);
+        graphics.fillRect(x - 42, y - 53, 14, 3);
+
+        // Pie 2
+        graphics.fillStyle(0xCD853F, 1);
+        graphics.beginPath();
+        graphics.arc(x - 10, y - 50, 12, Math.PI, 0, false);
+        graphics.lineTo(x - 10 + 12, y - 50);
+        graphics.lineTo(x - 10 - 12, y - 50);
+        graphics.closePath();
+        graphics.fillPath();
+
+        graphics.fillStyle(0x8B4513, 1);
+        graphics.fillRect(x - 17, y - 53, 14, 3);
+
+        // Donuts (side view - circles with hole)
+        graphics.fillStyle(0xD2691E, 1);
+        graphics.fillCircle(x + 20, y - 55, 10);
+        graphics.fillStyle(scheme.window, 1);
+        graphics.fillCircle(x + 20, y - 55, 4);
+
+        graphics.fillStyle(0xD2691E, 1);
+        graphics.fillCircle(x + 40, y - 55, 10);
+        graphics.fillStyle(scheme.window, 1);
+        graphics.fillCircle(x + 40, y - 55, 4);
+
+        // Door (taller - 70px tall to match customer height)
+        graphics.fillStyle(0x8B4513, 1);
+        graphics.fillRect(x - 25, y - 70, 50, 70);
         graphics.lineStyle(2, 0x654321, 1);
-        graphics.strokeRect(x - 20, y - 40, 40, 40);
+        graphics.strokeRect(x - 25, y - 70, 50, 70);
 
         // Door window
         graphics.fillStyle(scheme.window, 0.7);
-        graphics.fillRoundedRect(x - 15, y - 35, 30, 20, 3);
+        graphics.fillRoundedRect(x - 18, y - 60, 36, 30, 3);
 
-        // Border
+        // Door handle
+        graphics.fillStyle(0xFFD700, 1);
+        graphics.fillCircle(x + 12, y - 35, 3);
+
+        // Border (in segments to avoid cutting through awning)
         graphics.lineStyle(3, 0x000000, 1);
-        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+        // Top floor border (brick section)
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height - 120);
+        // Left side of bottom floor
+        graphics.lineBetween(x - building.width/2, y - 120, x - building.width/2, y);
+        // Right side of bottom floor
+        graphics.lineBetween(x + building.width/2, y - 120, x + building.width/2, y);
+        // Bottom edge
+        graphics.lineBetween(x - building.width/2, y, x + building.width/2, y);
+
+        // Roof (slanted, overhangs the walls) - drawn last so it appears on top
+        graphics.fillStyle(0x8B4513, 1);
+        graphics.beginPath();
+        graphics.moveTo(x - building.width/2 - 15, y - building.height + 5);
+        graphics.lineTo(x, y - building.height - 25);
+        graphics.lineTo(x + building.width/2 + 15, y - building.height + 5);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.lineStyle(2, 0x654321, 1);
+        graphics.strokePath();
     }
 
     drawArcade(graphics, building, x, y, facadeVariation) {
@@ -1108,47 +1272,54 @@ export class BuildingRenderer {
         graphics.fillStyle(scheme.building, 1);
         graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
 
-        // Neon sign border effect
-        graphics.lineStyle(4, scheme.neon, 1);
-        graphics.strokeRect(x - building.width/2 + 10, y - building.height + 10, building.width - 20, 40);
+        // Flat roof
+        graphics.fillStyle(0x1A1A1A, 1);
+        graphics.fillRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2 - 5, y - building.height - 10, building.width + 10, 10);
 
-        graphics.lineStyle(2, scheme.accent, 1);
-        graphics.strokeRect(x - building.width/2 + 15, y - building.height + 15, building.width - 30, 30);
+        // Neon sign area at top
+        graphics.fillStyle(0x000000, 1);
+        graphics.fillRect(x - building.width/2 + 10, y - building.height + 10, building.width - 20, 50);
 
-        // Windows (small, dark)
+        // Neon sign border effect (brighter, more visible)
+        graphics.lineStyle(5, scheme.neon, 1);
+        graphics.strokeRect(x - building.width/2 + 10, y - building.height + 10, building.width - 20, 50);
+
+        graphics.lineStyle(3, scheme.accent, 1);
+        graphics.strokeRect(x - building.width/2 + 15, y - building.height + 15, building.width - 30, 40);
+
+        // Windows (lighter, more visible)
         for (let row = 0; row < 2; row++) {
             for (let col = 0; col < 3; col++) {
                 const wx = x - 60 + (col * 60);
-                const wy = y - building.height + 80 + (row * 60);
+                const wy = y - building.height + 85 + (row * 60);
 
-                graphics.fillStyle(scheme.window, 1);
+                // Lighter base window color
+                graphics.fillStyle(0x4A4A4A, 1);
                 graphics.fillRect(wx - 20, wy, 40, 35);
 
-                // Neon glow effect
-                graphics.fillStyle(scheme.neon, 0.3);
+                // Brighter neon glow effect
+                graphics.fillStyle(scheme.neon, 0.5);
                 graphics.fillRect(wx - 20, wy, 40, 35);
+
+                // Window frame
+                graphics.lineStyle(2, scheme.accent, 1);
+                graphics.strokeRect(wx - 20, wy, 40, 35);
             }
         }
 
-        // Arcade game screen representations
-        const gameX = x - 40;
-        const gameY = y - 60;
+        // Door (taller - 70px to match customer height)
+        graphics.fillStyle(0x2A2A2A, 1);
+        graphics.fillRect(x - 30, y - 70, 60, 70);
 
-        // Game screen 1
-        graphics.fillStyle(0x00FFFF, 0.6);
-        graphics.fillRect(gameX, gameY, 30, 25);
+        // Neon door frame
+        graphics.lineStyle(3, scheme.neon, 1);
+        graphics.strokeRect(x - 30, y - 70, 60, 70);
 
-        // Game screen 2
-        graphics.fillStyle(0xFF00FF, 0.6);
-        graphics.fillRect(gameX + 50, gameY, 30, 25);
-
-        // Door
-        graphics.fillStyle(0x1A1A1A, 1);
-        graphics.fillRect(x - 25, y - 45, 50, 45);
-
-        // Neon door accent
-        graphics.lineStyle(2, scheme.accent, 1);
-        graphics.strokeRect(x - 25, y - 45, 50, 45);
+        // Door handle
+        graphics.fillStyle(scheme.accent, 1);
+        graphics.fillCircle(x + 18, y - 35, 4);
 
         // Border
         graphics.lineStyle(3, 0x000000, 1);
@@ -1161,6 +1332,12 @@ export class BuildingRenderer {
         // Building base
         graphics.fillStyle(scheme.building, 1);
         graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Flat roof with overhang
+        graphics.fillStyle(this.darkenColor(scheme.building, 0.7), 1);
+        graphics.fillRect(x - building.width/2 - 10, y - building.height - 15, building.width + 20, 15);
+        graphics.lineStyle(3, 0x654321, 1);
+        graphics.strokeRect(x - building.width/2 - 10, y - building.height - 15, building.width + 20, 15);
 
         // Classical columns (library aesthetic)
         graphics.fillStyle(scheme.columns, 1);
@@ -1199,12 +1376,6 @@ export class BuildingRenderer {
         graphics.strokeRect(x - 25, y - 60, 20, 55);
         graphics.strokeRect(x + 5, y - 60, 20, 55);
 
-        // Steps
-        graphics.fillStyle(0x9E9E9E, 1);
-        for (let i = 0; i < 3; i++) {
-            graphics.fillRect(x - 70, y - (i * 5), 140, 5);
-        }
-
         // Border
         graphics.lineStyle(3, 0x000000, 1);
         graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
@@ -1217,13 +1388,34 @@ export class BuildingRenderer {
         graphics.fillStyle(scheme.building, 1);
         graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
 
-        // Golden dome/roof
-        graphics.fillStyle(scheme.roof, 1);
-        graphics.fillEllipse(x, y - building.height + 20, building.width - 20, 40);
+        // Golden dome/roof - proper half-circle on top (flipped to be dome-shaped)
+        const domeWidth = 100;
+        const domeHeight = 50;
 
-        // Dome highlight
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.beginPath();
+        graphics.arc(x, y - building.height, domeWidth/2, 0, Math.PI, false); // Half circle pointing up
+        graphics.closePath();
+        graphics.fillPath();
+
+        // Dome outline
+        graphics.lineStyle(3, this.darkenColor(scheme.roof, 0.8), 1);
+        graphics.beginPath();
+        graphics.arc(x, y - building.height, domeWidth/2, 0, Math.PI, false);
+        graphics.strokePath();
+
+        // Dome highlight (curved)
         graphics.fillStyle(0xFFFFFF, 0.3);
-        graphics.fillEllipse(x - 30, y - building.height + 15, 40, 15);
+        graphics.beginPath();
+        graphics.arc(x - 10, y - building.height - 15, domeWidth/3.5, 0, Math.PI, false);
+        graphics.closePath();
+        graphics.fillPath();
+
+        // Dome spire/finial on top
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.fillCircle(x, y - building.height - domeHeight, 5);
+        graphics.lineStyle(2, this.darkenColor(scheme.roof, 0.8), 1);
+        graphics.strokeCircle(x, y - building.height - domeHeight, 5);
 
         // Classical columns (grand museum entrance)
         graphics.fillStyle(scheme.columns, 1);
@@ -1266,12 +1458,6 @@ export class BuildingRenderer {
         graphics.fillStyle(scheme.roof, 1);
         graphics.fillRect(x - 30, y - 65, 25, 60);
         graphics.fillRect(x + 5, y - 65, 25, 60);
-
-        // Steps (grand staircase)
-        graphics.fillStyle(0xF5F5DC, 1);
-        for (let i = 0; i < 5; i++) {
-            graphics.fillRect(x - 100, y - (i * 7), 200, 7);
-        }
 
         // Border
         graphics.lineStyle(3, 0x000000, 1);

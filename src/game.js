@@ -2277,6 +2277,131 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    addBuildingSign(buildingData, buildingType) {
+        // Create text signs for specific buildings that need them
+        const x = buildingData.x;
+        const y = buildingData.y;
+        const type = buildingData.type;
+
+        // ALWAYS destroy old sign if it exists to prevent duplicates
+        if (buildingData.sign) {
+            try {
+                if (buildingData.sign.destroy) {
+                    buildingData.sign.destroy();
+                }
+            } catch (e) {
+                console.warn('Could not destroy old sign:', e);
+            }
+            buildingData.sign = null;
+        }
+
+        if (type === 'house') {
+            // "HOUSE" text on the sign plaque
+            const houseSign = this.add.text(x, y - buildingType.height + 24, 'HOUSE', {
+                fontSize: '12px',
+                color: '#654321',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = houseSign;
+        } else if (type === 'apartment') {
+            // Apartment sign at top
+            const aptSign = this.add.text(x, y - buildingType.height + 16, 'APARTMENTS', {
+                fontSize: '14px',
+                color: '#000000',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = aptSign;
+        } else if (this.isEntertainment(type)) {
+            // Entertainment sign (arcade)
+            const entertainmentName = buildingType.name.toUpperCase();
+            const entertainmentSign = this.add.text(x, y - 225, entertainmentName, {
+                fontSize: '18px',
+                color: '#00FFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                backgroundColor: '#000000',
+                padding: { x: 10, y: 5 },
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = entertainmentSign;
+        } else if (this.isService(type)) {
+            // Service sign (library, museum)
+            const serviceName = buildingType.name.toUpperCase();
+            const serviceSign = this.add.text(x, y - 245, serviceName, {
+                fontSize: '18px',
+                color: '#FFD700',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                backgroundColor: '#000000',
+                padding: { x: 10, y: 5 },
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = serviceSign;
+        } else if (type === 'hotel') {
+            // Hotel sign
+            const hotelSign = this.add.text(x, y - buildingType.height + 20, 'HOTEL', {
+                fontSize: '14px',
+                color: '#000000',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = hotelSign;
+        } else if (type === 'bakery') {
+            // Bakery sign (above awning)
+            const bakerySign = this.add.text(x, y - 140, 'BAKERY', {
+                fontSize: '14px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                backgroundColor: '#000000',
+                padding: { x: 8, y: 4 },
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = bakerySign;
+        } else if (type === 'groceryStore') {
+            // Grocery store sign (above awning)
+            const grocerySign = this.add.text(x, y - 150, 'GROCERY STORE', {
+                fontSize: '14px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                backgroundColor: '#2E7D32',
+                padding: { x: 8, y: 4 },
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = grocerySign;
+        } else if (this.isRestaurant(type)) {
+            // Restaurant sign on red banner
+            const restaurantName = buildingType.name.toUpperCase();
+            const restaurantSign = this.add.text(x, y - 95, restaurantName, {
+                fontSize: '16px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = restaurantSign;
+        } else if (this.isShop(type)) {
+            // Shop sign on banner
+            const shopName = buildingType.name.toUpperCase();
+            const shopSign = this.add.text(x, y - 100, shopName, {
+                fontSize: '16px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                backgroundColor: '#000000',
+                padding: { x: 8, y: 4 },
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = shopSign;
+        }
+    }
+
     createStreetFurniture() {
         const groundLevel = this.gameHeight - 100;
 
@@ -3789,8 +3914,13 @@ class MainScene extends Phaser.Scene {
                 continue;
             }
 
-            // Check regular buildings (House, Restaurant) - exclude shops and hotels (they auto-collect on entry)
-            if (buildingType.incomeRate && building.accumulatedIncome >= 1 && !this.isShop(building.type) && building.type !== 'hotel') {
+            // Check regular buildings (House) - exclude shops and hotels (they auto-collect on entry)
+            // Also check entertainment and service buildings (arcade, library, museum)
+            const isCollectableBuilding = (buildingType.incomeRate && building.accumulatedIncome >= 1 && !this.isShop(building.type) && building.type !== 'hotel') ||
+                                          (this.isEntertainment(building.type) && building.accumulatedIncome >= 1) ||
+                                          (this.isService(building.type) && building.accumulatedIncome >= 1);
+
+            if (isCollectableBuilding) {
                 const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                 if (distance < closestIncomeDistance) {
                     this.nearIncomeBuilding = building;
@@ -4153,30 +4283,8 @@ class MainScene extends Phaser.Scene {
         // Draw detailed building features (windows, doors, roof, etc.)
         this.buildingRenderer.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y, facadeVariation);
 
-        // Add building-specific signs (no floating labels)
-        if (this.selectedBuilding === 'house') {
-            // Add "HOUSE" sign above door
-            const houseSign = this.add.text(x, y - 60, 'HOUSE', {
-                fontSize: '12px',
-                color: '#FFFFFF',
-                backgroundColor: '#8B4513',
-                padding: { x: 5, y: 3 },
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (this.selectedBuilding === 'apartment') {
-            // Add "APARTMENTS" sign at top (above windows)
-            const signY = y - building.height + 5;
-            console.log(`Adding APARTMENTS sign at (${x}, ${signY}), building top: ${y - building.height}`);
-            const aptSign = this.add.text(x, signY, 'APARTMENTS', {
-                fontSize: '14px',
-                color: '#000000',
-                backgroundColor: '#FFD700',
-                padding: { x: 8, y: 4 },
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (this.selectedBuilding === 'bank') {
+        // Building-specific decorations (bank columns only)
+        if (this.selectedBuilding === 'bank') {
             // Add dollar sign symbol
             const dollarSign = this.add.text(x, y - building.height / 2, '$', {
                 fontSize: '80px',
@@ -4191,37 +4299,8 @@ class MainScene extends Phaser.Scene {
             newBuilding.fillRect(x - building.width/2 + 60, y - building.height + 40, 20, building.height - 80);
             newBuilding.fillRect(x + building.width/2 - 80, y - building.height + 40, 20, building.height - 80);
             newBuilding.fillRect(x + building.width/2 - 40, y - building.height + 40, 20, building.height - 80);
-        } else if (this.isShop(this.selectedBuilding)) {
-            // Add shop name text sign above awning
-            const shopName = this.buildingTypes[this.selectedBuilding].name.toUpperCase();
-            const shopSign = this.add.text(x, y - 140, shopName, {
-                fontSize: '16px',
-                color: '#FFFFFF',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (this.isRestaurant(this.selectedBuilding)) {
-            // Add restaurant name text on the red sign
-            const restaurantName = this.buildingTypes[this.selectedBuilding].name.toUpperCase();
-            const restaurantSign = this.add.text(x, y - 95, restaurantName, {
-                fontSize: '16px',
-                color: '#FFFFFF',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (this.selectedBuilding === 'hotel') {
-            // Add "HOTEL" text on the gold sign
-            const hotelSign = this.add.text(x, y - building.height + 20, 'HOTEL', {
-                fontSize: '14px',
-                color: '#000000',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
         } else if (this.selectedBuilding === 'market') {
-            // Add market awning
+            // Add market emoji
             const awning = this.add.text(x, y - building.height / 2, '🏪', {
                 fontSize: '60px'
             }).setOrigin(0.5).setDepth(11);
@@ -4356,6 +4435,9 @@ class MainScene extends Phaser.Scene {
 
         // Add window lights for nighttime
         this.addWindowLights(buildingData, building);
+
+        // Add building sign
+        this.addBuildingSign(buildingData, building);
 
         this.buildings.push(buildingData);
 

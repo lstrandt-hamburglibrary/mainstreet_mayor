@@ -56,7 +56,7 @@ export const BuildingTypes = {
         cost: 600,
         wood: 40,
         bricks: 45,
-        width: 240,
+        width: 230,
         height: 400,
         color: 0x9C27B0,
         rooms: 10,
@@ -127,7 +127,7 @@ export const BuildingTypes = {
         cost: 350,
         wood: 20,
         bricks: 18,
-        width: 240,
+        width: 230,
         height: 260,
         color: 0xFF00FF, // Magenta/bright
         district: 'downtown',
@@ -140,7 +140,7 @@ export const BuildingTypes = {
         cost: 300,
         wood: 20,
         bricks: 15,
-        width: 240,
+        width: 230,
         height: 220,
         color: 0xDC143C, // Crimson red
         district: 'downtown',
@@ -152,7 +152,7 @@ export const BuildingTypes = {
         cost: 320,
         wood: 22,
         bricks: 16,
-        width: 240,
+        width: 230,
         height: 220,
         color: 0x228B22, // Forest green
         district: 'downtown',
@@ -164,7 +164,7 @@ export const BuildingTypes = {
         cost: 250,
         wood: 18,
         bricks: 12,
-        width: 240,
+        width: 230,
         height: 220,
         color: 0x4682B4, // Steel blue
         district: 'downtown',
@@ -176,7 +176,7 @@ export const BuildingTypes = {
         cost: 200,
         wood: 15,
         bricks: 10,
-        width: 240,
+        width: 230,
         height: 220,
         color: 0xFFD700, // Gold/yellow
         district: 'downtown',
@@ -189,7 +189,7 @@ export const BuildingTypes = {
         cost: 300,
         wood: 20,
         bricks: 15,
-        width: 240,
+        width: 230,
         height: 220,
         color: 0xDC143C,
         district: 'downtown',
@@ -211,8 +211,8 @@ export const BuildingTypes = {
         cost: 400,
         wood: 25,
         bricks: 20,
-        width: 240,
-        height: 280,
+        width: 230,
+        height: 240,
         color: 0x8B4513, // Saddle brown
         district: 'downtown',
         serviceType: 'library',
@@ -229,8 +229,8 @@ export const BuildingTypes = {
         cost: 800,
         wood: 30,
         bricks: 40,
-        width: 280,
-        height: 320,
+        width: 230,
+        height: 260,
         color: 0xD4AF37, // Gold
         district: 'downtown',
         specialType: 'museum',
@@ -395,10 +395,10 @@ export const ColorSchemes = {
         { building: 0xC62828, awning: 0xB71C1C, window: 0xFFEBEE }   // Deep Red/Burgundy
     ],
     bakery: [
-        { building: 0xFFE4B5, awning: 0xFFD700, window: 0xFFFAF0 },  // Cream/Gold
-        { building: 0xF5DEB3, awning: 0xDAA520, window: 0xFFFACD },  // Wheat/Goldenrod
-        { building: 0xFFDAB9, awning: 0xFF8C00, window: 0xFFF5EE },  // Peach/Orange
-        { building: 0xFFEBCD, awning: 0xCD853F, window: 0xFFFFF0 }   // Blanched Almond/Peru
+        { building: 0xFFB6C1, awning: 0xFF69B4, window: 0xFFFAF0 },  // Light Pink/Hot Pink
+        { building: 0xFFC0CB, awning: 0xFF1493, window: 0xFFFACD },  // Pink/Deep Pink
+        { building: 0xFFE4E1, awning: 0xDB7093, window: 0xFFF5EE },  // Misty Rose/Pale Violet Red
+        { building: 0xFFF0F5, awning: 0xC71585, window: 0xFFFFF0 }   // Lavender Blush/Medium Violet Red
     ],
     arcade: [
         { building: 0xFF00FF, neon: 0x00FFFF, window: 0x1A1A1A, accent: 0xFFFF00 },  // Magenta/Cyan neon

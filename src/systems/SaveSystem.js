@@ -93,6 +93,19 @@ export class SaveSystem {
             this.scene.timeSpeed = saveData.timeSpeed || 1;
             this.scene.lastRealTime = Date.now(); // Reset to current time on load
 
+            // Clear all existing text objects that might be old signs (depth 11)
+            // This prevents duplicate signs from appearing
+            const allTextObjects = this.scene.children.list.filter(obj =>
+                obj.type === 'Text' && obj.depth === 11
+            );
+            allTextObjects.forEach(textObj => {
+                try {
+                    textObj.destroy();
+                } catch (e) {
+                    console.warn('Could not destroy text object:', e);
+                }
+            });
+
             // Restore buildings
             if (saveData.buildings && saveData.buildings.length > 0) {
                 console.log(`Loading ${saveData.buildings.length} buildings from save:`, saveData.buildings);
@@ -177,28 +190,8 @@ export class SaveSystem {
             console.error(`Error drawing details for ${type}:`, error);
         }
 
-        // Add building-specific signs (no floating labels)
-        if (type === 'house') {
-            // Add "HOUSE" sign above door
-            const houseSign = this.scene.add.text(x, buildingY - 60, 'HOUSE', {
-                fontSize: '12px',
-                color: '#FFFFFF',
-                backgroundColor: '#8B4513',
-                padding: { x: 5, y: 3 },
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'apartment') {
-            // Add "APARTMENTS" sign at top (above windows)
-            const aptSign = this.scene.add.text(x, buildingY - building.height + 5, 'APARTMENTS', {
-                fontSize: '14px',
-                color: '#000000',
-                backgroundColor: '#FFD700',
-                padding: { x: 8, y: 4 },
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'bank') {
+        // Building signs are now handled by addBuildingSign() function
+        if (type === 'bank') {
             // Add dollar sign symbol
             const dollarSign = this.scene.add.text(x, buildingY - building.height / 2, '$', {
                 fontSize: '80px',
@@ -213,37 +206,8 @@ export class SaveSystem {
             newBuilding.fillRect(x - building.width/2 + 60, buildingY - building.height + 40, 20, building.height - 80);
             newBuilding.fillRect(x + building.width/2 - 80, buildingY - building.height + 40, 20, building.height - 80);
             newBuilding.fillRect(x + building.width/2 - 40, buildingY - building.height + 40, 20, building.height - 80);
-        } else if (this.scene.isShop(type)) {
-            // Add shop name text sign above awning
-            const shopName = this.scene.buildingTypes[type].name.toUpperCase();
-            const shopSign = this.scene.add.text(x, buildingY - 140, shopName, {
-                fontSize: '16px',
-                color: '#FFFFFF',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (this.scene.isRestaurant(type)) {
-            // Add restaurant name text on the red sign
-            const restaurantName = this.scene.buildingTypes[type].name.toUpperCase();
-            const restaurantSign = this.scene.add.text(x, buildingY - 95, restaurantName, {
-                fontSize: '16px',
-                color: '#FFFFFF',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'hotel') {
-            // Add "HOTEL" text on the gold sign
-            const hotelSign = this.scene.add.text(x, buildingY - building.height + 20, 'HOTEL', {
-                fontSize: '14px',
-                color: '#000000',
-                fontStyle: 'bold',
-                fontFamily: 'Arial',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
         } else if (type === 'market') {
-            // Add market awning
+            // Add market emoji
             const awning = this.scene.add.text(x, buildingY - building.height / 2, '🏪', {
                 fontSize: '60px'
             }).setOrigin(0.5).setDepth(11);
@@ -258,6 +222,8 @@ export class SaveSystem {
                 fontSize: '60px'
             }).setOrigin(0.5).setDepth(11);
         }
+
+        // Note: Building signs are now handled by addBuildingSign() function
 
         // Add loaded building with income and resource tracking (use buildingY for current ground level)
         const buildingData = {
@@ -347,6 +313,9 @@ export class SaveSystem {
         // Add window lights for nighttime
         const buildingType = this.scene.buildingTypes[type];
         this.scene.addWindowLights(buildingData, buildingType);
+
+        // Add building sign
+        this.scene.addBuildingSign(buildingData, buildingType);
 
         this.scene.buildings.push(buildingData);
     }
