@@ -3307,6 +3307,21 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
+            // Entertainment and service building income indicators (arcade, library, museum)
+            if ((this.isEntertainment(building.type) || this.isService(building.type)) && building.accumulatedIncome >= 1) {
+                if (!building.incomeIndicator || !building.incomeIndicator.scene) {
+                    building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
+                        fontSize: '24px'
+                    }).setOrigin(0.5).setDepth(11);
+                } else {
+                    building.incomeIndicator.setVisible(true);
+                }
+            } else if (this.isEntertainment(building.type) || this.isService(building.type)) {
+                if (building.incomeIndicator && building.incomeIndicator.scene) {
+                    building.incomeIndicator.setVisible(false);
+                }
+            }
+
             // Shop employee wage payment (daily)
             if (this.isShop(building.type) && building.hasEmployee && building.dailyWage > 0) {
                 const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
