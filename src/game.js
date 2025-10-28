@@ -1866,8 +1866,8 @@ class MainScene extends Phaser.Scene {
             // Clear and redraw building
             building.graphics.clear();
 
-            // Don't draw base rectangle for parks/recreation items (they draw everything custom)
-            if (building.type !== 'park' && building.type !== 'playground' && building.type !== 'fountain') {
+            // Don't draw base rectangle for parks/recreation items and theme park (they draw everything custom)
+            if (building.type !== 'park' && building.type !== 'playground' && building.type !== 'fountain' && building.type !== 'themePark') {
                 building.graphics.fillStyle(buildingType.color, 1);
                 building.graphics.fillRect(
                     building.x - buildingType.width/2,
@@ -4296,8 +4296,8 @@ class MainScene extends Phaser.Scene {
         const newBuilding = this.add.graphics();
         newBuilding.setDepth(10); // Buildings are on top of background
 
-        // Don't draw base rectangle for parks/recreation items (they draw everything custom)
-        if (this.selectedBuilding !== 'park' && this.selectedBuilding !== 'playground' && this.selectedBuilding !== 'fountain') {
+        // Don't draw base rectangle for parks/recreation items and theme park (they draw everything custom)
+        if (this.selectedBuilding !== 'park' && this.selectedBuilding !== 'playground' && this.selectedBuilding !== 'fountain' && this.selectedBuilding !== 'themePark') {
             newBuilding.fillStyle(building.color, 1);
             newBuilding.fillRect(x - building.width/2, y - building.height, building.width, building.height);
             newBuilding.lineStyle(3, 0x000000, 1);

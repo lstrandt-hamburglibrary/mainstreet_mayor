@@ -1469,27 +1469,24 @@ export class BuildingRenderer {
     drawThemePark(graphics, building, x, y, facadeVariation = 0) {
         const scheme = ColorSchemes.themePark[facadeVariation % ColorSchemes.themePark.length];
 
-        // Entrance gate (center)
-        graphics.fillStyle(scheme.entrance, 1);
-        graphics.fillRect(x - 60, y - 80, 120, 80);
-        graphics.lineStyle(3, 0x000000, 1);
-        graphics.strokeRect(x - 60, y - 80, 120, 80);
+        // NO BACKGROUND - transparent!
 
-        // Entrance archway
-        graphics.fillStyle(0xFFFFFF, 0.3);
-        graphics.fillCircle(x, y - 40, 40);
-        graphics.lineStyle(3, 0x000000, 1);
-        graphics.strokeCircle(x, y - 40, 40);
-
-        // Entrance sign "THEME PARK"
-        graphics.fillStyle(scheme.entrance, 1);
-        graphics.fillRect(x - 80, y - 120, 160, 30);
-        graphics.lineStyle(2, 0x000000, 1);
-        graphics.strokeRect(x - 80, y - 120, 160, 30);
-
-        // Ferris wheel (left side)
+        // Ferris wheel (left side) with base on ground
         const wheelX = x - 180;
-        const wheelY = y - 180;
+        const wheelY = y - 150;
+
+        // Ferris wheel base structure on ground
+        graphics.fillStyle(0x8B4513, 1); // Brown base
+        graphics.fillRect(wheelX - 30, y - 40, 60, 40);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(wheelX - 30, y - 40, 60, 40);
+
+        // Support beams from base to wheel
+        graphics.lineStyle(4, 0x808080, 1); // Gray metal
+        graphics.lineBetween(wheelX - 20, y - 40, wheelX - 10, wheelY);
+        graphics.lineBetween(wheelX + 20, y - 40, wheelX + 10, wheelY);
+
+        // Ferris wheel circle
         graphics.lineStyle(3, 0x000000, 1);
         graphics.strokeCircle(wheelX, wheelY, 60);
 
@@ -1510,21 +1507,73 @@ export class BuildingRenderer {
             const gX = wheelX + Math.cos(angle) * 60;
             const gY = wheelY + Math.sin(angle) * 60;
             graphics.fillRect(gX - 8, gY - 8, 16, 16);
+            graphics.lineStyle(3, 0x000000, 1);
             graphics.strokeRect(gX - 8, gY - 8, 16, 16);
         }
+
+        // Circus tent (center-left)
+        const tentX = x - 80;
+        const tentY = y;
+
+        // Tent body (striped)
+        graphics.fillStyle(scheme.entrance, 1);
+        graphics.fillTriangle(
+            tentX - 50, tentY,
+            tentX, tentY - 100,
+            tentX + 50, tentY
+        );
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeTriangle(
+            tentX - 50, tentY,
+            tentX, tentY - 100,
+            tentX + 50, tentY
+        );
+
+        // Tent stripes
+        graphics.lineStyle(2, 0xFFFFFF, 1);
+        graphics.lineBetween(tentX - 40, tentY - 20, tentX, tentY - 100);
+        graphics.lineBetween(tentX - 20, tentY - 40, tentX, tentY - 100);
+        graphics.lineBetween(tentX + 20, tentY - 40, tentX, tentY - 100);
+        graphics.lineBetween(tentX + 40, tentY - 20, tentX, tentY - 100);
+
+        // Tent flag on top
+        graphics.fillStyle(scheme.flags, 1);
+        graphics.fillTriangle(
+            tentX, tentY - 100,
+            tentX + 15, tentY - 105,
+            tentX, tentY - 110
+        );
+
+        // Entrance gate (center-right)
+        graphics.fillStyle(scheme.entrance, 1);
+        graphics.fillRect(x + 20, y - 80, 80, 80);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x + 20, y - 80, 80, 80);
+
+        // Entrance archway
+        graphics.fillStyle(0xFFFFFF, 0.3);
+        graphics.fillCircle(x + 60, y - 40, 30);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeCircle(x + 60, y - 40, 30);
+
+        // Entrance sign "THEME PARK"
+        graphics.fillStyle(scheme.entrance, 1);
+        graphics.fillRect(x, y - 120, 120, 30);
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x, y - 120, 120, 30);
 
         // Roller coaster track (right side)
         graphics.lineStyle(5, scheme.ride2, 1);
         graphics.beginPath();
-        graphics.moveTo(x + 100, y);
-        graphics.bezierCurveTo(x + 120, y - 100, x + 180, y - 180, x + 220, y - 120);
-        graphics.bezierCurveTo(x + 240, y - 90, x + 200, y - 40, x + 180, y);
+        graphics.moveTo(x + 140, y);
+        graphics.bezierCurveTo(x + 160, y - 100, x + 200, y - 180, x + 220, y - 120);
+        graphics.bezierCurveTo(x + 230, y - 90, x + 210, y - 40, x + 200, y);
         graphics.strokePath();
 
         // Roller coaster supports
         graphics.lineStyle(2, 0x000000, 1);
-        graphics.lineBetween(x + 120, y, x + 120, y - 100);
-        graphics.lineBetween(x + 180, y, x + 180, y - 180);
+        graphics.lineBetween(x + 160, y, x + 160, y - 100);
+        graphics.lineBetween(x + 200, y, x + 200, y - 180);
         graphics.lineBetween(x + 220, y, x + 220, y - 120);
 
         // Fence along bottom
@@ -1547,8 +1596,6 @@ export class BuildingRenderer {
             );
         }
 
-        // Border
-        graphics.lineStyle(3, 0x000000, 1);
-        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+        // NO BORDER - keep it transparent!
     }
 }

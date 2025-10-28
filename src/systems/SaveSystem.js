@@ -174,8 +174,8 @@ export class SaveSystem {
         const newBuilding = this.scene.add.graphics();
         newBuilding.setDepth(10); // Buildings are on top of background
 
-        // Don't draw base rectangle for parks/recreation items (they draw everything custom)
-        if (type !== 'park' && type !== 'playground' && type !== 'fountain') {
+        // Don't draw base rectangle for parks/recreation items and theme park (they draw everything custom)
+        if (type !== 'park' && type !== 'playground' && type !== 'fountain' && type !== 'themePark') {
             newBuilding.fillStyle(building.color, 1);
             newBuilding.fillRect(x - building.width/2, buildingY - building.height, building.width, building.height);
             newBuilding.lineStyle(3, 0x000000, 1);
