@@ -3248,8 +3248,8 @@ class MainScene extends Phaser.Scene {
                                     }
                                 }
                             }
-                        } else if (room.status === 'clean' && !room.isOccupied) {
-                            // Room is clean and not occupied by tourist - new guest checks in (random)
+                        } else if (room.status === 'clean' && !room.isOccupied && Math.random() < 0.5) {
+                            // Room is clean and not occupied by tourist - 50% chance random guest checks in
                             room.status = 'occupied';
                             room.nightsOccupied = 0; // Will become 1 on next night check
                             console.log(`New guest checked into room ${roomIndex + 1}`);
@@ -4412,6 +4412,8 @@ class MainScene extends Phaser.Scene {
             for (let i = 0; i < building.rooms; i++) {
                 buildingData.rooms.push({
                     status: 'clean',  // clean, dirty, or occupied
+                    isOccupied: false,  // Is room occupied by a tourist
+                    guest: null,  // Reference to tourist citizen
                     nightsOccupied: 0,  // How many nights has current guest stayed
                     lastStatusChange: Date.now()
                 });
