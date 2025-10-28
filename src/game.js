@@ -104,6 +104,9 @@ class MainScene extends Phaser.Scene {
         // Initialize UI manager
         this.uiManager = new UIManager(this);
 
+        // Create notification ticker at bottom of screen
+        this.uiManager.createNotificationTicker();
+
         // Settings menu state
         this.settingsMenuOpen = false;
 

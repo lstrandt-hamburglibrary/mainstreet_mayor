@@ -78,6 +78,7 @@ export class CitizenSystem {
                 tourist.hotel = hotel;
 
                 console.log('🏨 Tourist checked into hotel room!');
+                this.scene.uiManager.addNotification('🏨 Tourist checked into hotel');
                 return true;
             }
         }
@@ -421,6 +422,9 @@ export class CitizenSystem {
                             shop.accumulatedIncome = (shop.accumulatedIncome || 0) + salePrice;
                             console.log(`🛍️ Customer bought items at ${shop.type}. Stock now: ${shop.inventory.stock}. Shop income: $${Math.floor(shop.accumulatedIncome)}`);
 
+                            const shopName = this.scene.buildingTypes[shop.type].name;
+                            this.scene.uiManager.addNotification(`🛍️ Purchase at ${shopName} - $${salePrice}`);
+
                             // Update UI if player is currently viewing this shop
                             if (this.scene.insideShop && this.scene.currentShop === shop) {
                                 this.scene.shopSystem.updateShopInventoryUI();
@@ -437,6 +441,9 @@ export class CitizenSystem {
                         // Customer pays for meal
                         restaurant.accumulatedIncome = (restaurant.accumulatedIncome || 0) + mealPrice;
                         console.log(`🍽️ Customer paid $${mealPrice} for meal. Restaurant income: $${Math.floor(restaurant.accumulatedIncome)}`);
+
+                        const restaurantName = this.scene.buildingTypes[restaurant.type].name;
+                        this.scene.uiManager.addNotification(`🍽️ Meal at ${restaurantName} - $${mealPrice}`);
 
                         // Mark table as dirty if citizen has an occupied table
                         if (citizen.occupiedTable) {
@@ -465,6 +472,8 @@ export class CitizenSystem {
                         // Customer pays for game plays
                         arcade.accumulatedIncome = (arcade.accumulatedIncome || 0) + gamePlayPrice;
                         console.log(`🕹️ Customer played games at ${arcade.type}. Arcade income: $${Math.floor(arcade.accumulatedIncome)}`);
+
+                        this.scene.uiManager.addNotification(`🕹️ Arcade visit - $${gamePlayPrice}`);
 
                         citizen.isEntertainmentVisit = false;
                     }
@@ -506,6 +515,10 @@ export class CitizenSystem {
                         if (totalIncome > 0) {
                             service.accumulatedIncome = (service.accumulatedIncome || 0) + totalIncome;
                             console.log(`${service.type} income: $${Math.floor(service.accumulatedIncome)}`);
+
+                            const serviceName = this.scene.buildingTypes[service.type].name;
+                            const icon = service.type === 'library' ? '📚' : '🏛️';
+                            this.scene.uiManager.addNotification(`${icon} ${serviceName} visit - $${totalIncome}`);
                         }
 
                         citizen.isServiceVisit = false;

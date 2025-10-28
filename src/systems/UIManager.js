@@ -5,6 +5,46 @@
 export class UIManager {
     constructor(scene) {
         this.scene = scene;
+        this.notifications = []; // Queue of notification messages
+        this.maxNotifications = 5; // Show last 5 notifications
+    }
+
+    createNotificationTicker() {
+        // Create notification ticker at bottom of screen
+        this.scene.notificationTicker = this.scene.add.text(10, this.scene.gameHeight - 30, '', {
+            fontSize: '14px',
+            color: '#FFFFFF',
+            backgroundColor: '#000000',
+            padding: { x: 8, y: 4 },
+            alpha: 0.8
+        }).setScrollFactor(0).setDepth(20000).setOrigin(0, 0);
+    }
+
+    addNotification(message) {
+        // Add timestamp
+        const totalMinutes = Math.floor(this.scene.gameTime);
+        const hour = Math.floor((totalMinutes % (24 * 60)) / 60);
+        const minute = totalMinutes % 60;
+        const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+
+        const notification = `[${timeStr}] ${message}`;
+        this.notifications.push(notification);
+
+        // Keep only last maxNotifications
+        if (this.notifications.length > this.maxNotifications) {
+            this.notifications.shift();
+        }
+
+        // Update ticker display
+        this.updateNotificationTicker();
+    }
+
+    updateNotificationTicker() {
+        if (!this.scene.notificationTicker) return;
+
+        // Join notifications with line breaks
+        const text = this.notifications.join('\n');
+        this.scene.notificationTicker.setText(text);
     }
 
     updateMoneyUI() {
