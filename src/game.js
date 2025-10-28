@@ -702,7 +702,8 @@ class MainScene extends Phaser.Scene {
                 { type: 'sub_shop', label: '🥖 Sub Shop', price: '$200', color: '#FFD700' }
             ],
             entertainment: [
-                { type: 'arcade', label: '🕹️ Arcade', price: '$350', color: '#FF00FF' }
+                { type: 'arcade', label: '🕹️ Arcade', price: '$350', color: '#FF00FF' },
+                { type: 'themePark', label: '🎡 Theme Park', price: '$2000', color: '#FF1493' }
             ],
             services: [
                 { type: 'library', label: '📖 Library', price: '$400', color: '#8B4513' },
@@ -1790,7 +1791,7 @@ class MainScene extends Phaser.Scene {
     }
 
     isEntertainment(buildingType) {
-        return ['arcade'].includes(buildingType);
+        return ['arcade', 'themePark'].includes(buildingType);
     }
 
     isService(buildingType) {
@@ -4864,12 +4865,18 @@ class MainScene extends Phaser.Scene {
                     }
 
                     // Spawn tourists from out of town (20% chance per bus stop)
-                    if (Math.random() < 0.2) {
-                        const touristCount = 1 + Math.floor(Math.random() * 3); // 1-3 tourists
+                    // Theme parks increase tourist spawns!
+                    const hasThemePark = this.buildings.some(b => b.type === 'themePark');
+                    const spawnChance = hasThemePark ? 0.6 : 0.2; // 3x more tourists with theme park!
+                    const maxTourists = hasThemePark ? 6 : 3; // More tourists at once with theme park
+
+                    if (Math.random() < spawnChance) {
+                        const touristCount = 1 + Math.floor(Math.random() * maxTourists);
                         for (let t = 0; t < touristCount; t++) {
                             this.citizenSystem.spawnTourist(stop.x);
                         }
-                        console.log(`🚌 ${touristCount} tourist(s) arrived from out of town!`);
+                        const parkBonus = hasThemePark ? ' 🎡' : '';
+                        console.log(`🚌 ${touristCount} tourist(s) arrived from out of town!${parkBonus}`);
                     }
 
                     // Pick up waiting citizens

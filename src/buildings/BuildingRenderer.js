@@ -53,6 +53,8 @@ export class BuildingRenderer {
             this.drawLibrary(graphics, building, x, y, facadeVariation);
         } else if (type === 'museum') {
             this.drawMuseum(graphics, building, x, y, facadeVariation);
+        } else if (type === 'themePark') {
+            this.drawThemePark(graphics, building, x, y, facadeVariation);
         } else if (type === 'bank') {
             this.drawBank(graphics, building, x, y, facadeVariation);
         } else if (type === 'market') {
@@ -1458,6 +1460,92 @@ export class BuildingRenderer {
         graphics.fillStyle(scheme.roof, 1);
         graphics.fillRect(x - 30, y - 65, 25, 60);
         graphics.fillRect(x + 5, y - 65, 25, 60);
+
+        // Border
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawThemePark(graphics, building, x, y, facadeVariation = 0) {
+        const scheme = ColorSchemes.themePark[facadeVariation % ColorSchemes.themePark.length];
+
+        // Entrance gate (center)
+        graphics.fillStyle(scheme.entrance, 1);
+        graphics.fillRect(x - 60, y - 80, 120, 80);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - 60, y - 80, 120, 80);
+
+        // Entrance archway
+        graphics.fillStyle(0xFFFFFF, 0.3);
+        graphics.fillCircle(x, y - 40, 40);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeCircle(x, y - 40, 40);
+
+        // Entrance sign "THEME PARK"
+        graphics.fillStyle(scheme.entrance, 1);
+        graphics.fillRect(x - 80, y - 120, 160, 30);
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - 80, y - 120, 160, 30);
+
+        // Ferris wheel (left side)
+        const wheelX = x - 180;
+        const wheelY = y - 180;
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeCircle(wheelX, wheelY, 60);
+
+        // Ferris wheel spokes
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            graphics.lineBetween(
+                wheelX, wheelY,
+                wheelX + Math.cos(angle) * 60,
+                wheelY + Math.sin(angle) * 60
+            );
+        }
+
+        // Ferris wheel gondolas
+        graphics.fillStyle(scheme.ride1, 1);
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const gX = wheelX + Math.cos(angle) * 60;
+            const gY = wheelY + Math.sin(angle) * 60;
+            graphics.fillRect(gX - 8, gY - 8, 16, 16);
+            graphics.strokeRect(gX - 8, gY - 8, 16, 16);
+        }
+
+        // Roller coaster track (right side)
+        graphics.lineStyle(5, scheme.ride2, 1);
+        graphics.beginPath();
+        graphics.moveTo(x + 100, y);
+        graphics.bezierCurveTo(x + 120, y - 100, x + 180, y - 180, x + 220, y - 120);
+        graphics.bezierCurveTo(x + 240, y - 90, x + 200, y - 40, x + 180, y);
+        graphics.strokePath();
+
+        // Roller coaster supports
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.lineBetween(x + 120, y, x + 120, y - 100);
+        graphics.lineBetween(x + 180, y, x + 180, y - 180);
+        graphics.lineBetween(x + 220, y, x + 220, y - 120);
+
+        // Fence along bottom
+        graphics.lineStyle(3, scheme.fence, 1);
+        for (let fx = -230; fx < 230; fx += 20) {
+            graphics.lineBetween(x + fx, y, x + fx, y - 30);
+        }
+        graphics.lineBetween(x - 230, y - 30, x + 230, y - 30);
+
+        // Colorful flags on top
+        for (let i = 0; i < 12; i++) {
+            const flagX = x - 220 + (i * 40);
+            const flagY = y - building.height + 10;
+            const flagColor = i % 3 === 0 ? scheme.flags : (i % 3 === 1 ? 0xFFFF00 : 0x00FF00);
+            graphics.fillStyle(flagColor, 1);
+            graphics.fillTriangle(
+                flagX, flagY,
+                flagX + 15, flagY + 10,
+                flagX, flagY + 20
+            );
+        }
 
         // Border
         graphics.lineStyle(3, 0x000000, 1);

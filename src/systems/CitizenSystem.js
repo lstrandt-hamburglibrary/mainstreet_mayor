@@ -482,17 +482,19 @@ export class CitizenSystem {
                         citizen.isDiningVisit = false;
                     }
 
-                    // Process arcade payment if this was an entertainment visit
+                    // Process entertainment payment if this was an entertainment visit
                     if (citizen.isEntertainmentVisit && citizen.targetBuilding && this.scene.isEntertainment(citizen.targetBuilding.type)) {
-                        const arcade = citizen.targetBuilding;
-                        const buildingType = this.scene.buildingTypes[arcade.type];
-                        const gamePlayPrice = buildingType.gamePlayPrice || 10;
+                        const entertainment = citizen.targetBuilding;
+                        const buildingType = this.scene.buildingTypes[entertainment.type];
+                        const price = buildingType.ticketPrice || buildingType.gamePlayPrice || 10;
 
-                        // Customer pays for game plays
-                        arcade.accumulatedIncome = (arcade.accumulatedIncome || 0) + gamePlayPrice;
-                        console.log(`🕹️ Customer played games at ${arcade.type}. Arcade income: $${Math.floor(arcade.accumulatedIncome)}`);
+                        // Customer pays for entertainment
+                        entertainment.accumulatedIncome = (entertainment.accumulatedIncome || 0) + price;
+                        console.log(`🎡 Customer visited ${entertainment.type}. Income: $${Math.floor(entertainment.accumulatedIncome)}`);
 
-                        this.scene.uiManager.addNotification(`🕹️ Arcade visit - $${gamePlayPrice}`);
+                        const icon = entertainment.type === 'themePark' ? '🎡' : '🕹️';
+                        const name = entertainment.type === 'themePark' ? 'Theme Park' : 'Arcade';
+                        this.scene.uiManager.addNotification(`${icon} ${name} visit - $${price}`);
 
                         citizen.isEntertainmentVisit = false;
                     }

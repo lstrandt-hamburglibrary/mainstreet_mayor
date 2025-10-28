@@ -241,6 +241,21 @@ export const BuildingTypes = {
         cafeChance: 0.30, // 30% of visitors use cafe
         cafePrice: 12 // $12 average cafe purchase
     },
+    themePark: {
+        name: 'Theme Park',
+        cost: 2000,
+        wood: 80,
+        bricks: 60,
+        width: 480, // Takes up 2 building spaces!
+        height: 300,
+        color: 0xFF1493, // Deep pink
+        district: 'downtown',
+        entertainmentType: 'themePark',
+        attractsTourists: true,
+        touristMultiplier: 3, // 3x tourist spawns when this exists
+        ticketPrice: 35, // $35 per visitor
+        open24Hours: true
+    },
     market: {
         name: 'Market',
         cost: 150,
@@ -417,5 +432,11 @@ export const ColorSchemes = {
         { building: 0xFFFAF0, columns: 0xF8F8FF, roof: 0xDAA520, window: 0xADD8E6, accent: 0xCD853F },  // Floral White/Gold
         { building: 0xFAF0E6, columns: 0xFFFFF0, roof: 0xFFD700, window: 0xB0E0E6, accent: 0xB8860B },  // Linen/Gold
         { building: 0xF0E68C, columns: 0xFFFFE0, roof: 0xDAA520, window: 0x87CEFA, accent: 0x9B7653 }   // Khaki/Light Yellow/Gold
+    ],
+    themePark: [
+        { entrance: 0xFF1493, ride1: 0x00CED1, ride2: 0xFFD700, fence: 0xFF69B4, flags: 0xFF0000 },  // Pink/Cyan/Gold
+        { entrance: 0x9370DB, ride1: 0xFF6347, ride2: 0x32CD32, fence: 0xBA55D3, flags: 0xFFFF00 },  // Purple/Red/Green
+        { entrance: 0xFF4500, ride1: 0x1E90FF, ride2: 0xFF69B4, fence: 0xFF8C00, flags: 0x00FF00 },  // Orange/Blue/Pink
+        { entrance: 0x00BFFF, ride1: 0xFF1493, ride2: 0xFFD700, fence: 0x87CEEB, flags: 0xFF0000 }   // Sky Blue/Pink/Gold
     ]
 };
