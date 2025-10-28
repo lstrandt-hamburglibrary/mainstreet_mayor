@@ -4883,6 +4883,12 @@ class MainScene extends Phaser.Scene {
                                 citizen.hotelRoom.guest = null;
                                 console.log('🏨 Tourist checked out - room is now dirty');
 
+                                // If maid is hired, clean the room immediately
+                                if (citizen.hotel.hasMaid) {
+                                    citizen.hotelRoom.status = 'clean';
+                                    console.log('🧹 Maid immediately cleaned room after tourist checkout!');
+                                }
+
                                 // Update hotel UI if player is viewing this hotel
                                 if (this.insideHotel && this.currentHotel === citizen.hotel) {
                                     this.hotelSystem.updateHotelUI();
