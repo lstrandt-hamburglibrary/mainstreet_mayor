@@ -57,7 +57,13 @@ export class SaveSystem {
                 pendingCitizens: this.scene.pendingCitizens
             };
             localStorage.setItem('mainstreetmayor_save', JSON.stringify(saveData));
-            console.log(`Game saved! ${this.scene.buildings.length} buildings:`, this.scene.buildings.map(b => `${b.type} at x=${b.x}`));
+            console.log(`💾 Game saved! ${this.scene.buildings.length} buildings:`, this.scene.buildings.map(b => `${b.type} at x=${b.x}`));
+
+            // Extra logging for theme parks
+            const themeParks = this.scene.buildings.filter(b => b.type === 'themePark');
+            if (themeParks.length > 0) {
+                console.log(`🎡 Saved ${themeParks.length} theme park(s):`, themeParks.map(b => `x=${b.x}`));
+            }
         } catch (error) {
             console.error('Error saving game:', error);
             // Game continues even if save fails
@@ -108,7 +114,13 @@ export class SaveSystem {
 
             // Restore buildings
             if (saveData.buildings && saveData.buildings.length > 0) {
-                console.log(`Loading ${saveData.buildings.length} buildings from save:`, saveData.buildings);
+                console.log(`📦 Loading ${saveData.buildings.length} buildings from save:`, saveData.buildings.map(b => b.type));
+
+                // Extra logging for theme parks
+                const savedThemeParks = saveData.buildings.filter(b => b.type === 'themePark');
+                if (savedThemeParks.length > 0) {
+                    console.log(`🎡 Found ${savedThemeParks.length} theme park(s) in save data:`, savedThemeParks);
+                }
                 saveData.buildings.forEach((buildingData, index) => {
                     // Migration: Convert old 'shop' type to 'clothingShop'
                     if (buildingData.type === 'shop') {
@@ -160,11 +172,14 @@ export class SaveSystem {
     }
 
     loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0, hasMaid = null, maidDailyWage = null, lastMaidWageCheck = null, lastMaidClean = null, tables = null, hasDayWaiter = null, hasNightWaiter = null, dayWaiterWage = null, nightWaiterWage = null, mealPrice = null) {
+        console.log(`🔍 Attempting to load building: type=${type}, x=${x}`);
         const building = this.scene.buildingTypes[type];
         if (!building) {
-            console.error(`Building type ${type} not found!`);
+            console.error(`❌ Building type '${type}' not found in buildingTypes!`);
+            console.error(`Available types:`, Object.keys(this.scene.buildingTypes));
             return;
         }
+        console.log(`✅ Found building type '${type}':`, building);
 
         // Always use current ground level instead of saved Y coordinate
         const buildingY = this.scene.gameHeight - 100;
@@ -209,16 +224,6 @@ export class SaveSystem {
         } else if (type === 'market') {
             // Add market emoji
             const awning = this.scene.add.text(x, buildingY - building.height / 2, '🏪', {
-                fontSize: '60px'
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'lumbermill') {
-            // Add tree/wood icon
-            const woodIcon = this.scene.add.text(x, buildingY - building.height / 2, '🌲', {
-                fontSize: '60px'
-            }).setOrigin(0.5).setDepth(11);
-        } else if (type === 'brickfactory') {
-            // Add brick icon
-            const brickIcon = this.scene.add.text(x, buildingY - building.height / 2, '🧱', {
                 fontSize: '60px'
             }).setOrigin(0.5).setDepth(11);
         }

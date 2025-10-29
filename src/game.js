@@ -798,24 +798,30 @@ class MainScene extends Phaser.Scene {
 
         this.buildConfirmButton.on('pointerdown', () => {
             console.log('✅ PLACE button clicked');
-            const success = this.placeBuilding();
-            this.buildConfirmContainer.setVisible(false);
-            this.buildConfirmShowing = false;
-            console.log('Confirmation dialog hidden, buildConfirmShowing:', this.buildConfirmShowing);
+            try {
+                const success = this.placeBuilding();
 
-            // Only clear selection if building was successfully placed
-            if (success !== false) {
-                // Clear the preview and selection after placing so user can pick another building
-                if (this.buildingPreview) {
-                    this.buildingPreview.destroy();
-                    this.buildingPreview = null;
+                // Only clear selection if building was successfully placed
+                if (success !== false) {
+                    // Clear the preview and selection after placing so user can pick another building
+                    if (this.buildingPreview) {
+                        this.buildingPreview.destroy();
+                        this.buildingPreview = null;
+                    }
+                    this.selectedBuilding = null;
+                    this.updateBuildingButtonStates(); // Update UI to show no building selected
+                    // buildMode stays ON so user can continue building
+                    console.log('Building placed successfully - buildMode:', this.buildMode);
+                } else {
+                    console.log('Building placement failed - keeping selection');
                 }
-                this.selectedBuilding = null;
-                this.updateBuildingButtonStates(); // Update UI to show no building selected
-                // buildMode stays ON so user can continue building
-                console.log('Building placed successfully - buildMode:', this.buildMode);
-            } else {
-                console.log('Building placement failed - keeping selection');
+            } catch (error) {
+                console.error('Error placing building:', error);
+            } finally {
+                // ALWAYS hide the confirmation dialog, even if there was an error
+                this.buildConfirmContainer.setVisible(false);
+                this.buildConfirmShowing = false;
+                console.log('Confirmation dialog hidden, buildConfirmShowing:', this.buildConfirmShowing);
             }
         });
 
@@ -3130,8 +3136,11 @@ class MainScene extends Phaser.Scene {
                     if (!building.resourceIndicator || !building.resourceIndicator.scene) {
                         building.resourceIndicator = this.add.text(building.x, building.y - buildingType.height - 80, icon, {
                             fontSize: '24px'
-                        }).setOrigin(0.5);
+                        }).setOrigin(0.5).setDepth(12);
                     } else {
+                        // Update position to stay above building
+                        building.resourceIndicator.x = building.x;
+                        building.resourceIndicator.y = building.y - buildingType.height - 80;
                         building.resourceIndicator.setVisible(true);
                     }
                 } else {
@@ -4043,9 +4052,30 @@ class MainScene extends Phaser.Scene {
 
         // Resource building interaction
         if (this.nearResourceBuilding && !this.resourceBuildingMenuOpen && !this.buildMode && !this.bankMenuOpen && !this.nearIncomeBuilding && !this.restartConfirmShowing) {
-            // Show prompt above the resource building with building name
             const resourceType = this.buildingTypes[this.nearResourceBuilding.type];
-            const promptText = `Press E: ${resourceType.name}`;
+            let promptText = '';
+
+            // Different behavior for market vs lumber/brick
+            if (this.nearResourceBuilding.type === 'market') {
+                // Market opens a menu
+                promptText = `Press E: ${resourceType.name}`;
+            } else if (this.nearResourceBuilding.type === 'lumbermill') {
+                // Lumber mill - direct collection
+                const available = Math.floor(this.nearResourceBuilding.storedResources);
+                if (available >= 1) {
+                    promptText = `Press E to collect ${available} wood`;
+                } else {
+                    promptText = `🪵 Regenerating... (${resourceType.regenRate} wood/min)`;
+                }
+            } else if (this.nearResourceBuilding.type === 'brickfactory') {
+                // Brick factory - direct collection
+                const available = Math.floor(this.nearResourceBuilding.storedResources);
+                if (available >= 1) {
+                    promptText = `Press E to collect ${available} bricks`;
+                } else {
+                    promptText = `🧱 Regenerating... (${resourceType.regenRate} bricks/min)`;
+                }
+            }
 
             if (!this.resourcePrompt) {
                 this.resourcePrompt = this.add.text(this.nearResourceBuilding.x, this.nearResourceBuilding.y - resourceType.height - 100, promptText, {
@@ -4061,9 +4091,18 @@ class MainScene extends Phaser.Scene {
                 this.resourcePrompt.setVisible(true);
             }
 
-            // Open resource building menu
+            // Handle E key press
             if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                this.openResourceBuildingMenu();
+                if (this.nearResourceBuilding.type === 'market') {
+                    // Market opens menu
+                    this.openResourceBuildingMenu();
+                } else if (this.nearResourceBuilding.type === 'lumbermill') {
+                    // Collect wood directly
+                    this.collectWood();
+                } else if (this.nearResourceBuilding.type === 'brickfactory') {
+                    // Collect bricks directly
+                    this.collectBricks();
+                }
             }
         } else {
             if (this.resourcePrompt) {
@@ -4073,6 +4112,12 @@ class MainScene extends Phaser.Scene {
 
         // Handle resource building menu
         if (this.resourceBuildingMenuOpen) {
+            // Safety check: if nearResourceBuilding became null, close the menu
+            if (!this.nearResourceBuilding) {
+                this.closeResourceBuildingMenu();
+                return;
+            }
+
             // Close menu
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || Phaser.Input.Keyboard.JustDown(this.enterKey)) {
                 this.closeResourceBuildingMenu();
@@ -4327,16 +4372,6 @@ class MainScene extends Phaser.Scene {
         } else if (this.selectedBuilding === 'market') {
             // Add market emoji
             const awning = this.add.text(x, y - building.height / 2, '🏪', {
-                fontSize: '60px'
-            }).setOrigin(0.5).setDepth(11);
-        } else if (this.selectedBuilding === 'lumbermill') {
-            // Add tree/wood icon
-            const woodIcon = this.add.text(x, y - building.height / 2, '🌲', {
-                fontSize: '60px'
-            }).setOrigin(0.5).setDepth(11);
-        } else if (this.selectedBuilding === 'brickfactory') {
-            // Add brick icon
-            const brickIcon = this.add.text(x, y - building.height / 2, '🧱', {
                 fontSize: '60px'
             }).setOrigin(0.5).setDepth(11);
         }
@@ -4856,12 +4891,28 @@ class MainScene extends Phaser.Scene {
                         const passenger = bus.passengers[j];
                         // Some passengers randomly get off at stops
                         if (Math.random() < 0.3 || passenger.targetStopIndex === i) {
-                            // Remove from bus and place on street
+                            // Remove from bus
                             bus.passengers.splice(j, 1);
-                            passenger.citizen.container.setVisible(true);
-                            passenger.citizen.x = stop.x + (Math.random() * 100 - 50);
-                            passenger.citizen.container.x = passenger.citizen.x;
-                            passenger.citizen.state = 'walking';
+
+                            // If tourist is leaving town, destroy them completely
+                            if (passenger.isLeavingTown) {
+                                // Remove from citizens array
+                                const citizenIndex = this.citizens.indexOf(passenger.citizen);
+                                if (citizenIndex > -1) {
+                                    this.citizens.splice(citizenIndex, 1);
+                                }
+                                // Destroy visual
+                                if (passenger.citizen.container && passenger.citizen.container.destroy) {
+                                    passenger.citizen.container.destroy();
+                                }
+                                console.log('👋 Tourist left town!');
+                            } else {
+                                // Regular passenger - place on street
+                                passenger.citizen.container.setVisible(true);
+                                passenger.citizen.x = stop.x + (Math.random() * 100 - 50);
+                                passenger.citizen.container.x = passenger.citizen.x;
+                                passenger.citizen.state = 'walking';
+                            }
                         }
                     }
 
@@ -4903,12 +4954,20 @@ class MainScene extends Phaser.Scene {
                                 }
                             }
 
+                            // Check if tourist is leaving town (has targetBusStop set)
+                            const isLeavingTown = citizen.isTourist && citizen.targetBusStop;
+
                             bus.passengers.push({
                                 citizen: citizen,
-                                targetStopIndex: Math.floor(Math.random() * this.busStops.length)
+                                targetStopIndex: isLeavingTown ? -1 : Math.floor(Math.random() * this.busStops.length), // -1 means leaving town
+                                isLeavingTown: isLeavingTown
                             });
                             citizen.container.setVisible(false); // Hide citizen while on bus
                             citizen.state = 'riding';
+
+                            if (isLeavingTown) {
+                                console.log('🚌 Tourist boarding bus to leave town');
+                            }
 
                             // Remove from waiting list
                             const index = stop.waitingCitizens.indexOf(citizen);

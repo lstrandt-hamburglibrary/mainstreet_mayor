@@ -1,5 +1,6 @@
 import { BuildingTypes, ColorSchemes } from '../config/GameConfig.js';
 
+// Cache buster: v2.0 - Fixed bezierCurveTo and strokeArc issues
 export class BuildingRenderer {
     constructor(scene) {
         this.scene = scene;
@@ -980,15 +981,220 @@ export class BuildingRenderer {
     }
 
     drawLumberMill(graphics, building, x, y, facadeVariation) {
-        // TODO: Implement lumber mill building design
-        graphics.fillStyle(building.color, 1);
+        const scheme = ColorSchemes.lumbermill[facadeVariation % 4];
+
+        // Main building (rustic wood building)
+        graphics.fillStyle(scheme.building, 1);
         graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Slanted roof
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.beginPath();
+        graphics.moveTo(x - building.width/2 - 10, y - building.height);
+        graphics.lineTo(x, y - building.height - 30);
+        graphics.lineTo(x + building.width/2 + 10, y - building.height);
+        graphics.closePath();
+        graphics.fillPath();
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokePath();
+
+        // Wood planks texture (horizontal lines)
+        graphics.lineStyle(2, this.darkenColor(scheme.building, 0.85), 1);
+        for (let i = 1; i < 5; i++) {
+            const plankY = y - building.height + (i * 40);
+            graphics.lineBetween(x - building.width/2, plankY, x + building.width/2, plankY);
+        }
+
+        // Large saw blade on the side (iconic lumber mill feature)
+        const sawX = x + 60;
+        const sawY = y - building.height + 60; // Moved up 10px
+        const sawRadius = 35;
+
+        // Saw blade circle
+        graphics.fillStyle(scheme.sawBlade, 1);
+        graphics.fillCircle(sawX, sawY, sawRadius);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeCircle(sawX, sawY, sawRadius);
+
+        // Saw teeth (triangular points around the blade)
+        graphics.fillStyle(scheme.sawBlade, 1);
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const x1 = sawX + Math.cos(angle) * sawRadius;
+            const y1 = sawY + Math.sin(angle) * sawRadius;
+            const x2 = sawX + Math.cos(angle) * (sawRadius + 8);
+            const y2 = sawY + Math.sin(angle) * (sawRadius + 8);
+            const nextAngle = ((i + 1) / 12) * Math.PI * 2;
+            const x3 = sawX + Math.cos(nextAngle) * sawRadius;
+            const y3 = sawY + Math.sin(nextAngle) * sawRadius;
+
+            graphics.beginPath();
+            graphics.moveTo(x1, y1);
+            graphics.lineTo(x2, y2);
+            graphics.lineTo(x3, y3);
+            graphics.closePath();
+            graphics.fillPath();
+        }
+
+        // Center bolt on saw
+        graphics.fillStyle(0x424242, 1);
+        graphics.fillCircle(sawX, sawY, 8);
+
+        // Stacked logs in front of building
+        for (let i = 0; i < 3; i++) {
+            const logX = x - 60 + (i * 25);
+            const logY = y - 30;
+
+            // Log body
+            graphics.fillStyle(scheme.logs, 1);
+            graphics.fillRect(logX - 10, logY, 20, 30);
+
+            // Wood grain rings on top
+            graphics.lineStyle(1, this.darkenColor(scheme.logs, 0.7), 1);
+            graphics.strokeCircle(logX, logY + 2, 6);
+            graphics.strokeCircle(logX, logY + 2, 4);
+        }
+
+        // Loading door (upper level)
+        graphics.fillStyle(this.darkenColor(scheme.building, 0.6), 1);
+        graphics.fillRect(x - 30, y - building.height + 30, 30, 40);
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - 30, y - building.height + 30, 30, 40);
+
+        // Windows
+        graphics.fillStyle(scheme.window, 1);
+        graphics.fillRect(x - 70, y - building.height + 100, 25, 30);
+        graphics.fillRect(x + 10, y - building.height + 100, 25, 30);
+
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - 70, y - building.height + 100, 25, 30);
+        graphics.strokeRect(x + 10, y - building.height + 100, 25, 30);
+
+        // Window panes (cross)
+        graphics.lineBetween(x - 57.5, y - building.height + 100, x - 57.5, y - building.height + 130);
+        graphics.lineBetween(x - 70, y - building.height + 115, x - 45, y - building.height + 115);
+        graphics.lineBetween(x + 22.5, y - building.height + 100, x + 22.5, y - building.height + 130);
+        graphics.lineBetween(x + 10, y - building.height + 115, x + 35, y - building.height + 115);
+
+        // Main door
+        graphics.fillStyle(this.darkenColor(scheme.building, 0.5), 1);
+        graphics.fillRect(x - 20, y - 50, 40, 50);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - 20, y - 50, 40, 50);
+
+        // Border
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
     }
 
     drawBrickFactory(graphics, building, x, y, facadeVariation) {
-        // TODO: Implement brick factory building design
-        graphics.fillStyle(building.color, 1);
+        const scheme = ColorSchemes.brickfactory[facadeVariation % 4];
+
+        // Main building (brick texture)
+        graphics.fillStyle(scheme.building, 1);
         graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Brick pattern (rows of bricks)
+        graphics.lineStyle(1, this.darkenColor(scheme.building, 0.75), 1);
+        for (let row = 0; row < 10; row++) {
+            const brickY = y - building.height + (row * 20);
+            const offsetX = (row % 2) * 10; // Alternate rows for brick pattern
+
+            for (let col = 0; col < 5; col++) {
+                const brickX = x - building.width/2 + offsetX + (col * 40);
+                graphics.strokeRect(brickX, brickY, 38, 18);
+            }
+        }
+
+        // Tall chimney on the left side (industrial feature)
+        const chimneyX = x - 70;
+        const chimneyWidth = 25;
+        const chimneyHeight = 100;
+
+        graphics.fillStyle(scheme.chimney, 1);
+        graphics.fillRect(chimneyX - chimneyWidth/2, y - building.height - chimneyHeight, chimneyWidth, chimneyHeight);
+
+        // Chimney top (wider)
+        graphics.fillRect(chimneyX - chimneyWidth/2 - 3, y - building.height - chimneyHeight, chimneyWidth + 6, 8);
+
+        // Chimney brick detail
+        graphics.lineStyle(1, 0x000000, 0.5);
+        for (let i = 0; i < 5; i++) {
+            graphics.lineBetween(
+                chimneyX - chimneyWidth/2,
+                y - building.height - chimneyHeight + (i * 20),
+                chimneyX + chimneyWidth/2,
+                y - building.height - chimneyHeight + (i * 20)
+            );
+        }
+
+        // Smoke from chimney
+        graphics.fillStyle(0x808080, 0.3);
+        graphics.fillCircle(chimneyX - 5, y - building.height - chimneyHeight - 15, 8);
+        graphics.fillCircle(chimneyX + 3, y - building.height - chimneyHeight - 25, 10);
+        graphics.fillCircle(chimneyX - 8, y - building.height - chimneyHeight - 35, 9);
+
+        // Kiln/furnace opening (glowing)
+        graphics.fillStyle(scheme.kiln, 1);
+        graphics.beginPath();
+        graphics.arc(x + 40, y - 60, 20, Math.PI, 0, true); // Arch opening
+        graphics.closePath();
+        graphics.fillPath();
+
+        graphics.lineStyle(3, this.darkenColor(scheme.kiln, 0.7), 1);
+        graphics.beginPath();
+        graphics.arc(x + 40, y - 60, 20, Math.PI, 0, true);
+        graphics.strokePath();
+
+        // Glow effect from kiln
+        graphics.fillStyle(0xFFFF00, 0.3);
+        graphics.fillCircle(x + 40, y - 50, 15);
+
+        // Stacked bricks (finished product) in front
+        for (let stack = 0; stack < 2; stack++) {
+            for (let layer = 0; layer < 3; layer++) {
+                const stackX = x - 50 + (stack * 35);
+                const stackY = y - 25 + (layer * -8);
+
+                graphics.fillStyle(scheme.bricks, 1);
+                graphics.fillRect(stackX - 15, stackY, 30, 8);
+                graphics.lineStyle(1, 0x000000, 1);
+                graphics.strokeRect(stackX - 15, stackY, 30, 8);
+
+                // Brick divisions
+                graphics.lineBetween(stackX - 5, stackY, stackX - 5, stackY + 8);
+                graphics.lineBetween(stackX + 5, stackY, stackX + 5, stackY + 8);
+            }
+        }
+
+        // Industrial windows (small and high up)
+        graphics.fillStyle(scheme.window, 1);
+        for (let i = 0; i < 3; i++) {
+            const winX = x - 60 + (i * 35);
+            graphics.fillRect(winX, y - building.height + 40, 20, 25);
+            graphics.lineStyle(2, 0x000000, 1);
+            graphics.strokeRect(winX, y - building.height + 40, 20, 25);
+
+            // Window panes
+            graphics.lineBetween(winX + 10, y - building.height + 40, winX + 10, y - building.height + 65);
+            graphics.lineBetween(winX, y - building.height + 52.5, winX + 20, y - building.height + 52.5);
+        }
+
+        // Large loading door
+        graphics.fillStyle(this.darkenColor(scheme.building, 0.5), 1);
+        graphics.fillRect(x - 25, y - 80, 50, 80);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - 25, y - 80, 50, 80);
+
+        // Door panels (industrial garage door look)
+        graphics.lineStyle(2, this.darkenColor(scheme.building, 0.6), 1);
+        for (let i = 1; i < 5; i++) {
+            graphics.lineBetween(x - 25, y - 80 + (i * 16), x + 25, y - 80 + (i * 16));
+        }
+
+        // Border
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
     }
 
     drawPark(graphics, building, x, y, facadeVariation) {
@@ -1562,13 +1768,18 @@ export class BuildingRenderer {
         graphics.lineStyle(2, 0x000000, 1);
         graphics.strokeRect(x, y - 120, 120, 30);
 
-        // Roller coaster track (right side)
+        // Roller coaster track (right side) - using line segments for wavy effect
         graphics.lineStyle(5, scheme.ride2, 1);
-        graphics.beginPath();
-        graphics.moveTo(x + 140, y);
-        graphics.bezierCurveTo(x + 160, y - 100, x + 200, y - 180, x + 220, y - 120);
-        graphics.bezierCurveTo(x + 230, y - 90, x + 210, y - 40, x + 200, y);
-        graphics.strokePath();
+        // First hill up
+        graphics.lineBetween(x + 140, y, x + 160, y - 100);
+        graphics.lineBetween(x + 160, y - 100, x + 180, y - 160);
+        graphics.lineBetween(x + 180, y - 160, x + 200, y - 180);
+        // Down and up again
+        graphics.lineBetween(x + 200, y - 180, x + 220, y - 120);
+        graphics.lineBetween(x + 220, y - 120, x + 230, y - 70);
+        // Final drop
+        graphics.lineBetween(x + 230, y - 70, x + 220, y - 30);
+        graphics.lineBetween(x + 220, y - 30, x + 200, y);
 
         // Roller coaster supports
         graphics.lineStyle(2, 0x000000, 1);

@@ -438,5 +438,17 @@ export const ColorSchemes = {
         { entrance: 0x9370DB, ride1: 0xFF6347, ride2: 0x32CD32, fence: 0xBA55D3, flags: 0xFFFF00 },  // Purple/Red/Green
         { entrance: 0xFF4500, ride1: 0x1E90FF, ride2: 0xFF69B4, fence: 0xFF8C00, flags: 0x00FF00 },  // Orange/Blue/Pink
         { entrance: 0x00BFFF, ride1: 0xFF1493, ride2: 0xFFD700, fence: 0x87CEEB, flags: 0xFF0000 }   // Sky Blue/Pink/Gold
+    ],
+    lumbermill: [
+        { building: 0x8D6E63, roof: 0x5D4037, logs: 0x6D4C41, sawBlade: 0xC0C0C0, window: 0xFFE0B2 },  // Brown/Dark Brown/Silver
+        { building: 0x795548, roof: 0x4E342E, logs: 0x5D4037, sawBlade: 0xB0B0B0, window: 0xFFECB3 },  // Brown variations
+        { building: 0xA1887F, roof: 0x6D4C41, logs: 0x795548, sawBlade: 0xD3D3D3, window: 0xFFE082 },  // Lighter brown
+        { building: 0x8B7355, roof: 0x654321, logs: 0x704214, sawBlade: 0xC8C8C8, window: 0xFFEBCD }   // Tan/Brown
+    ],
+    brickfactory: [
+        { building: 0xD84315, chimney: 0x5D4037, bricks: 0xBF360C, kiln: 0xFF5722, window: 0xFFE0B2 },  // Orange-Red/Dark Brown
+        { building: 0xE64A19, chimney: 0x4E342E, bricks: 0xD84315, kiln: 0xFF6F00, window: 0xFFECB3 },  // Brighter Red
+        { building: 0xBF360C, chimney: 0x3E2723, bricks: 0xD84315, kiln: 0xF4511E, window: 0xFFCCBC },  // Deep Red
+        { building: 0xFF5722, chimney: 0x6D4C41, bricks: 0xE64A19, kiln: 0xFF7043, window: 0xFFAB91 }   // Bright Orange-Red
     ]
 };
