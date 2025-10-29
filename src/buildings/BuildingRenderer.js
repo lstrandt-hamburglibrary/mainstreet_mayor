@@ -968,10 +968,136 @@ export class BuildingRenderer {
     // They use default colors from BuildingTypes
 
     drawBank(graphics, building, x, y, facadeVariation) {
-        // TODO: Implement bank building design
-        // For now, draw a simple placeholder
-        graphics.fillStyle(building.color, 1);
-        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+        // Classical bank building with columns and grand entrance
+        const leftX = x - building.width/2;
+        const topY = y - building.height;
+
+        // Main building body (marble white/cream)
+        graphics.fillStyle(0xF5F5DC, 1); // Beige/cream color
+        graphics.fillRect(leftX, topY, building.width, building.height);
+
+        // Dark base foundation
+        graphics.fillStyle(0x4A4A4A, 1);
+        graphics.fillRect(leftX, y - 40, building.width, 40);
+
+        // Grand entrance steps (3 levels)
+        graphics.fillStyle(0x696969, 1);
+        graphics.fillRect(leftX + 40, y - 10, building.width - 80, 10); // Top step
+        graphics.fillRect(leftX + 30, y - 20, building.width - 60, 10); // Middle step
+        graphics.fillRect(leftX + 20, y - 30, building.width - 40, 10); // Bottom step
+
+        // Top pediment (triangular roof)
+        graphics.fillStyle(0xD3D3D3, 1);
+        graphics.beginPath();
+        graphics.moveTo(leftX - 10, topY + 30);
+        graphics.lineTo(x, topY - 10);
+        graphics.lineTo(leftX + building.width + 10, topY + 30);
+        graphics.closePath();
+        graphics.fillPath();
+
+        // Pediment border
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.beginPath();
+        graphics.moveTo(leftX - 10, topY + 30);
+        graphics.lineTo(x, topY - 10);
+        graphics.lineTo(leftX + building.width + 10, topY + 30);
+        graphics.closePath();
+        graphics.strokePath();
+
+        // Classical columns (4 grand columns)
+        const columnWidth = 25;
+        const columnSpacing = building.width / 5;
+
+        for (let i = 1; i <= 4; i++) {
+            const columnX = leftX + (i * columnSpacing) - columnWidth/2;
+            const columnY = topY + 30;
+            const columnHeight = building.height - 70;
+
+            // Column shaft
+            graphics.fillStyle(0xFFFFFF, 1);
+            graphics.fillRect(columnX, columnY, columnWidth, columnHeight);
+            graphics.lineStyle(2, 0x000000, 1);
+            graphics.strokeRect(columnX, columnY, columnWidth, columnHeight);
+
+            // Column capital (decorative top)
+            graphics.fillStyle(0xE8E8E8, 1);
+            graphics.fillRect(columnX - 5, columnY - 15, columnWidth + 10, 15);
+            graphics.lineStyle(2, 0x000000, 1);
+            graphics.strokeRect(columnX - 5, columnY - 15, columnWidth + 10, 15);
+
+            // Column base
+            graphics.fillStyle(0xE8E8E8, 1);
+            graphics.fillRect(columnX - 5, columnY + columnHeight, columnWidth + 10, 10);
+            graphics.lineStyle(2, 0x000000, 1);
+            graphics.strokeRect(columnX - 5, columnY + columnHeight, columnWidth + 10, 10);
+
+            // Vertical fluting lines on column
+            graphics.lineStyle(1, 0xD3D3D3, 0.5);
+            for (let f = 0; f < 3; f++) {
+                const flutingX = columnX + 5 + (f * 7);
+                graphics.lineBetween(flutingX, columnY, flutingX, columnY + columnHeight);
+            }
+        }
+
+        // Grand entrance door (dark wood)
+        const doorWidth = 60;
+        const doorHeight = 100;
+        graphics.fillStyle(0x3E2723, 1); // Dark brown
+        graphics.fillRect(x - doorWidth/2, y - doorHeight - 30, doorWidth, doorHeight);
+        graphics.lineStyle(3, 0x000000, 1);
+        graphics.strokeRect(x - doorWidth/2, y - doorHeight - 30, doorWidth, doorHeight);
+
+        // Door panels
+        graphics.lineStyle(2, 0x5D4037, 1);
+        graphics.strokeRect(x - doorWidth/2 + 5, y - doorHeight - 25, doorWidth - 10, doorHeight/2 - 10);
+        graphics.strokeRect(x - doorWidth/2 + 5, y - doorHeight/2 - 35, doorWidth - 10, doorHeight/2 - 10);
+
+        // Door handle (gold)
+        graphics.fillStyle(0xFFD700, 1);
+        graphics.fillCircle(x + 15, y - 70, 4);
+
+        // Windows on upper floor (arched windows)
+        const windowY = topY + 60;
+        const windowSpacing = building.width / 3;
+
+        for (let i = 1; i <= 2; i++) {
+            const winX = leftX + (i * windowSpacing);
+            const winWidth = 35;
+            const winHeight = 50;
+
+            // Window frame
+            graphics.fillStyle(0x87CEEB, 1); // Sky blue glass
+            graphics.fillRect(winX - winWidth/2, windowY, winWidth, winHeight);
+
+            // Arched top
+            graphics.beginPath();
+            graphics.arc(winX, windowY, winWidth/2, Math.PI, 0, false);
+            graphics.fillPath();
+
+            // Window border
+            graphics.lineStyle(3, 0x000000, 1);
+            graphics.strokeRect(winX - winWidth/2, windowY, winWidth, winHeight);
+            graphics.beginPath();
+            graphics.arc(winX, windowY, winWidth/2, Math.PI, 0, false);
+            graphics.strokePath();
+
+            // Window cross bars
+            graphics.lineStyle(2, 0x4A4A4A, 1);
+            graphics.lineBetween(winX, windowY, winX, windowY + winHeight);
+        }
+
+        // Building name frieze (decorative band below pediment)
+        graphics.fillStyle(0xC0C0C0, 1);
+        graphics.fillRect(leftX, topY + 30, building.width, 20);
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(leftX, topY + 30, building.width, 20);
+
+        // Ornamental details on frieze
+        graphics.fillStyle(0xFFD700, 1);
+        for (let i = 0; i < 5; i++) {
+            const detailX = leftX + 30 + (i * 40);
+            graphics.fillCircle(detailX, topY + 40, 3);
+        }
     }
 
     drawMarket(graphics, building, x, y, facadeVariation) {

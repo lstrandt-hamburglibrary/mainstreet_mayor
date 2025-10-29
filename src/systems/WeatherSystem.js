@@ -7,6 +7,7 @@ export class WeatherSystem {
         this.scene = scene;
         this.currentWeather = 'sunny'; // sunny, rainy, snowy
         this.weatherParticles = [];
+        this.clouds = []; // Cloud graphics
         this.nextWeatherChange = null;
         this.weatherDuration = 0; // How long current weather lasts (in game minutes)
         this.weatherStartTime = 0;
@@ -92,9 +93,44 @@ export class WeatherSystem {
     }
 
     /**
+     * Create clouds that cover the sun
+     */
+    createClouds() {
+        const numClouds = 8; // Number of clouds
+
+        for (let i = 0; i < numClouds; i++) {
+            const x = (i * 1500) + Math.random() * 300;
+            const y = 50 + Math.random() * 150; // Upper portion of sky
+
+            const cloud = this.scene.add.graphics();
+            cloud.fillStyle(0x909090, 0.7); // Gray clouds
+
+            // Draw cloud using overlapping circles
+            cloud.fillCircle(0, 0, 40);
+            cloud.fillCircle(30, -10, 35);
+            cloud.fillCircle(60, 0, 40);
+            cloud.fillCircle(90, -5, 30);
+            cloud.fillCircle(45, 10, 35);
+
+            cloud.setPosition(x, y);
+            cloud.setDepth(4); // Behind mountains (6) but above sky (1)
+            cloud.setScrollFactor(0.3); // Slow parallax for distance effect
+
+            // Store drift speed
+            cloud.driftSpeed = 10 + Math.random() * 20; // Slow drift
+            cloud.startX = x;
+
+            this.clouds.push(cloud);
+        }
+    }
+
+    /**
      * Create rain particles
      */
     createRain() {
+        // Create clouds first
+        this.createClouds();
+
         const numDrops = 150; // Number of raindrops visible at once
 
         for (let i = 0; i < numDrops; i++) {
@@ -121,6 +157,9 @@ export class WeatherSystem {
      * Create snow particles
      */
     createSnow() {
+        // Create clouds first
+        this.createClouds();
+
         const numFlakes = 100; // Number of snowflakes visible at once
 
         for (let i = 0; i < numFlakes; i++) {
@@ -145,19 +184,34 @@ export class WeatherSystem {
     }
 
     /**
-     * Clear all weather particles
+     * Clear all weather particles and clouds
      */
     clearWeatherParticles() {
         for (let particle of this.weatherParticles) {
             particle.destroy();
         }
         this.weatherParticles = [];
+
+        for (let cloud of this.clouds) {
+            cloud.destroy();
+        }
+        this.clouds = [];
     }
 
     /**
-     * Update weather particles
+     * Update weather particles and clouds
      */
     updateWeatherParticles(deltaTime) {
+        // Update clouds (drift slowly across sky)
+        for (let cloud of this.clouds) {
+            cloud.x += cloud.driftSpeed * deltaTime;
+
+            // Wrap around when off screen
+            if (cloud.x > 12200) {
+                cloud.x = -200;
+            }
+        }
+
         if (this.currentWeather === 'rainy') {
             // Update rain
             for (let drop of this.weatherParticles) {

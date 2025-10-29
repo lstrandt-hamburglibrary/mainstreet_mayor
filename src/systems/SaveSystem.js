@@ -15,6 +15,8 @@ export class SaveSystem {
                 bricks: this.scene.bricks,
                 bankBalance: this.scene.bankBalance,
                 loanAmount: this.scene.loanAmount,
+                lastInterestPayment: this.scene.lastInterestPayment,
+                lastTaxCollection: this.scene.lastTaxCollection,
                 gameTime: this.scene.gameTime,
                 timeSpeed: this.scene.timeSpeed,
                 buildings: this.scene.buildings.map(b => {
@@ -113,6 +115,8 @@ export class SaveSystem {
             // Restore bank data
             this.scene.bankBalance = saveData.bankBalance || 0;
             this.scene.loanAmount = saveData.loanAmount || 0;
+            this.scene.lastInterestPayment = saveData.lastInterestPayment || 0;
+            this.scene.lastTaxCollection = saveData.lastTaxCollection || 0;
 
             // Restore population data
             this.scene.population = saveData.population || 20;
@@ -232,20 +236,8 @@ export class SaveSystem {
 
         // Building signs are now handled by addBuildingSign() function
         if (type === 'bank') {
-            // Add dollar sign symbol
-            const dollarSign = this.scene.add.text(x, buildingY - building.height / 2, '$', {
-                fontSize: '80px',
-                color: '#FFD700',
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-
-            // Add columns to make it look more like a bank
-            newBuilding.fillStyle(0xFFFFFF, 0.3);
-            newBuilding.fillRect(x - building.width/2 + 20, buildingY - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x - building.width/2 + 60, buildingY - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x + building.width/2 - 80, buildingY - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x + building.width/2 - 40, buildingY - building.height + 40, 20, building.height - 80);
+            // Bank now has detailed classical architecture with columns built-in
+            // No additional decorations needed
         } else if (type === 'market') {
             // Add market emoji
             const awning = this.scene.add.text(x, buildingY - building.height / 2, '🏪', {

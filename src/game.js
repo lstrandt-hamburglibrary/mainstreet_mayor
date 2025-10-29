@@ -37,7 +37,12 @@ class MainScene extends Phaser.Scene {
         this.bankBalance = 0;  // Money stored in bank
         this.loanAmount = 0;   // Money owed to bank
         this.loanInterestRate = 0.1; // 10% interest
-        this.savingsInterestRate = 0.05; // 5% interest on savings
+        this.savingsInterestRate = 0.05; // 5% annual interest on savings (0.0137% daily)
+        this.lastInterestPayment = 0; // Track last time interest was paid (game time in minutes)
+
+        // Tax system
+        this.lastTaxCollection = 0; // Track last time taxes were collected (game time in minutes)
+        this.propertyTaxRate = GameConfig.PROPERTY_TAX_RATE; // 2% of building cost per day
 
         // Time system
         this.gameTime = 0; // Time in game minutes (0 = Day 1, 00:00)
@@ -3543,6 +3548,57 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // Apply daily savings interest if there's money in the bank
+        if (this.bankBalance > 0 && !this.isPaused) {
+            const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
+            const lastInterestDay = Math.floor(this.lastInterestPayment / (24 * 60));
+
+            // Check if we've crossed into a new day
+            if (currentDay > lastInterestDay) {
+                // Calculate daily interest (5% annual = 0.0137% daily)
+                const dailyRate = this.savingsInterestRate / 365;
+                const interestEarned = Math.floor(this.bankBalance * dailyRate);
+
+                if (interestEarned > 0) {
+                    this.bankBalance += interestEarned;
+                    this.bankBalance = Math.round(this.bankBalance);
+                    console.log(`💰 Bank paid $${interestEarned} interest on savings! Day #${currentDay}. New balance: $${this.bankBalance}`);
+                    this.uiManager.addNotification(`💰 Bank interest: +$${interestEarned}`);
+                }
+
+                this.lastInterestPayment = this.gameTime;
+            }
+        }
+
+        // Collect daily property taxes
+        if (!this.isPaused && this.buildings.length > 0) {
+            const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
+            const lastTaxDay = Math.floor(this.lastTaxCollection / (24 * 60));
+
+            // Check if we've crossed into a new day
+            if (currentDay > lastTaxDay) {
+                let totalTax = 0;
+
+                // Calculate tax for each building (2% of cost per day)
+                for (let building of this.buildings) {
+                    const buildingType = this.buildingTypes[building.type];
+                    if (buildingType && buildingType.cost) {
+                        const buildingTax = Math.floor(buildingType.cost * this.propertyTaxRate);
+                        totalTax += buildingTax;
+                    }
+                }
+
+                if (totalTax > 0) {
+                    this.money -= totalTax;
+                    this.money = Math.round(this.money);
+                    console.log(`🏛️ Property taxes collected: $${totalTax} for ${this.buildings.length} properties. Day #${currentDay}`);
+                    this.uiManager.addNotification(`🏛️ Property tax: -$${totalTax}`);
+                }
+
+                this.lastTaxCollection = this.gameTime;
+            }
+        }
+
         // Update resource UI
         this.uiManager.updateMoneyUI();
 
@@ -4422,22 +4478,10 @@ class MainScene extends Phaser.Scene {
         // Draw detailed building features (windows, doors, roof, etc.)
         this.buildingRenderer.drawBuildingDetails(newBuilding, this.selectedBuilding, x, y, facadeVariation);
 
-        // Building-specific decorations (bank columns only)
+        // Building-specific decorations
         if (this.selectedBuilding === 'bank') {
-            // Add dollar sign symbol
-            const dollarSign = this.add.text(x, y - building.height / 2, '$', {
-                fontSize: '80px',
-                color: '#FFD700',
-                fontStyle: 'bold',
-                resolution: 2
-            }).setOrigin(0.5).setDepth(11);
-
-            // Add columns to make it look more like a bank
-            newBuilding.fillStyle(0xFFFFFF, 0.3);
-            newBuilding.fillRect(x - building.width/2 + 20, y - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x - building.width/2 + 60, y - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x + building.width/2 - 80, y - building.height + 40, 20, building.height - 80);
-            newBuilding.fillRect(x + building.width/2 - 40, y - building.height + 40, 20, building.height - 80);
+            // Bank now has detailed classical architecture with columns built-in
+            // No additional decorations needed
         } else if (this.selectedBuilding === 'market') {
             // Add market emoji
             const awning = this.add.text(x, y - building.height / 2, '🏪', {

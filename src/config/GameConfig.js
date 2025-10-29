@@ -12,6 +12,10 @@ export const GameConfig = {
     LOAN_INTEREST_RATE: 0.1,  // 10% interest
     SAVINGS_INTEREST_RATE: 0.05,  // 5% interest on savings
 
+    // Tax system
+    PROPERTY_TAX_RATE: 0.02,  // 2% of building cost per day
+    TAX_COLLECTION_DAY: 1,  // Day of week to collect taxes (1 = Monday, 7 = Sunday)
+
     // Time system
     DEFAULT_TIME_SPEED: 1,  // 1x, 2x, or 3x speed
 
