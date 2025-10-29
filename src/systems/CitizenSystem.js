@@ -270,7 +270,7 @@ export class CitizenSystem {
                 }
 
                 // Randomly visit nearby buildings (prioritize shops)
-                if (Math.random() < 0.0005 && this.scene.buildings.length > 0) {
+                if (Math.random() < 0.001 && this.scene.buildings.length > 0) { // Increased from 0.0005 to 0.001 (2x more frequent)
                     // Find nearby shops that are open and have stock
                     const allShops = this.scene.buildings.filter(b => this.scene.isShop(b.type));
                     console.log(`🛍️ Checking ${allShops.length} shops for visit...`);
@@ -317,6 +317,7 @@ export class CitizenSystem {
                     if (randomChoice < 0.25 && nearbyShops.length > 0) {
                         // 25% chance to visit shop
                         targetBuilding = nearbyShops[Math.floor(Math.random() * nearbyShops.length)];
+                        console.log(`🛍️ Citizen heading to shop: ${targetBuilding.type} at x=${targetBuilding.x}`);
                         citizen.isShoppingVisit = true;
                         citizen.isDiningVisit = false;
                         citizen.isEntertainmentVisit = false;
@@ -486,15 +487,21 @@ export class CitizenSystem {
                     if (citizen.isEntertainmentVisit && citizen.targetBuilding && this.scene.isEntertainment(citizen.targetBuilding.type)) {
                         const entertainment = citizen.targetBuilding;
                         const buildingType = this.scene.buildingTypes[entertainment.type];
-                        const price = buildingType.ticketPrice || buildingType.gamePlayPrice || 10;
+                        const basePrice = buildingType.ticketPrice || buildingType.gamePlayPrice || 10;
+
+                        // Apply weather modifier (bad weather reduces willingness to pay/visit outdoor attractions)
+                        const weatherMultiplier = this.scene.weatherSystem.getEntertainmentMultiplier(entertainment.type);
+                        const price = Math.floor(basePrice * weatherMultiplier);
 
                         // Customer pays for entertainment
                         entertainment.accumulatedIncome = (entertainment.accumulatedIncome || 0) + price;
-                        console.log(`🎡 Customer visited ${entertainment.type}. Income: $${Math.floor(entertainment.accumulatedIncome)}`);
+                        console.log(`🎡 Customer visited ${entertainment.type}. Income: $${Math.floor(entertainment.accumulatedIncome)} (weather: ${weatherMultiplier}x)`);
 
                         const icon = entertainment.type === 'themePark' ? '🎡' : '🕹️';
                         const name = entertainment.type === 'themePark' ? 'Theme Park' : 'Arcade';
-                        this.scene.uiManager.addNotification(`${icon} ${name} visit - $${price}`);
+                        const weatherIcon = this.scene.weatherSystem.getCurrentWeather() === 'rainy' ? ' 🌧️' :
+                                          this.scene.weatherSystem.getCurrentWeather() === 'snowy' ? ' ❄️' : '';
+                        this.scene.uiManager.addNotification(`${icon} ${name} visit - $${price}${weatherIcon}`);
 
                         citizen.isEntertainmentVisit = false;
                     }

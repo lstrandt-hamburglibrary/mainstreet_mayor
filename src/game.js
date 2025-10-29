@@ -6,6 +6,8 @@ import { ShopSystem } from './systems/ShopSystem.js';
 import { SaveSystem } from './systems/SaveSystem.js';
 import { CitizenSystem } from './systems/CitizenSystem.js';
 import { UIManager } from './systems/UIManager.js';
+import { EventSystem } from './systems/EventSystem.js';
+import { WeatherSystem } from './systems/WeatherSystem.js';
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -106,6 +108,12 @@ class MainScene extends Phaser.Scene {
 
         // Create notification ticker at bottom of screen
         this.uiManager.createNotificationTicker();
+
+        // Initialize event system (parades, festivals, etc.)
+        this.eventSystem = new EventSystem(this);
+
+        // Initialize weather system
+        this.weatherSystem = new WeatherSystem(this);
 
         // Settings menu state
         this.settingsMenuOpen = false;
@@ -1771,6 +1779,9 @@ class MainScene extends Phaser.Scene {
         // Load saved game if exists
         this.saveSystem.loadGame();
 
+        // Initialize weather after load (so it uses correct game time)
+        this.weatherSystem.initialize();
+
         // Check for vacant apartments after loading and generate applications
         this.checkVacantApartmentsAfterLoad();
 
@@ -1976,6 +1987,22 @@ class MainScene extends Phaser.Scene {
         }
         if (this.settingsDropdown) {
             this.settingsDropdown.x = this.gameWidth - 200;
+        }
+
+        // Update speed control button positions (keep them aligned with time UI)
+        const speedButtonStartX = this.gameWidth - 300;
+        const speedButtonSpacing = 45;
+        if (this.speedPauseButton) {
+            this.speedPauseButton.x = speedButtonStartX;
+        }
+        if (this.speed1xButton) {
+            this.speed1xButton.x = speedButtonStartX + speedButtonSpacing;
+        }
+        if (this.speed2xButton) {
+            this.speed2xButton.x = speedButtonStartX + speedButtonSpacing * 2;
+        }
+        if (this.speed3xButton) {
+            this.speed3xButton.x = speedButtonStartX + speedButtonSpacing * 3;
         }
         if (this.buildMenuContainer) {
             this.buildMenuContainer.setPosition(this.gameWidth / 2, this.gameHeight - 80);
@@ -3528,6 +3555,26 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // Update event system (parades, festivals)
+        if (!this.isPaused) {
+            try {
+                const deltaTime = 1/60; // Approximate frame time
+                this.eventSystem.update(deltaTime);
+            } catch (error) {
+                console.error('Error updating events:', error);
+            }
+        }
+
+        // Update weather system
+        if (!this.isPaused) {
+            try {
+                const deltaTime = 1/60; // Approximate frame time
+                this.weatherSystem.update(deltaTime);
+            } catch (error) {
+                console.error('Error updating weather:', error);
+            }
+        }
+
         // Update citizens
         if (!this.isPaused) {
             try {
@@ -3581,6 +3628,28 @@ class MainScene extends Phaser.Scene {
                     this.buildingPreview.destroy();
                     this.buildingPreview = null;
                 }
+            }
+        }
+
+        // Start holiday parade with P key (for testing/fun)
+        if (Phaser.Input.Keyboard.JustDown(this.pKey) && !this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.bankMenuOpen) {
+            // Only start parade if no event is active
+            if (!this.eventSystem.activeEvent) {
+                this.eventSystem.startHolidayParade();
+            } else {
+                this.uiManager.addNotification('An event is already in progress!');
+            }
+        }
+
+        // Cycle weather with W key (for testing)
+        if (Phaser.Input.Keyboard.JustDown(this.wKey) && !this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.bankMenuOpen) {
+            const currentWeather = this.weatherSystem.getCurrentWeather();
+            if (currentWeather === 'sunny') {
+                this.weatherSystem.setWeather('rainy');
+            } else if (currentWeather === 'rainy') {
+                this.weatherSystem.setWeather('snowy');
+            } else {
+                this.weatherSystem.setWeather('sunny');
             }
         }
 
@@ -4918,9 +4987,22 @@ class MainScene extends Phaser.Scene {
 
                     // Spawn tourists from out of town (20% chance per bus stop)
                     // Theme parks increase tourist spawns!
+                    // Weather affects tourist arrivals!
                     const hasThemePark = this.buildings.some(b => b.type === 'themePark');
-                    const spawnChance = hasThemePark ? 0.6 : 0.2; // 3x more tourists with theme park!
+                    let baseChance = hasThemePark ? 0.6 : 0.2; // 3x more tourists with theme park!
                     const maxTourists = hasThemePark ? 6 : 3; // More tourists at once with theme park
+
+                    // Weather modifier
+                    const weather = this.weatherSystem.getCurrentWeather();
+                    let weatherMultiplier = 1.0;
+                    if (weather === 'rainy') {
+                        weatherMultiplier = 0.5; // 50% fewer tourists in rain
+                    } else if (weather === 'snowy') {
+                        weatherMultiplier = 0.3; // 70% fewer tourists in snow
+                    } else {
+                        weatherMultiplier = 1.2; // 20% more tourists on sunny days
+                    }
+                    const spawnChance = baseChance * weatherMultiplier;
 
                     if (Math.random() < spawnChance) {
                         const touristCount = 1 + Math.floor(Math.random() * maxTourists);
@@ -4928,7 +5010,8 @@ class MainScene extends Phaser.Scene {
                             this.citizenSystem.spawnTourist(stop.x);
                         }
                         const parkBonus = hasThemePark ? ' 🎡' : '';
-                        console.log(`🚌 ${touristCount} tourist(s) arrived from out of town!${parkBonus}`);
+                        const weatherIcon = weather === 'rainy' ? ' 🌧️' : weather === 'snowy' ? ' ❄️' : ' ☀️';
+                        console.log(`🚌 ${touristCount} tourist(s) arrived from out of town!${parkBonus}${weatherIcon}`);
                     }
 
                     // Pick up waiting citizens

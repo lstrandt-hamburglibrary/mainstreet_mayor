@@ -17,41 +17,66 @@ export class SaveSystem {
                 loanAmount: this.scene.loanAmount,
                 gameTime: this.scene.gameTime,
                 timeSpeed: this.scene.timeSpeed,
-                buildings: this.scene.buildings.map(b => ({
-                    type: b.type,
-                    x: b.x,
-                    y: b.y,
-                    accumulatedIncome: b.accumulatedIncome || 0,
-                    lastIncomeTime: b.lastIncomeTime || Date.now(),
-                    storedResources: b.storedResources || 0,
-                    lastResourceTime: b.lastResourceTime || Date.now(),
-                    placedDistrict: b.placedDistrict || null,
-                    districtBonus: b.districtBonus || 1.0,
-                    facadeVariation: b.facadeVariation || 0,
-                    // Save apartment units
-                    units: b.units || undefined,
-                    // Save hotel rooms
-                    rooms: b.rooms || undefined,
-                    lastNightCheck: b.lastNightCheck || undefined,
-                    lastAutoClean: b.lastAutoClean || undefined,
-                    hasMaid: b.hasMaid,
-                    maidDailyWage: b.maidDailyWage,
-                    lastMaidWageCheck: b.lastMaidWageCheck,
-                    lastMaidClean: b.lastMaidClean,
-                    // Save shop inventory
-                    inventory: b.inventory || undefined,
-                    hasEmployee: b.hasEmployee,
-                    isOpen: b.isOpen,
-                    dailyWage: b.dailyWage,
-                    lastWageCheck: b.lastWageCheck,
-                    // Save restaurant tables
-                    tables: b.tables || undefined,
-                    hasDayWaiter: b.hasDayWaiter,
-                    hasNightWaiter: b.hasNightWaiter,
-                    dayWaiterWage: b.dayWaiterWage,
-                    nightWaiterWage: b.nightWaiterWage,
-                    mealPrice: b.mealPrice
-                })),
+                buildings: this.scene.buildings.map(b => {
+                    // Sanitize rooms to remove circular references (guest -> hotelRoom -> guest)
+                    let sanitizedRooms = undefined;
+                    if (b.rooms) {
+                        sanitizedRooms = b.rooms.map(room => ({
+                            status: room.status,
+                            isOccupied: room.isOccupied,
+                            guest: null, // Don't save guest reference (circular)
+                            nightsOccupied: room.nightsOccupied || 0,
+                            lastStatusChange: room.lastStatusChange
+                        }));
+                    }
+
+                    // Sanitize tables to remove circular references (customer -> occupiedTable -> customer)
+                    let sanitizedTables = undefined;
+                    if (b.tables) {
+                        sanitizedTables = b.tables.map(table => ({
+                            status: table.status,
+                            customer: null, // Don't save customer reference (circular)
+                            mealStartTime: table.mealStartTime,
+                            mealDuration: table.mealDuration
+                        }));
+                    }
+
+                    return {
+                        type: b.type,
+                        x: b.x,
+                        y: b.y,
+                        accumulatedIncome: b.accumulatedIncome || 0,
+                        lastIncomeTime: b.lastIncomeTime || Date.now(),
+                        storedResources: b.storedResources || 0,
+                        lastResourceTime: b.lastResourceTime || Date.now(),
+                        placedDistrict: b.placedDistrict || null,
+                        districtBonus: b.districtBonus || 1.0,
+                        facadeVariation: b.facadeVariation || 0,
+                        // Save apartment units
+                        units: b.units || undefined,
+                        // Save hotel rooms (sanitized)
+                        rooms: sanitizedRooms,
+                        lastNightCheck: b.lastNightCheck || undefined,
+                        lastAutoClean: b.lastAutoClean || undefined,
+                        hasMaid: b.hasMaid,
+                        maidDailyWage: b.maidDailyWage,
+                        lastMaidWageCheck: b.lastMaidWageCheck,
+                        lastMaidClean: b.lastMaidClean,
+                        // Save shop inventory
+                        inventory: b.inventory || undefined,
+                        hasEmployee: b.hasEmployee,
+                        isOpen: b.isOpen,
+                        dailyWage: b.dailyWage,
+                        lastWageCheck: b.lastWageCheck,
+                        // Save restaurant tables (sanitized)
+                        tables: sanitizedTables,
+                        hasDayWaiter: b.hasDayWaiter,
+                        hasNightWaiter: b.hasNightWaiter,
+                        dayWaiterWage: b.dayWaiterWage,
+                        nightWaiterWage: b.nightWaiterWage,
+                        mealPrice: b.mealPrice
+                    };
+                }),
                 population: this.scene.population,
                 populationCapacity: this.scene.populationCapacity,
                 pendingCitizens: this.scene.pendingCitizens
