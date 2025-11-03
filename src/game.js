@@ -7,7 +7,6 @@ import { SaveSystem } from './systems/SaveSystem.js';
 import { CitizenSystem } from './systems/CitizenSystem.js';
 import { UIManager } from './systems/UIManager.js';
 import { EventSystem } from './systems/EventSystem.js';
-import { WeatherSystem } from './systems/WeatherSystem.js';
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -116,9 +115,6 @@ class MainScene extends Phaser.Scene {
 
         // Initialize event system (parades, festivals, etc.)
         this.eventSystem = new EventSystem(this);
-
-        // Initialize weather system
-        this.weatherSystem = new WeatherSystem(this);
 
         // Settings menu state
         this.settingsMenuOpen = false;
@@ -716,11 +712,14 @@ class MainScene extends Phaser.Scene {
             ],
             entertainment: [
                 { type: 'arcade', label: '🕹️ Arcade', price: '$350', color: '#FF00FF' },
-                { type: 'themePark', label: '🎡 Theme Park', price: '$2000', color: '#FF1493' }
+                { type: 'themePark', label: '🎡 Theme Park', price: '$2000', color: '#FF1493' },
+                { type: 'movieTheater', label: '🎬 Movie Theater', price: '$12000', color: '#8B0000' }
             ],
             services: [
                 { type: 'library', label: '📖 Library', price: '$400', color: '#8B4513' },
-                { type: 'museum', label: '🏛️ Museum', price: '$800', color: '#D4AF37' }
+                { type: 'museum', label: '🏛️ Museum', price: '$800', color: '#D4AF37' },
+                { type: 'school', label: '🏫 School', price: '$8000', color: '#FFC107' },
+                { type: 'officeBuilding', label: '🏢 Office Building', price: '$15000', color: '#607D8B' }
             ],
             resources: [
                 { type: 'bank', label: '🏦 Bank', price: '$500', color: '#2E7D32' },
@@ -1784,9 +1783,6 @@ class MainScene extends Phaser.Scene {
         // Load saved game if exists
         this.saveSystem.loadGame();
 
-        // Initialize weather after load (so it uses correct game time)
-        this.weatherSystem.initialize();
-
         // Check for vacant apartments after loading and generate applications
         this.checkVacantApartmentsAfterLoad();
 
@@ -1813,7 +1809,7 @@ class MainScene extends Phaser.Scene {
     }
 
     isEntertainment(buildingType) {
-        return ['arcade', 'themePark'].includes(buildingType);
+        return ['arcade', 'themePark', 'movieTheater'].includes(buildingType);
     }
 
     isService(buildingType) {
@@ -1850,6 +1846,219 @@ class MainScene extends Phaser.Scene {
         }
 
         return totalBoost; // Returns combined boost (e.g., 0.15 for 15% boost)
+    }
+
+    handleScheduledTraffic(hour, minute, day) {
+        // Initialize tracking if not exists
+        if (!this.trafficState) {
+            this.trafficState = {
+                lastHour: hour,
+                schoolArrivalSpawned: false,
+                schoolDepartureSpawned: false,
+                schoolLunchSpawned: false,
+                officeArrivalSpawned: false,
+                officeDepartureSpawned: false,
+                officeLunchSpawned: false,
+                officeBreakSpawned: false,
+                movieShowtimes: {}, // Track which showtimes have spawned
+                fieldTripDay: -1, // Last day a field trip occurred
+                fieldTripScheduled: false
+            };
+        }
+
+        // Reset daily flags when hour changes
+        if (hour !== this.trafficState.lastHour) {
+            this.trafficState.lastHour = hour;
+
+            // Reset school flags
+            if (hour < 7 || hour >= 16) {
+                this.trafficState.schoolArrivalSpawned = false;
+                this.trafficState.schoolDepartureSpawned = false;
+                this.trafficState.schoolLunchSpawned = false;
+            }
+
+            // Reset office flags
+            if (hour < 8 || hour >= 18) {
+                this.trafficState.officeArrivalSpawned = false;
+                this.trafficState.officeDepartureSpawned = false;
+                this.trafficState.officeLunchSpawned = false;
+                this.trafficState.officeBreakSpawned = false;
+            }
+        }
+
+        // === SCHOOL TRAFFIC ===
+        for (let building of this.buildings) {
+            if (building.type === 'school') {
+                const buildingType = this.buildingTypes.school;
+                const schedule = buildingType.schedule;
+
+                // Morning arrival (7-9 AM)
+                if (hour >= schedule.arrivalStart && hour < schedule.arrivalEnd && !this.trafficState.schoolArrivalSpawned) {
+                    this.spawnSchoolStudents(building, buildingType.capacity * 0.8); // 80% of capacity
+                    this.trafficState.schoolArrivalSpawned = true;
+                    this.uiManager.addNotification('🎒 Students arriving at school!');
+                }
+
+                // Lunch time (12-1 PM) - some students go to nearby restaurants
+                if (hour === schedule.lunchStart && !this.trafficState.schoolLunchSpawned) {
+                    this.spawnLunchCrowd(building, buildingType.capacity * 0.3, 'student'); // 30% go out for lunch
+                    this.trafficState.schoolLunchSpawned = true;
+                }
+
+                // Afternoon departure (3-4 PM)
+                if (hour >= schedule.departureStart && hour < schedule.departureEnd && !this.trafficState.schoolDepartureSpawned) {
+                    this.uiManager.addNotification('🏠 School dismissed! Students heading home');
+                    this.trafficState.schoolDepartureSpawned = true;
+                }
+
+                // Field trip chance (once per week, during school hours)
+                if (hour >= 9 && hour < 14 && this.trafficState.fieldTripDay !== day) {
+                    if (Math.random() < buildingType.fieldTripChance / 24) { // Spread chance across hours
+                        this.organizeFieldTrip(building);
+                        this.trafficState.fieldTripDay = day;
+                    }
+                }
+            }
+
+            // === OFFICE BUILDING TRAFFIC ===
+            if (building.type === 'officeBuilding') {
+                const buildingType = this.buildingTypes.officeBuilding;
+                const schedule = buildingType.schedule;
+
+                // Morning arrival (8-9 AM)
+                if (hour >= schedule.arrivalStart && hour < schedule.arrivalEnd && !this.trafficState.officeArrivalSpawned) {
+                    this.spawnOfficeWorkers(building, buildingType.capacity * 0.9); // 90% of capacity
+                    this.trafficState.officeArrivalSpawned = true;
+                    this.uiManager.addNotification('💼 Workers arriving at office building');
+                }
+
+                // Lunch rush (12-1 PM)
+                if (hour === schedule.lunchStart && !this.trafficState.officeLunchSpawned) {
+                    this.spawnLunchCrowd(building, buildingType.capacity * 0.6, 'worker'); // 60% go out
+                    this.trafficState.officeLunchSpawned = true;
+                    this.uiManager.addNotification('🍽️ Lunch rush from office workers!');
+                }
+
+                // Afternoon break (3 PM)
+                if (hour === schedule.breakTime && !this.trafficState.officeBreakSpawned) {
+                    this.spawnLunchCrowd(building, buildingType.capacity * 0.2, 'worker'); // 20% take break
+                    this.trafficState.officeBreakSpawned = true;
+                }
+
+                // Evening departure (5-6 PM)
+                if (hour >= schedule.departureStart && hour < schedule.departureEnd && !this.trafficState.officeDepartureSpawned) {
+                    this.uiManager.addNotification('🚗 Workers leaving office building');
+                    this.trafficState.officeDepartureSpawned = true;
+                }
+            }
+
+            // === MOVIE THEATER TRAFFIC ===
+            if (building.type === 'movieTheater') {
+                const buildingType = this.buildingTypes.movieTheater;
+
+                // Check each showtime
+                for (let showtime of buildingType.showtimes) {
+                    const showtimeKey = `${day}-${showtime}`;
+
+                    // Spawn moviegoers 30 minutes before showtime
+                    if (hour === showtime && minute < 30 && !this.trafficState.movieShowtimes[showtimeKey]) {
+                        const isPeakTime = buildingType.peakHours.includes(showtime);
+                        const audienceSize = isPeakTime ? Phaser.Math.Between(15, 25) : Phaser.Math.Between(5, 12);
+                        this.spawnMoviegoers(building, audienceSize);
+                        this.trafficState.movieShowtimes[showtimeKey] = true;
+
+                        const timeStr = `${showtime % 12 || 12}:00 ${showtime >= 12 ? 'PM' : 'AM'}`;
+                        this.uiManager.addNotification(`🎬 ${timeStr} showing starting soon!`);
+                    }
+                }
+
+                // Clean up old showtime tracking
+                if (minute === 0) {
+                    const currentKeys = Object.keys(this.trafficState.movieShowtimes);
+                    for (let key of currentKeys) {
+                        const [keyDay] = key.split('-').map(Number);
+                        if (keyDay < day - 1) {
+                            delete this.trafficState.movieShowtimes[key];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    spawnSchoolStudents(building, count) {
+        for (let i = 0; i < count; i++) {
+            this.citizenSystem.spawnNewCitizen();
+        }
+    }
+
+    spawnOfficeWorkers(building, count) {
+        for (let i = 0; i < count; i++) {
+            this.citizenSystem.spawnNewCitizen();
+        }
+    }
+
+    spawnLunchCrowd(building, count, type = 'citizen') {
+        // Find nearby restaurants
+        const nearbyRestaurants = this.buildings.filter(b =>
+            this.isRestaurant(b.type) && Math.abs(b.x - building.x) < 1000
+        );
+
+        if (nearbyRestaurants.length === 0) return;
+
+        for (let i = 0; i < count; i++) {
+            this.citizenSystem.spawnNewCitizen();
+
+            // Try to assign the most recently spawned citizen to the restaurant
+            if (this.citizenSystem.citizens && this.citizenSystem.citizens.length > 0) {
+                const citizen = this.citizenSystem.citizens[this.citizenSystem.citizens.length - 1];
+                const targetRestaurant = Phaser.Utils.Array.GetRandom(nearbyRestaurants);
+                citizen.targetBuilding = targetRestaurant;
+                citizen.isDiningVisit = true;
+            }
+        }
+    }
+
+    spawnMoviegoers(building, count) {
+        for (let i = 0; i < count; i++) {
+            this.citizenSystem.spawnNewCitizen();
+
+            // Try to assign the most recently spawned citizen to the theater
+            if (this.citizenSystem.citizens && this.citizenSystem.citizens.length > 0) {
+                const citizen = this.citizenSystem.citizens[this.citizenSystem.citizens.length - 1];
+                citizen.targetBuilding = building;
+                citizen.isEntertainmentVisit = true;
+            }
+        }
+    }
+
+    organizeFieldTrip(school) {
+        // Find nearby museum or library
+        const destinations = this.buildings.filter(b =>
+            (b.type === 'library' || b.type === 'museum') &&
+            Math.abs(b.x - school.x) < 2000
+        );
+
+        if (destinations.length === 0) return;
+
+        const destination = Phaser.Utils.Array.GetRandom(destinations);
+        const groupSize = Phaser.Math.Between(8, 15);
+
+        // Spawn student group heading to destination
+        for (let i = 0; i < groupSize; i++) {
+            this.citizenSystem.spawnNewCitizen();
+
+            // Try to assign the most recently spawned citizen to the destination
+            if (this.citizenSystem.citizens && this.citizenSystem.citizens.length > 0) {
+                const citizen = this.citizenSystem.citizens[this.citizenSystem.citizens.length - 1];
+                citizen.targetBuilding = destination;
+                citizen.isServiceVisit = true;
+                citizen.isFieldTrip = true;
+            }
+        }
+
+        const destName = destination.type === 'library' ? 'Library' : 'Museum';
+        this.uiManager.addNotification(`🚌 School field trip to ${destName}!`);
     }
 
     handleResize(gameSize) {
@@ -2358,15 +2567,35 @@ class MainScene extends Phaser.Scene {
             }).setOrigin(0.5).setDepth(11);
             buildingData.sign = aptSign;
         } else if (this.isEntertainment(type)) {
-            // Entertainment sign (arcade, theme park)
-            const entertainmentName = type === 'themePark' ? 'AMUSEMENT' : buildingType.name.toUpperCase();
-            const signY = type === 'themePark' ? y - 305 : y - 225; // Higher for theme park
+            // Entertainment sign (arcade, theme park, movie theater)
+            let entertainmentName, signY, fontSize, color, bgColor;
+
+            if (type === 'themePark') {
+                entertainmentName = 'AMUSEMENT';
+                signY = y - 305;
+                fontSize = '24px';
+                color = '#FFD700';
+                bgColor = '#FF1493';
+            } else if (type === 'movieTheater') {
+                entertainmentName = 'MOVIE THEATER';
+                signY = y - buildingType.height + 62; // Position in the black marquee area
+                fontSize = '14px';
+                color = '#FFD700';
+                bgColor = 'transparent';
+            } else {
+                entertainmentName = buildingType.name.toUpperCase();
+                signY = y - 225;
+                fontSize = '18px';
+                color = '#00FFFF';
+                bgColor = '#000000';
+            }
+
             const entertainmentSign = this.add.text(x, signY, entertainmentName, {
-                fontSize: type === 'themePark' ? '24px' : '18px',
-                color: type === 'themePark' ? '#FFD700' : '#00FFFF',
+                fontSize: fontSize,
+                color: color,
                 fontStyle: 'bold',
                 fontFamily: 'Arial',
-                backgroundColor: type === 'themePark' ? '#FF1493' : '#000000',
+                backgroundColor: bgColor,
                 padding: { x: 10, y: 5 },
                 resolution: 2
             }).setOrigin(0.5).setDepth(11);
@@ -2384,6 +2613,28 @@ class MainScene extends Phaser.Scene {
                 resolution: 2
             }).setOrigin(0.5).setDepth(11);
             buildingData.sign = serviceSign;
+        } else if (type === 'school') {
+            // School sign (on white sign area built into the building)
+            const schoolSign = this.add.text(x, y - buildingType.height + 32, 'SCHOOL', {
+                fontSize: '14px',
+                color: '#000000',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = schoolSign;
+        } else if (type === 'officeBuilding') {
+            // Office building sign (at top)
+            const officeSign = this.add.text(x, y - buildingType.height + 20, 'OFFICE', {
+                fontSize: '18px',
+                color: '#FFFFFF',
+                fontStyle: 'bold',
+                fontFamily: 'Arial',
+                backgroundColor: '#37474F',
+                padding: { x: 12, y: 6 },
+                resolution: 2
+            }).setOrigin(0.5).setDepth(11);
+            buildingData.sign = officeSign;
         } else if (type === 'hotel') {
             // Hotel sign
             const hotelSign = this.add.text(x, y - buildingType.height + 20, 'HOTEL', {
@@ -3106,6 +3357,11 @@ class MainScene extends Phaser.Scene {
 
         // Time speed and creative mode are now controlled via settings menu (mouse clicks)
 
+        // Handle time-based traffic patterns for schools, offices, and movie theaters
+        if (!this.isPaused) {
+            this.handleScheduledTraffic(hour, minute, day);
+        }
+
         // Update income accumulation and resource regeneration for all buildings
         for (let building of this.buildings) {
             try {
@@ -3621,16 +3877,6 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // Update weather system
-        if (!this.isPaused) {
-            try {
-                const deltaTime = 1/60; // Approximate frame time
-                this.weatherSystem.update(deltaTime);
-            } catch (error) {
-                console.error('Error updating weather:', error);
-            }
-        }
-
         // Update citizens
         if (!this.isPaused) {
             try {
@@ -3694,18 +3940,6 @@ class MainScene extends Phaser.Scene {
                 this.eventSystem.startHolidayParade();
             } else {
                 this.uiManager.addNotification('An event is already in progress!');
-            }
-        }
-
-        // Cycle weather with W key (for testing)
-        if (Phaser.Input.Keyboard.JustDown(this.wKey) && !this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.bankMenuOpen) {
-            const currentWeather = this.weatherSystem.getCurrentWeather();
-            if (currentWeather === 'sunny') {
-                this.weatherSystem.setWeather('rainy');
-            } else if (currentWeather === 'rainy') {
-                this.weatherSystem.setWeather('snowy');
-            } else {
-                this.weatherSystem.setWeather('sunny');
             }
         }
 
@@ -4320,6 +4554,29 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    checkBuildingOverlap(x, width) {
+        // Check if a building at position x with given width would overlap with existing buildings
+        const halfWidth = width / 2;
+        const minSpacing = 5; // Minimum 5 pixel gap between buildings (reduced for tighter placement)
+
+        for (let existingBuilding of this.buildings) {
+            const existingType = this.buildingTypes[existingBuilding.type];
+            const existingHalfWidth = existingType.width / 2;
+
+            // Calculate the minimum distance needed (sum of half-widths plus spacing)
+            const minDistance = halfWidth + existingHalfWidth + minSpacing;
+
+            // Check if too close
+            const distance = Math.abs(x - existingBuilding.x);
+            if (distance < minDistance) {
+                console.log(`Overlap detected: Distance=${distance}, MinRequired=${minDistance}, Building at ${existingBuilding.x}, Trying to place at ${x}`);
+                return true; // Overlap detected
+            }
+        }
+
+        return false; // No overlap
+    }
+
     updateBuildingPreview() {
         if (!this.buildMode || !this.selectedBuilding) {
             return;
@@ -4369,16 +4626,21 @@ class MainScene extends Phaser.Scene {
             console.error('Error drawing building preview details:', error);
         }
 
-        // Add bright green outline to show it's a preview
-        previewGraphics.lineStyle(5, 0x00FF00, 0.8);
+        // Check for collisions with existing buildings
+        const wouldOverlap = this.checkBuildingOverlap(snappedX, building.width);
+
+        // Add outline - green if valid, red if overlapping
+        const outlineColor = wouldOverlap ? 0xFF0000 : 0x00FF00;
+        previewGraphics.lineStyle(5, outlineColor, 0.8);
         previewGraphics.strokeRect(snappedX - building.width/2, buildingY - building.height,
                                   building.width, building.height);
 
         this.buildingPreview = previewGraphics;
         this.buildingPreview.snappedX = snappedX;
         this.buildingPreview.buildingY = buildingY;
+        this.buildingPreview.wouldOverlap = wouldOverlap;
 
-        console.log('Preview created at', snappedX, buildingY);
+        console.log('Preview created at', snappedX, buildingY, 'Overlap:', wouldOverlap);
     }
 
     deleteBuilding(building) {
@@ -4441,6 +4703,15 @@ class MainScene extends Phaser.Scene {
 
         const building = this.buildingTypes[this.selectedBuilding];
 
+        // Use the saved position from when confirmation was triggered
+        const x = this.pendingBuildingX;
+
+        // Check for overlaps with existing buildings
+        if (this.checkBuildingOverlap(x, building.width)) {
+            alert('Cannot place building here - it would overlap with an existing building!\n\nPlease choose a different location.');
+            return false;
+        }
+
         // Check if player has enough resources (skip in creative mode)
         if (!this.creativeMode) {
             if (this.money < building.cost || this.wood < building.wood || this.bricks < building.bricks) {
@@ -4457,8 +4728,6 @@ class MainScene extends Phaser.Scene {
             this.bricks -= building.bricks;
         }
 
-        // Use the saved position from when confirmation was triggered
-        const x = this.pendingBuildingX;
         const y = this.pendingBuildingY;
 
         // Generate random facade variation before drawing
@@ -5031,22 +5300,9 @@ class MainScene extends Phaser.Scene {
 
                     // Spawn tourists from out of town (20% chance per bus stop)
                     // Theme parks increase tourist spawns!
-                    // Weather affects tourist arrivals!
                     const hasThemePark = this.buildings.some(b => b.type === 'themePark');
-                    let baseChance = hasThemePark ? 0.6 : 0.2; // 3x more tourists with theme park!
+                    let spawnChance = hasThemePark ? 0.6 : 0.2; // 3x more tourists with theme park!
                     const maxTourists = hasThemePark ? 6 : 3; // More tourists at once with theme park
-
-                    // Weather modifier
-                    const weather = this.weatherSystem.getCurrentWeather();
-                    let weatherMultiplier = 1.0;
-                    if (weather === 'rainy') {
-                        weatherMultiplier = 0.5; // 50% fewer tourists in rain
-                    } else if (weather === 'snowy') {
-                        weatherMultiplier = 0.3; // 70% fewer tourists in snow
-                    } else {
-                        weatherMultiplier = 1.2; // 20% more tourists on sunny days
-                    }
-                    const spawnChance = baseChance * weatherMultiplier;
 
                     if (Math.random() < spawnChance) {
                         const touristCount = 1 + Math.floor(Math.random() * maxTourists);
@@ -5054,34 +5310,15 @@ class MainScene extends Phaser.Scene {
                             this.citizenSystem.spawnTourist(stop.x);
                         }
                         const parkBonus = hasThemePark ? ' 🎡' : '';
-                        const weatherIcon = weather === 'rainy' ? ' 🌧️' : weather === 'snowy' ? ' ❄️' : ' ☀️';
-                        console.log(`🚌 ${touristCount} tourist(s) arrived from out of town!${parkBonus}${weatherIcon}`);
+                        console.log(`🚌 ${touristCount} tourist(s) arrived from out of town!${parkBonus}`);
                     }
 
                     // Pick up waiting citizens
                     const waitingCitizens = stop.waitingCitizens.slice(); // Copy array
                     for (let citizen of waitingCitizens) {
                         if (bus.passengers.length < 20) { // Bus capacity
-                            // If tourist is checking out of hotel, mark room as dirty
-                            if (citizen.isTourist && citizen.hotelRoom && citizen.hotel) {
-                                citizen.hotelRoom.isOccupied = false;
-                                citizen.hotelRoom.status = 'dirty';
-                                citizen.hotelRoom.guest = null;
-                                console.log('🏨 Tourist checked out - room is now dirty');
-
-                                // If maid is hired, clean the room immediately
-                                if (citizen.hotel.hasMaid) {
-                                    citizen.hotelRoom.status = 'clean';
-                                    console.log('🧹 Maid immediately cleaned room after tourist checkout!');
-                                }
-
-                                // Update hotel UI if player is viewing this hotel
-                                if (this.insideHotel && this.currentHotel === citizen.hotel) {
-                                    this.hotelSystem.updateHotelUI();
-                                }
-                            }
-
                             // Check if tourist is leaving town (has targetBusStop set)
+                            // Note: Hotel checkout now happens in CitizenSystem when tourist time expires
                             const isLeavingTown = citizen.isTourist && citizen.targetBusStop;
 
                             bus.passengers.push({

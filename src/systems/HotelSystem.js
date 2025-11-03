@@ -106,8 +106,8 @@ export class HotelSystem {
             this.scene.hotelMaidSprite.setVisible(this.scene.currentHotel.hasMaid);
         }
 
-        // Update clean button (only show if NO maid - maid cleans automatically!)
-        if (dirtyCount > 0 && !this.scene.currentHotel.hasMaid) {
+        // Update clean button (always show if there are dirty rooms)
+        if (dirtyCount > 0) {
             this.scene.hotelCleanButton.setText(`🧹 CLEAN ALL DIRTY ROOMS ($${totalCost})`);
             if (this.scene.money >= totalCost) {
                 this.scene.hotelCleanButton.setStyle({ backgroundColor: '#E91E63' });

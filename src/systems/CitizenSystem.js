@@ -205,7 +205,29 @@ export class CitizenSystem {
             // Handle tourist timer - tourists leave after their time is up (based on game time)
             if (citizen.isTourist && citizen.touristTimeRemaining !== undefined) {
                 const timeElapsed = this.scene.gameTime - citizen.touristStartTime;
-                if (timeElapsed >= citizen.touristTimeRemaining && citizen.state === 'walking') {
+                if (timeElapsed >= citizen.touristTimeRemaining) {
+                    // Check out of hotel immediately when time expires
+                    if (citizen.hotelRoom && citizen.hotel && !citizen.hasCheckedOut) {
+                        citizen.hotelRoom.isOccupied = false;
+                        citizen.hotelRoom.status = 'dirty';
+                        citizen.hotelRoom.guest = null;
+                        console.log('🏨 Tourist checked out - room is now dirty');
+
+                        // If maid is hired, clean the room immediately
+                        if (citizen.hotel.hasMaid) {
+                            citizen.hotelRoom.status = 'clean';
+                            console.log('🧹 Maid immediately cleaned room after tourist checkout!');
+                        }
+
+                        // Update hotel UI if player is viewing this hotel
+                        if (this.scene.insideHotel && this.scene.currentHotel === citizen.hotel) {
+                            this.scene.hotelSystem.updateHotelUI();
+                        }
+
+                        // Mark as checked out so we don't do this again
+                        citizen.hasCheckedOut = true;
+                    }
+
                     // Time to leave - head to nearest bus stop
                     let nearestStop = null;
                     let nearestDistance = Infinity;
@@ -219,10 +241,51 @@ export class CitizenSystem {
                         }
                     }
 
-                    if (nearestStop) {
+                    if (nearestStop && !citizen.targetBusStop) {
+                        // Interrupt whatever they're doing and head to bus stop
+                        if (citizen.state === 'visiting') {
+                            // If visiting, exit the building immediately
+                            citizen.container.setVisible(true);
+
+                            // Clean up occupied table if dining
+                            if (citizen.occupiedTable) {
+                                citizen.occupiedTable.status = 'dirty';
+                                citizen.occupiedTable.customer = null;
+                                citizen.occupiedTable.mealStartTime = null;
+                                citizen.occupiedTable.mealDuration = 0;
+                                citizen.occupiedTable = null;
+                            }
+
+                            // Reset position to building exit if they have a target building
+                            if (citizen.targetBuilding) {
+                                citizen.x = citizen.targetBuilding.x + (Math.random() * 100 - 50);
+                                citizen.container.x = citizen.x;
+                            }
+                        }
+
+                        if (citizen.state === 'waiting') {
+                            // Remove from current bus stop waiting list
+                            for (let stop of this.scene.busStops) {
+                                const index = stop.waitingCitizens.indexOf(citizen);
+                                if (index > -1) {
+                                    stop.waitingCitizens.splice(index, 1);
+                                    break;
+                                }
+                            }
+                        }
+
+                        // Clear any current targets
+                        citizen.targetBuilding = null;
+                        citizen.isShoppingVisit = false;
+                        citizen.isDiningVisit = false;
+                        citizen.isEntertainmentVisit = false;
+                        citizen.isServiceVisit = false;
+
+                        // Head to bus stop
                         citizen.targetBusStop = nearestStop;
                         citizen.state = 'walking';
-                        console.log('👋 Tourist heading to bus stop to leave town');
+                        citizen.direction = citizen.x < nearestStop.x ? 1 : -1;
+                        console.log('👋 Tourist time expired - heading to bus stop to leave town');
                     }
                 }
             }
@@ -487,21 +550,20 @@ export class CitizenSystem {
                     if (citizen.isEntertainmentVisit && citizen.targetBuilding && this.scene.isEntertainment(citizen.targetBuilding.type)) {
                         const entertainment = citizen.targetBuilding;
                         const buildingType = this.scene.buildingTypes[entertainment.type];
-                        const basePrice = buildingType.ticketPrice || buildingType.gamePlayPrice || 10;
+                        let totalIncome = buildingType.ticketPrice || buildingType.gamePlayPrice || 10;
 
-                        // Apply weather modifier (bad weather reduces willingness to pay/visit outdoor attractions)
-                        const weatherMultiplier = this.scene.weatherSystem.getEntertainmentMultiplier(entertainment.type);
-                        const price = Math.floor(basePrice * weatherMultiplier);
+                        // Movie theater specific: add concession sales
+                        if (entertainment.type === 'movieTheater' && Math.random() < buildingType.concessionChance) {
+                            totalIncome += buildingType.concessionPrice;
+                        }
 
                         // Customer pays for entertainment
-                        entertainment.accumulatedIncome = (entertainment.accumulatedIncome || 0) + price;
-                        console.log(`🎡 Customer visited ${entertainment.type}. Income: $${Math.floor(entertainment.accumulatedIncome)} (weather: ${weatherMultiplier}x)`);
+                        entertainment.accumulatedIncome = (entertainment.accumulatedIncome || 0) + totalIncome;
+                        console.log(`🎡 Customer visited ${entertainment.type}. Income: $${Math.floor(entertainment.accumulatedIncome)}`);
 
-                        const icon = entertainment.type === 'themePark' ? '🎡' : '🕹️';
-                        const name = entertainment.type === 'themePark' ? 'Theme Park' : 'Arcade';
-                        const weatherIcon = this.scene.weatherSystem.getCurrentWeather() === 'rainy' ? ' 🌧️' :
-                                          this.scene.weatherSystem.getCurrentWeather() === 'snowy' ? ' ❄️' : '';
-                        this.scene.uiManager.addNotification(`${icon} ${name} visit - $${price}${weatherIcon}`);
+                        const icon = entertainment.type === 'themePark' ? '🎡' : entertainment.type === 'movieTheater' ? '🎬' : '🕹️';
+                        const name = entertainment.type === 'themePark' ? 'Theme Park' : entertainment.type === 'movieTheater' ? 'Movie Theater' : 'Arcade';
+                        this.scene.uiManager.addNotification(`${icon} ${name} visit - $${totalIncome}`);
 
                         citizen.isEntertainmentVisit = false;
                     }

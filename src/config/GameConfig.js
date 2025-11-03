@@ -260,6 +260,70 @@ export const BuildingTypes = {
         ticketPrice: 35, // $35 per visitor
         open24Hours: true
     },
+    school: {
+        name: 'School',
+        cost: 8000,
+        wood: 50,
+        bricks: 40,
+        width: 220,
+        height: 280,
+        color: 0xFFC107, // Amber/yellow
+        district: 'downtown',
+        specialType: 'school',
+        capacity: 30, // 30 students
+        schedule: {
+            arrivalStart: 7,   // 7 AM
+            arrivalEnd: 9,     // 9 AM
+            lunchStart: 12,    // 12 PM
+            lunchEnd: 13,      // 1 PM
+            departureStart: 15, // 3 PM
+            departureEnd: 16   // 4 PM
+        },
+        fieldTripChance: 0.10, // 10% chance per day to have a field trip
+        fieldTripDestinations: ['library', 'museum'],
+        maintenanceCost: 50 // Costs $50/day to maintain
+    },
+    officeBuilding: {
+        name: 'Office Building',
+        cost: 15000,
+        wood: 80,
+        bricks: 100,
+        width: 200,
+        height: 400,
+        color: 0x607D8B, // Blue-gray
+        district: 'downtown',
+        specialType: 'office',
+        capacity: 50, // 50 workers
+        incomeRate: 15, // $15/minute
+        maxIncome: 300, // $300 max accumulated
+        schedule: {
+            arrivalStart: 8,     // 8 AM
+            arrivalEnd: 9,       // 9 AM
+            lunchStart: 12,      // 12 PM
+            lunchEnd: 13,        // 1 PM
+            breakTime: 15,       // 3 PM break
+            departureStart: 17,  // 5 PM
+            departureEnd: 18     // 6 PM
+        },
+        workerType: 'mixed' // Mix of local citizens and commuters
+    },
+    movieTheater: {
+        name: 'Movie Theater',
+        cost: 12000,
+        wood: 60,
+        bricks: 70,
+        width: 230,
+        height: 280,
+        color: 0x8B0000, // Dark red
+        district: 'downtown',
+        entertainmentType: 'movieTheater',
+        ticketPrice: 15, // $15 per ticket
+        concessionChance: 0.60, // 60% buy concessions
+        concessionPrice: 12, // $12 average concession purchase
+        showtimes: [14, 18, 20, 22], // 2 PM, 6 PM, 8 PM, 10 PM
+        showDuration: 2, // 2 hours per showing
+        peakHours: [18, 20] // 6 PM and 8 PM are peak times
+    },
     market: {
         name: 'Market',
         cost: 150,
@@ -454,5 +518,23 @@ export const ColorSchemes = {
         { building: 0xE64A19, chimney: 0x4E342E, bricks: 0xD84315, kiln: 0xFF6F00, window: 0xFFECB3 },  // Brighter Red
         { building: 0xBF360C, chimney: 0x3E2723, bricks: 0xD84315, kiln: 0xF4511E, window: 0xFFCCBC },  // Deep Red
         { building: 0xFF5722, chimney: 0x6D4C41, bricks: 0xE64A19, kiln: 0xFF7043, window: 0xFFAB91 }   // Bright Orange-Red
+    ],
+    school: [
+        { building: 0xFFC107, roof: 0xFF8F00, door: 0x654321, window: 0x87CEEB, flag: 0xFF0000 },  // Amber/Orange
+        { building: 0xFFD54F, roof: 0xFFB300, door: 0x5D4037, window: 0xE3F2FD, flag: 0x0000FF },  // Light Amber/Blue
+        { building: 0xFFB74D, roof: 0xFF9800, door: 0x6D4C41, window: 0xBBDEFB, flag: 0x00FF00 },  // Orange/Green
+        { building: 0xFFA726, roof: 0xF57C00, door: 0x795548, window: 0x90CAF9, flag: 0xFFD700 }   // Deep Orange/Gold
+    ],
+    officeBuilding: [
+        { building: 0x607D8B, windows: 0xB0BEC5, door: 0x37474F, trim: 0x455A64, roof: 0x37474F },  // Blue-gray
+        { building: 0x546E7A, windows: 0x90A4AE, door: 0x263238, trim: 0x37474F, roof: 0x263238 },  // Darker blue-gray
+        { building: 0x78909C, windows: 0xCFD8DC, door: 0x455A64, trim: 0x546E7A, roof: 0x455A64 },  // Light blue-gray
+        { building: 0x455A64, windows: 0x78909C, door: 0x263238, trim: 0x37474F, roof: 0x263238 }   // Deep blue-gray
+    ],
+    movieTheater: [
+        { building: 0x8B0000, marquee: 0xFFD700, lights: 0xFF0000, window: 0x1A1A1A, door: 0x654321 },  // Dark Red/Gold
+        { building: 0xB22222, marquee: 0xFFA500, lights: 0xFF4500, window: 0x0F0F0F, door: 0x8B4513 },  // Firebrick/Orange
+        { building: 0xDC143C, marquee: 0xFFFF00, lights: 0xFF1493, window: 0x141414, door: 0xA0522D },  // Crimson/Yellow
+        { building: 0x800020, marquee: 0xF0E68C, lights: 0xFF69B4, window: 0x1C1C1C, door: 0x654321 }   // Burgundy/Khaki
     ]
 };

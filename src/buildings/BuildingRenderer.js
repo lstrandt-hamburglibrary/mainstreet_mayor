@@ -70,6 +70,12 @@ export class BuildingRenderer {
             this.drawPlayground(graphics, building, x, y, facadeVariation);
         } else if (type === 'fountain') {
             this.drawFountain(graphics, building, x, y, facadeVariation);
+        } else if (type === 'school') {
+            this.drawSchool(graphics, building, x, y, facadeVariation);
+        } else if (type === 'officeBuilding') {
+            this.drawOfficeBuilding(graphics, building, x, y, facadeVariation);
+        } else if (type === 'movieTheater') {
+            this.drawMovieTheater(graphics, building, x, y, facadeVariation);
         }
     }
 
@@ -1722,35 +1728,6 @@ export class BuildingRenderer {
         graphics.fillStyle(scheme.building, 1);
         graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
 
-        // Golden dome/roof - proper half-circle on top (flipped to be dome-shaped)
-        const domeWidth = 100;
-        const domeHeight = 50;
-
-        graphics.fillStyle(scheme.roof, 1);
-        graphics.beginPath();
-        graphics.arc(x, y - building.height, domeWidth/2, 0, Math.PI, false); // Half circle pointing up
-        graphics.closePath();
-        graphics.fillPath();
-
-        // Dome outline
-        graphics.lineStyle(3, this.darkenColor(scheme.roof, 0.8), 1);
-        graphics.beginPath();
-        graphics.arc(x, y - building.height, domeWidth/2, 0, Math.PI, false);
-        graphics.strokePath();
-
-        // Dome highlight (curved)
-        graphics.fillStyle(0xFFFFFF, 0.3);
-        graphics.beginPath();
-        graphics.arc(x - 10, y - building.height - 15, domeWidth/3.5, 0, Math.PI, false);
-        graphics.closePath();
-        graphics.fillPath();
-
-        // Dome spire/finial on top
-        graphics.fillStyle(scheme.roof, 1);
-        graphics.fillCircle(x, y - building.height - domeHeight, 5);
-        graphics.lineStyle(2, this.darkenColor(scheme.roof, 0.8), 1);
-        graphics.strokeCircle(x, y - building.height - domeHeight, 5);
-
         // Classical columns (grand museum entrance)
         graphics.fillStyle(scheme.columns, 1);
         for (let i = 0; i < 5; i++) {
@@ -1764,20 +1741,21 @@ export class BuildingRenderer {
             graphics.fillRect(colX - 15, y - 40, 30, 15);
         }
 
-        // Windows (tall, elegant)
+        // Windows (tall, elegant) - moved higher up
         graphics.fillStyle(scheme.window, 1);
         for (let i = 0; i < 4; i++) {
             const winX = x - 70 + (i * 45);
-            graphics.fillRect(winX - 12, y - building.height + 120, 24, 120);
+            const windowTopY = y - building.height + 50; // Moved down 10px
+            graphics.fillRect(winX - 12, windowTopY, 24, 100);
 
             // Arched top
             graphics.beginPath();
-            graphics.arc(winX, y - building.height + 120, 12, Math.PI, 0, false);
+            graphics.arc(winX, windowTopY, 12, Math.PI, 0, false);
             graphics.fillPath();
 
             // Window frame
             graphics.lineStyle(2, scheme.accent, 1);
-            graphics.strokeRect(winX - 12, y - building.height + 120, 24, 120);
+            graphics.strokeRect(winX - 12, windowTopY, 24, 100);
         }
 
         // Grand entrance door
@@ -1934,5 +1912,217 @@ export class BuildingRenderer {
         }
 
         // NO BORDER - keep it transparent!
+    }
+
+    drawSchool(graphics, building, x, y, facadeVariation) {
+        const scheme = ColorSchemes.school[facadeVariation % 4];
+
+        // Main building body
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Roof
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.fillTriangle(
+            x - building.width/2 - 10, y - building.height,
+            x + building.width/2 + 10, y - building.height,
+            x, y - building.height - 40
+        );
+
+        // Entrance door (centered, bottom)
+        graphics.fillStyle(scheme.door, 1);
+        graphics.fillRect(x - 25, y - 60, 50, 60);
+
+        // Door handle
+        graphics.fillStyle(0xFFD700, 1);
+        graphics.fillCircle(x + 15, y - 30, 4);
+
+        // Windows (3 rows, 4 columns) - properly centered within building width
+        graphics.fillStyle(scheme.window, 1);
+        const windowWidth = 30;
+        const windowSpacing = 50; // Space between window centers
+        const startX = x - 85; // Starting position for first window
+
+        for (let row = 0; row < 3; row++) {
+            for (let col = 0; col < 4; col++) {
+                const wx = startX + (col * windowSpacing);
+                const wy = y - building.height + 40 + (row * 60);
+                graphics.fillRect(wx, wy, windowWidth, 35);
+
+                // Window panes
+                graphics.lineStyle(2, this.darkenColor(scheme.window, 0.6), 1);
+                graphics.lineBetween(wx, wy + 17.5, wx + windowWidth, wy + 17.5);
+                graphics.lineBetween(wx + windowWidth/2, wy, wx + windowWidth/2, wy + 35);
+            }
+        }
+
+        // Flag pole on roof (centered more to avoid edge)
+        graphics.lineStyle(3, 0x8B4513, 1); // Brown pole
+        graphics.lineBetween(x + 50, y - building.height, x + 50, y - building.height - 60);
+
+        // Flag
+        graphics.fillStyle(scheme.flag, 1);
+        graphics.fillTriangle(
+            x + 50, y - building.height - 60,
+            x + 80, y - building.height - 50,
+            x + 50, y - building.height - 40
+        );
+
+        // "SCHOOL" sign above door
+        graphics.fillStyle(0xFFFFFF, 1);
+        graphics.fillRect(x - 40, y - building.height + 20, 80, 25);
+
+        // Border
+        graphics.lineStyle(2, 0x000000, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawOfficeBuilding(graphics, building, x, y, facadeVariation) {
+        const scheme = ColorSchemes.officeBuilding[facadeVariation % 4];
+
+        // Main building body
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Roof trim
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.fillRect(x - building.width/2 - 5, y - building.height, building.width + 10, 20);
+
+        // Vertical trim strips
+        graphics.fillStyle(scheme.trim, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, 8, building.height);
+        graphics.fillRect(x + building.width/2 - 8, y - building.height, 8, building.height);
+
+        // Glass windows grid (modern office look - 4 columns, 12 rows)
+        graphics.fillStyle(scheme.windows, 1);
+        const windowWidth = 40;
+        const windowHeight = 25;
+        const cols = 4;
+        const rows = 12;
+        const xSpacing = (building.width - 40) / cols;
+        const ySpacing = (building.height - 40) / rows;
+
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const wx = x - building.width/2 + 20 + (col * xSpacing);
+                const wy = y - building.height + 25 + (row * ySpacing);
+                graphics.fillRect(wx, wy, windowWidth, windowHeight);
+
+                // Reflective effect
+                graphics.fillStyle(this.darkenColor(scheme.windows, 0.7), 0.3);
+                graphics.fillRect(wx, wy, windowWidth/2, windowHeight);
+                graphics.fillStyle(scheme.windows, 1);
+            }
+        }
+
+        // Entrance at bottom
+        graphics.fillStyle(scheme.door, 1);
+        graphics.fillRect(x - 40, y - 80, 80, 80);
+
+        // Glass door effect
+        graphics.fillStyle(scheme.windows, 0.6);
+        graphics.fillRect(x - 35, y - 75, 70, 70);
+
+        // Building border
+        graphics.lineStyle(3, scheme.trim, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawMovieTheater(graphics, building, x, y, facadeVariation) {
+        const scheme = ColorSchemes.movieTheater[facadeVariation % 4];
+
+        // Main building body
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Marquee (ticket booth awning at top)
+        graphics.fillStyle(scheme.marquee, 1);
+        graphics.fillRect(x - building.width/2 - 10, y - building.height + 40, building.width + 20, 50);
+
+        // Marquee border lights
+        for (let lx = -building.width/2; lx < building.width/2; lx += 15) {
+            graphics.fillStyle(scheme.lights, 1);
+            graphics.fillCircle(x + lx, y - building.height + 45, 4);
+            graphics.fillCircle(x + lx, y - building.height + 85, 4);
+        }
+
+        // "CINEMA" text area
+        graphics.fillStyle(0x000000, 1);
+        graphics.fillRect(x - 80, y - building.height + 50, 160, 25);
+
+        // Movie posters on walls (3 frames) - positioned below marquee, centered
+        const posterColors = [0xFF6347, 0x4169E1, 0x32CD32];
+        const posterWidth = 50;
+        const posterGap = 10; // Gap between posters
+        const totalWidth = (posterWidth * 3) + (posterGap * 2); // Total width of all posters + gaps
+        const startX = x - (totalWidth / 2); // Start position to center all three posters
+
+        for (let i = 0; i < 3; i++) {
+            const px = startX + (i * (posterWidth + posterGap));
+            const py = y - 180; // Below the marquee
+
+            // Poster frame
+            graphics.fillStyle(0x000000, 1);
+            graphics.fillRect(px - 2, py - 2, 54, 74);
+
+            // Poster background
+            graphics.fillStyle(posterColors[i], 1);
+            graphics.fillRect(px, py, 50, 70);
+
+            // Add geometric designs to each poster
+            if (i === 0) {
+                // Red poster: Circles and triangles
+                graphics.fillStyle(0xFFFFFF, 0.8);
+                graphics.fillCircle(px + 25, py + 20, 12);
+                graphics.fillStyle(0x000000, 0.6);
+                graphics.fillTriangle(px + 10, py + 50, px + 25, py + 35, px + 40, py + 50);
+                graphics.fillStyle(0xFFD700, 0.7);
+                graphics.fillCircle(px + 38, py + 15, 6);
+            } else if (i === 1) {
+                // Blue poster: Rectangles and lines
+                graphics.fillStyle(0xFFFFFF, 0.8);
+                graphics.fillRect(px + 8, py + 15, 34, 8);
+                graphics.fillStyle(0xFFD700, 0.7);
+                graphics.fillRect(px + 8, py + 28, 34, 3);
+                graphics.fillStyle(0x000000, 0.5);
+                graphics.fillRect(px + 12, py + 40, 26, 20);
+                graphics.lineStyle(3, 0xFFFFFF, 0.8);
+                graphics.lineBetween(px + 25, py + 35, px + 25, py + 65);
+            } else {
+                // Green poster: Stars and shapes
+                graphics.fillStyle(0xFFFF00, 0.8);
+                // Star shape (simplified as triangle + inverted triangle)
+                graphics.fillTriangle(px + 25, py + 10, px + 18, py + 25, px + 32, py + 25);
+                graphics.fillTriangle(px + 25, py + 30, px + 18, py + 15, px + 32, py + 15);
+                graphics.fillStyle(0xFFFFFF, 0.7);
+                graphics.fillCircle(px + 12, py + 45, 8);
+                graphics.fillCircle(px + 38, py + 45, 8);
+                graphics.fillStyle(0x000000, 0.5);
+                graphics.fillRect(px + 18, py + 55, 14, 8);
+            }
+        }
+
+        // Entrance doors (double doors)
+        graphics.fillStyle(scheme.door, 1);
+        graphics.fillRect(x - 45, y - 80, 40, 80);
+        graphics.fillRect(x + 5, y - 80, 40, 80);
+
+        // Door handles
+        graphics.fillStyle(0xFFD700, 1);
+        graphics.fillCircle(x - 10, y - 40, 5);
+        graphics.fillCircle(x + 40, y - 40, 5);
+
+        // Door window
+        graphics.fillStyle(scheme.window, 1);
+        graphics.fillRect(x - 40, y - 70, 30, 20);
+        graphics.fillRect(x + 10, y - 70, 30, 20);
+
+        // Red carpet
+        graphics.fillStyle(0xDC143C, 1);
+        graphics.fillRect(x - 50, y, 100, 5);
+
+        // Building border
+        graphics.lineStyle(2, this.darkenColor(scheme.building, 0.7), 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
     }
 }
