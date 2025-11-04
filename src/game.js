@@ -4278,9 +4278,10 @@ class MainScene extends Phaser.Scene {
                     this.fireStationPrompt.setVisible(true);
                 }
 
-                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                    this.fireStationSystem.showFireStationUI(nearFireStation);
-                }
+                // Temporarily disabled
+                // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                //     this.fireStationSystem.showFireStationUI(nearFireStation);
+                // }
             } else {
                 if (this.fireStationPrompt) {
                     this.fireStationPrompt.setVisible(false);
@@ -4317,9 +4318,10 @@ class MainScene extends Phaser.Scene {
                     this.policeStationPrompt.setVisible(true);
                 }
 
-                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                    this.policeStationSystem.showPoliceStationUI(nearPoliceStation);
-                }
+                // Temporarily disabled
+                // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                //     this.policeStationSystem.showPoliceStationUI(nearPoliceStation);
+                // }
             } else {
                 if (this.policeStationPrompt) {
                     this.policeStationPrompt.setVisible(false);
@@ -4356,9 +4358,10 @@ class MainScene extends Phaser.Scene {
                     this.trainStationPrompt.setVisible(true);
                 }
 
-                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                    this.showTrainStationUI(nearTrainStation);
-                }
+                // Temporarily disabled
+                // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                //     this.showTrainStationUI(nearTrainStation);
+                // }
             } else {
                 if (this.trainStationPrompt) {
                     this.trainStationPrompt.setVisible(false);

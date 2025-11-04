@@ -108,7 +108,7 @@ export class FireStationSystem {
             yPos += 35;
         }
 
-        // Upgrade Buttons - simple text buttons
+        // Upgrade Buttons
         yPos = 340;
         const upgrades = [
             {
@@ -129,53 +129,21 @@ export class FireStationSystem {
         ];
 
         for (let upgrade of upgrades) {
-            const btnText = this.scene.add.text(400, yPos, upgrade.label, {
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#ffffff',
-                backgroundColor: '#D32F2F',
-                padding: { x: 15, y: 8 }
-            });
-            btnText.setOrigin(0.5);
-            btnText.setInteractive({ useHandCursor: true });
-            btnText.on('pointerdown', () => {
+            this.createButton(ui, 400, yPos, upgrade.label, () => {
                 if (this.scene.money >= upgrade.cost) {
                     upgrade.action();
                 } else {
                     alert(`Not enough money! Need $${upgrade.cost}`);
                 }
             });
-            btnText.on('pointerover', () => {
-                btnText.setScale(1.05);
-            });
-            btnText.on('pointerout', () => {
-                btnText.setScale(1);
-            });
-            ui.add(btnText);
             yPos += 45;
         }
 
-        // Close button - use simple text button approach
-        const closeBtnText = this.scene.add.text(400, 468, '[ ✖ CLOSE ]', {
-            fontSize: '20px',
-            fontWeight: 'bold',
-            color: '#ffffff',
-            backgroundColor: '#D32F2F',
-            padding: { x: 20, y: 8 }
-        });
-        closeBtnText.setOrigin(0.5);
-        closeBtnText.setInteractive({ useHandCursor: true });
-        closeBtnText.on('pointerdown', () => {
+        // Close button
+        this.createButton(ui, 400, 468, '✖ CLOSE', () => {
             console.log('Fire station close clicked');
             ui.destroy();
         });
-        closeBtnText.on('pointerover', () => {
-            closeBtnText.setScale(1.05);
-        });
-        closeBtnText.on('pointerout', () => {
-            closeBtnText.setScale(1);
-        });
-        ui.add(closeBtnText);
 
         // ESC key support
         const escKey = this.scene.input.keyboard.addKey('ESC');

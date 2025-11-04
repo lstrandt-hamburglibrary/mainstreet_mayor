@@ -2217,7 +2217,7 @@ export class BuildingRenderer {
         graphics.fillStyle(scheme.window, 1);
         for (let floor = 0; floor < 3; floor++) {
             for (let i = 0; i < 4; i++) {
-                const wx = x - 90 + (i * 50);
+                const wx = x - 82.5 + (i * 45);
                 const wy = y - building.height + 30 + (floor * 60);
                 graphics.fillRect(wx, wy, 35, 40);
 
@@ -2286,17 +2286,17 @@ export class BuildingRenderer {
         graphics.fillStyle(scheme.window, 1);
         for (let floor = 0; floor < 4; floor++) {
             for (let i = 0; i < 3; i++) {
-                const wx = x - 60 + (i * 50);
+                const wx = x - 52.5 + (i * 38.75);
                 const wy = y - building.height + 40 + (floor * 70);
-                graphics.fillRect(wx, wy, 40, 50);
+                graphics.fillRect(wx, wy, 35, 50);
 
                 // Window frame
                 graphics.lineStyle(1, 0x666666, 1);
-                graphics.strokeRect(wx, wy, 40, 50);
+                graphics.strokeRect(wx, wy, 35, 50);
 
                 // Window divider (cross)
-                graphics.lineBetween(wx + 20, wy, wx + 20, wy + 50);
-                graphics.lineBetween(wx, wy + 25, wx + 40, wy + 25);
+                graphics.lineBetween(wx + 17.5, wy, wx + 17.5, wy + 50);
+                graphics.lineBetween(wx, wy + 25, wx + 35, wy + 25);
             }
         }
 
