@@ -5,6 +5,12 @@
 export class CitizenSystem {
     constructor(scene) {
         this.scene = scene;
+
+        // Performance settings
+        this.MAX_CITIZENS = 120; // Hard cap to prevent performance issues
+        this.CULL_DISTANCE = 1500; // Hide citizens this far from camera
+        this.lastCullCheck = 0;
+        this.CULL_CHECK_INTERVAL = 1000; // Check every 1 second
     }
 
     spawnCitizens() {
@@ -18,6 +24,12 @@ export class CitizenSystem {
     }
 
     spawnNewCitizen() {
+        // Check if we're at the citizen cap
+        if (this.scene.citizens.length >= this.MAX_CITIZENS) {
+            console.log(`⚠️ Citizen cap reached (${this.MAX_CITIZENS}). Not spawning more citizens.`);
+            return false;
+        }
+
         // Spawn a new citizen near a random residential building
         const groundLevel = this.scene.gameHeight - 100;
 
@@ -37,6 +49,7 @@ export class CitizenSystem {
         }
 
         this.createCitizen(spawnX, groundLevel - 30);
+        return true;
     }
 
     spawnTourist(x) {
@@ -201,7 +214,21 @@ export class CitizenSystem {
     updateCitizens() {
         const deltaTime = 1/60; // Approximate 60 FPS
 
+        // Periodic culling check (hide off-screen citizens for performance)
+        const now = Date.now();
+        if (now - this.lastCullCheck > this.CULL_CHECK_INTERVAL) {
+            this.cullOffscreenCitizens();
+            this.lastCullCheck = now;
+        }
+
+        // Remove excess citizens if we're over the cap (cleanup from old saves)
+        this.enforcePopulationCap();
+
         for (let citizen of this.scene.citizens) {
+            // Skip update for invisible (culled) citizens to save performance
+            if (!citizen.container || !citizen.container.visible) {
+                continue;
+            }
             // Handle tourist timer - tourists leave after their time is up (based on game time)
             if (citizen.isTourist && citizen.touristTimeRemaining !== undefined) {
                 const timeElapsed = this.scene.gameTime - citizen.touristStartTime;
@@ -228,20 +255,32 @@ export class CitizenSystem {
                         citizen.hasCheckedOut = true;
                     }
 
-                    // Time to leave - head to nearest bus stop
-                    let nearestStop = null;
-                    let nearestDistance = Infinity;
-                    if (this.scene.busStops && this.scene.busStops.length > 0) {
-                        for (let stop of this.scene.busStops) {
-                            const dist = Math.abs(citizen.x - stop.x);
-                            if (dist < nearestDistance) {
-                                nearestDistance = dist;
-                                nearestStop = stop;
+                    // Time to leave - prefer train stations (bigger capacity), fallback to bus stops
+                    const trainStations = this.scene.buildings.filter(b => b.type === 'trainStation');
+
+                    if (trainStations.length > 0 && this.scene.trainSystem) {
+                        // Use train system - much faster for large groups
+                        if (!citizen.targetTrainStation) {
+                            const sent = this.scene.trainSystem.sendCitizenToNearestStation(citizen);
+                            if (sent) {
+                                console.log('🚂 Tourist heading to train station to leave');
                             }
                         }
-                    }
+                    } else {
+                        // No train stations - use bus stops
+                        let nearestStop = null;
+                        let nearestDistance = Infinity;
+                        if (this.scene.busStops && this.scene.busStops.length > 0) {
+                            for (let stop of this.scene.busStops) {
+                                const dist = Math.abs(citizen.x - stop.x);
+                                if (dist < nearestDistance) {
+                                    nearestDistance = dist;
+                                    nearestStop = stop;
+                                }
+                            }
+                        }
 
-                    if (nearestStop && !citizen.targetBusStop) {
+                        if (nearestStop && !citizen.targetBusStop) {
                         // Interrupt whatever they're doing and head to bus stop
                         if (citizen.state === 'visiting') {
                             // If visiting, exit the building immediately
@@ -281,11 +320,12 @@ export class CitizenSystem {
                         citizen.isEntertainmentVisit = false;
                         citizen.isServiceVisit = false;
 
-                        // Head to bus stop
-                        citizen.targetBusStop = nearestStop;
-                        citizen.state = 'walking';
-                        citizen.direction = citizen.x < nearestStop.x ? 1 : -1;
-                        console.log('👋 Tourist time expired - heading to bus stop to leave town');
+                            // Head to bus stop
+                            citizen.targetBusStop = nearestStop;
+                            citizen.state = 'walking';
+                            citizen.direction = citizen.x < nearestStop.x ? 1 : -1;
+                            console.log('👋 Tourist time expired - heading to bus stop to leave town');
+                        }
                     }
                 }
             }
@@ -628,6 +668,66 @@ export class CitizenSystem {
                 // Citizen is on a bus - already handled in updateBuses
                 // The bus will drop them off and change state back to walking
             }
+        }
+    }
+
+    cullOffscreenCitizens() {
+        // Hide citizens far from camera to improve performance
+        if (!this.scene.cameras || !this.scene.cameras.main) return;
+
+        const camera = this.scene.cameras.main;
+        const cameraX = camera.scrollX + camera.width / 2;
+
+        let visibleCount = 0;
+        let hiddenCount = 0;
+
+        for (let citizen of this.scene.citizens) {
+            if (!citizen.container) continue;
+
+            const distance = Math.abs(citizen.x - cameraX);
+
+            if (distance > this.CULL_DISTANCE) {
+                // Too far - hide to save performance
+                if (citizen.container.visible) {
+                    citizen.container.setVisible(false);
+                    hiddenCount++;
+                }
+            } else {
+                // Close enough - show
+                if (!citizen.container.visible) {
+                    citizen.container.setVisible(true);
+                }
+                visibleCount++;
+            }
+        }
+
+        // Log occasionally for debugging
+        if (Math.random() < 0.05) { // 5% chance
+            console.log(`👥 Citizens: ${visibleCount} visible, ${hiddenCount} culled (${this.scene.citizens.length} total)`);
+        }
+    }
+
+    enforcePopulationCap() {
+        // Remove oldest citizens if we're over the cap (can happen from loading old saves)
+        if (this.scene.citizens.length > this.MAX_CITIZENS) {
+            const excessCount = this.scene.citizens.length - this.MAX_CITIZENS;
+            console.log(`⚠️ Removing ${excessCount} excess citizens to enforce cap of ${this.MAX_CITIZENS}`);
+
+            // Remove the oldest citizens (first in array)
+            for (let i = 0; i < excessCount; i++) {
+                const citizen = this.scene.citizens[i];
+                if (citizen && citizen.container) {
+                    citizen.container.destroy();
+                }
+            }
+
+            // Remove from array
+            this.scene.citizens.splice(0, excessCount);
+
+            // Update population counter
+            this.scene.population = this.scene.citizens.length;
+
+            console.log(`✅ Population reduced to ${this.scene.citizens.length}`);
         }
     }
 }

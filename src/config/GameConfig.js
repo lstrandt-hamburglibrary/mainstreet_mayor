@@ -402,6 +402,70 @@ export const BuildingTypes = {
         district: 'recreation',
         boostRadius: 200,
         boostPercent: 0.25 // 25% boost to all nearby buildings
+    },
+    fireStation: {
+        name: 'Fire Station',
+        cost: 10000,
+        wood: 60,
+        bricks: 80,
+        width: 180,
+        height: 200,
+        color: 0xD32F2F, // Fire red
+        district: 'downtown',
+        specialType: 'emergency',
+        maintenanceCost: 100, // Costs $100/day to maintain
+        vehicleType: 'firetruck',
+        vehicleSpawnChance: 0.05, // 5% chance per hour to dispatch vehicle
+        emergencyResponseTime: 3, // 3 minutes to respond to emergencies
+        protectionRadius: 500 // Buildings within 500px have fire protection
+    },
+    policeStation: {
+        name: 'Police Station',
+        cost: 12000,
+        wood: 70,
+        bricks: 90,
+        width: 180,
+        height: 200,
+        color: 0x1565C0, // Police blue
+        district: 'downtown',
+        specialType: 'emergency',
+        maintenanceCost: 120, // Costs $120/day to maintain
+        vehicleType: 'policeCar',
+        vehicleSpawnChance: 0.08, // 8% chance per hour to dispatch vehicle
+        crimeReduction: 0.75, // Reduces crime by 75% in protection radius
+        protectionRadius: 600 // Buildings within 600px have police protection
+    },
+    hospital: {
+        name: 'Hospital',
+        cost: 18000,
+        wood: 80,
+        bricks: 120,
+        width: 200,
+        height: 260,
+        color: 0xFFFFFF, // White with red cross
+        district: 'downtown',
+        specialType: 'emergency',
+        maintenanceCost: 150, // Costs $150/day to maintain
+        vehicleType: 'ambulance',
+        vehicleSpawnChance: 0.06, // 6% chance per hour to dispatch vehicle
+        healthBoost: 1.10, // 10% population growth boost in protection radius
+        protectionRadius: 700, // Buildings within 700px have health benefits
+        emergencyBeds: 20,
+        patientCapacity: 50
+    },
+    trainStation: {
+        name: 'Train Station',
+        cost: 15000,
+        wood: 100,
+        bricks: 150,
+        width: 200,
+        height: 180,
+        color: 0x795548, // Brown
+        district: 'downtown',
+        specialType: 'transit',
+        maintenanceCost: 80, // Costs $80/day to maintain
+        trainCapacity: 80, // Trains can hold 80 passengers
+        trainInterval: 180 // Train arrives every 180 minutes (3 hours)
     }
 };
 

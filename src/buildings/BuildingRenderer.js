@@ -76,6 +76,14 @@ export class BuildingRenderer {
             this.drawOfficeBuilding(graphics, building, x, y, facadeVariation);
         } else if (type === 'movieTheater') {
             this.drawMovieTheater(graphics, building, x, y, facadeVariation);
+        } else if (type === 'fireStation') {
+            this.drawFireStation(graphics, building, x, y, facadeVariation);
+        } else if (type === 'policeStation') {
+            this.drawPoliceStation(graphics, building, x, y, facadeVariation);
+        } else if (type === 'hospital') {
+            this.drawHospital(graphics, building, x, y, facadeVariation);
+        } else if (type === 'trainStation') {
+            this.drawTrainStation(graphics, building, x, y, facadeVariation);
         }
     }
 
@@ -2120,6 +2128,307 @@ export class BuildingRenderer {
         // Red carpet
         graphics.fillStyle(0xDC143C, 1);
         graphics.fillRect(x - 50, y, 100, 5);
+
+        // Building border
+        graphics.lineStyle(2, this.darkenColor(scheme.building, 0.7), 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawFireStation(graphics, building, x, y, facadeVariation) {
+        const scheme = {
+            building: 0xD32F2F, // Fire red
+            accent: 0xFFEB3B,   // Yellow
+            door: 0x8B0000,     // Dark red
+            window: 0x87CEEB    // Sky blue
+        };
+
+        // Main building body
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Yellow accent stripes
+        graphics.fillStyle(scheme.accent, 1);
+        graphics.fillRect(x - building.width/2, y - building.height + 40, building.width, 15);
+        graphics.fillRect(x - building.width/2, y - building.height + 100, building.width, 15);
+
+        // Garage doors (where fire trucks are stored)
+        for (let i = 0; i < 2; i++) {
+            const gx = x - 60 + (i * 80);
+
+            // Door frame
+            graphics.fillStyle(0x333333, 1);
+            graphics.fillRect(gx, y - 130, 70, 130);
+
+            // Door panels
+            graphics.fillStyle(0x555555, 1);
+            for (let j = 0; j < 6; j++) {
+                graphics.fillRect(gx + 5, y - 125 + (j * 21), 60, 18);
+            }
+
+            // Door handle
+            graphics.fillStyle(0xC0C0C0, 1);
+            graphics.fillCircle(gx + 35, y - 20, 4);
+        }
+
+        // Windows on upper floor
+        graphics.fillStyle(scheme.window, 1);
+        for (let i = 0; i < 3; i++) {
+            const wx = x - 75 + (i * 60);
+            graphics.fillRect(wx, y - building.height + 30, 40, 35);
+
+            // Window frame
+            graphics.lineStyle(2, 0x000000, 1);
+            graphics.strokeRect(wx, y - building.height + 30, 40, 35);
+        }
+
+        // Fire department logo/emblem
+        graphics.fillStyle(0xFFD700, 1);
+        graphics.fillCircle(x, y - building.height + 120, 25);
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillCircle(x, y - building.height + 120, 20);
+
+        // Maltese cross shape (simplified)
+        graphics.fillStyle(0xFFFFFF, 1);
+        graphics.fillRect(x - 3, y - building.height + 105, 6, 30);
+        graphics.fillRect(x - 15, y - building.height + 117, 30, 6);
+
+        // Building border
+        graphics.lineStyle(2, this.darkenColor(scheme.building, 0.7), 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawPoliceStation(graphics, building, x, y, facadeVariation) {
+        const scheme = {
+            building: 0x1565C0, // Police blue
+            accent: 0x0D47A1,   // Dark blue
+            door: 0x37474F,     // Dark gray
+            window: 0xFFFFFF    // White
+        };
+
+        // Main building body
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Darker blue accent band
+        graphics.fillStyle(scheme.accent, 1);
+        graphics.fillRect(x - building.width/2, y - building.height + 60, building.width, 20);
+
+        // Windows (grid pattern)
+        graphics.fillStyle(scheme.window, 1);
+        for (let floor = 0; floor < 3; floor++) {
+            for (let i = 0; i < 4; i++) {
+                const wx = x - 90 + (i * 50);
+                const wy = y - building.height + 30 + (floor * 60);
+                graphics.fillRect(wx, wy, 35, 40);
+
+                // Window frame
+                graphics.lineStyle(2, 0x000000, 1);
+                graphics.strokeRect(wx, wy, 35, 40);
+            }
+        }
+
+        // Main entrance
+        graphics.fillStyle(scheme.door, 1);
+        graphics.fillRect(x - 40, y - 90, 80, 90);
+
+        // Door windows
+        graphics.fillStyle(scheme.window, 1);
+        graphics.fillRect(x - 35, y - 80, 30, 50);
+        graphics.fillRect(x + 5, y - 80, 30, 50);
+
+        // Police shield badge
+        graphics.fillStyle(0xFFD700, 1);
+        graphics.beginPath();
+        graphics.moveTo(x, y - building.height + 20);
+        graphics.lineTo(x - 30, y - building.height + 40);
+        graphics.lineTo(x - 30, y - building.height + 80);
+        graphics.lineTo(x, y - building.height + 100);
+        graphics.lineTo(x + 30, y - building.height + 80);
+        graphics.lineTo(x + 30, y - building.height + 40);
+        graphics.closePath();
+        graphics.fillPath();
+
+        // Badge details
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillCircle(x, y - building.height + 60, 15);
+        graphics.fillStyle(0xFFFFFF, 1);
+        graphics.fillCircle(x, y - building.height + 60, 12);
+
+        // Flashing light on roof
+        graphics.fillStyle(0xFF0000, 1);
+        graphics.fillCircle(x - 60, y - building.height - 10, 8);
+        graphics.fillStyle(0x0000FF, 1);
+        graphics.fillCircle(x + 60, y - building.height - 10, 8);
+
+        // Building border
+        graphics.lineStyle(2, this.darkenColor(scheme.building, 0.7), 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawHospital(graphics, building, x, y, facadeVariation) {
+        const scheme = {
+            building: 0xFFFFFF, // White
+            accent: 0xE0E0E0,   // Light gray
+            cross: 0xFF0000,    // Red cross
+            window: 0xB3E5FC    // Light blue
+        };
+
+        // Main building body (white)
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Gray accent sections
+        graphics.fillStyle(scheme.accent, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, 40, building.height);
+        graphics.fillRect(x + building.width/2 - 40, y - building.height, 40, building.height);
+
+        // Windows (many floors)
+        graphics.fillStyle(scheme.window, 1);
+        for (let floor = 0; floor < 4; floor++) {
+            for (let i = 0; i < 3; i++) {
+                const wx = x - 60 + (i * 50);
+                const wy = y - building.height + 40 + (floor * 70);
+                graphics.fillRect(wx, wy, 40, 50);
+
+                // Window frame
+                graphics.lineStyle(1, 0x666666, 1);
+                graphics.strokeRect(wx, wy, 40, 50);
+
+                // Window divider (cross)
+                graphics.lineBetween(wx + 20, wy, wx + 20, wy + 50);
+                graphics.lineBetween(wx, wy + 25, wx + 40, wy + 25);
+            }
+        }
+
+        // Large red cross symbol on front
+        graphics.fillStyle(scheme.cross, 1);
+        const crossSize = 60;
+        const crossThick = 20;
+        // Vertical bar
+        graphics.fillRect(x - crossThick/2, y - building.height + 20, crossThick, crossSize);
+        // Horizontal bar
+        graphics.fillRect(x - crossSize/2, y - building.height + 40, crossSize, crossThick);
+
+        // Emergency entrance
+        graphics.fillStyle(0x2196F3, 1);
+        graphics.fillRect(x - building.width/2, y - 100, building.width, 25);
+
+        // Entrance doors
+        graphics.fillStyle(0x90CAF9, 1);
+        graphics.fillRect(x - 50, y - 95, 45, 95);
+        graphics.fillRect(x + 5, y - 95, 45, 95);
+
+        // Helipad on roof (H symbol)
+        graphics.fillStyle(0xFF6F00, 1);
+        graphics.fillCircle(x, y - building.height - 20, 35);
+        graphics.fillStyle(0xFFFFFF, 1);
+        graphics.fillRect(x - 15, y - building.height - 30, 8, 20);
+        graphics.fillRect(x + 7, y - building.height - 30, 8, 20);
+        graphics.fillRect(x - 15, y - building.height - 23, 30, 6);
+
+        // Building border
+        graphics.lineStyle(3, 0xBDBDBD, 1);
+        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+    }
+
+    drawTrainStation(graphics, building, x, y, facadeVariation) {
+        const scheme = {
+            building: 0x795548, // Brown
+            roof: 0x5D4037,     // Dark brown
+            platform: 0xBDBDBD, // Gray
+            tracks: 0x424242,   // Dark gray
+            accent: 0xFFEB3B    // Yellow
+        };
+
+        // Main station building
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+
+        // Peaked roof
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.beginPath();
+        graphics.moveTo(x - building.width/2 - 20, y - building.height);
+        graphics.lineTo(x, y - building.height - 40);
+        graphics.lineTo(x + building.width/2 + 20, y - building.height);
+        graphics.closePath();
+        graphics.fillPath();
+
+        // Roof ridge
+        graphics.fillStyle(0x3E2723, 1);
+        graphics.fillRect(x - building.width/2 - 20, y - building.height - 5, building.width + 40, 5);
+
+        // Clock tower on roof
+        graphics.fillStyle(scheme.building, 1);
+        graphics.fillRect(x - 20, y - building.height - 80, 40, 40);
+        graphics.fillStyle(0xFFFFFF, 1);
+        graphics.fillCircle(x, y - building.height - 60, 15);
+        graphics.fillStyle(0x000000, 1);
+        graphics.fillCircle(x, y - building.height - 60, 12);
+
+        // Clock hands
+        graphics.lineStyle(2, 0xFFFFFF, 1);
+        graphics.lineBetween(x, y - building.height - 60, x, y - building.height - 70);
+        graphics.lineBetween(x, y - building.height - 60, x + 8, y - building.height - 60);
+
+        // Large arched entrance
+        graphics.fillStyle(0x37474F, 1);
+        graphics.fillRect(x - 50, y - 100, 100, 100);
+
+        // Arch top
+        graphics.beginPath();
+        graphics.arc(x, y - 100, 50, Math.PI, 0, false);
+        graphics.fillPath();
+
+        // Platform canopy
+        graphics.fillStyle(scheme.roof, 1);
+        graphics.fillRect(x - building.width/2 - 30, y - 130, building.width + 60, 10);
+
+        // Support pillars for canopy
+        graphics.fillStyle(0x616161, 1);
+        for (let i = -1; i <= 1; i++) {
+            const px = x + (i * 100);
+            graphics.fillRect(px - 5, y - 130, 10, 30);
+        }
+
+        // Windows
+        graphics.fillStyle(0x87CEEB, 1);
+        for (let floor = 0; floor < 2; floor++) {
+            for (let i = 0; i < 4; i++) {
+                if (i === 1 || i === 2) continue; // Skip center (entrance area)
+                const wx = x - 100 + (i * 60);
+                const wy = y - building.height + 40 + (floor * 50);
+                graphics.fillRect(wx, wy, 35, 35);
+
+                // Window frame
+                graphics.lineStyle(2, 0x000000, 1);
+                graphics.strokeRect(wx, wy, 35, 35);
+            }
+        }
+
+        // "TRAIN STATION" sign above entrance
+        graphics.fillStyle(scheme.accent, 1);
+        graphics.fillRect(x - 70, y - 110, 140, 20);
+
+        // Platform (ground level)
+        graphics.fillStyle(scheme.platform, 1);
+        graphics.fillRect(x - building.width/2 - 40, y, building.width + 80, 10);
+
+        // Yellow safety line on platform
+        graphics.fillStyle(scheme.accent, 1);
+        graphics.fillRect(x - building.width/2 - 40, y, building.width + 80, 3);
+
+        // Train tracks
+        graphics.lineStyle(4, scheme.tracks, 1);
+        // Track 1 (main line)
+        graphics.lineBetween(x - building.width/2 - 50, y + 20, x + building.width/2 + 50, y + 20);
+        graphics.lineBetween(x - building.width/2 - 50, y + 30, x + building.width/2 + 50, y + 30);
+
+        // Cross ties (railroad ties)
+        graphics.lineStyle(2, 0x8D6E63, 1);
+        for (let i = 0; i < 8; i++) {
+            const tx = x - building.width/2 - 30 + (i * 40);
+            graphics.lineBetween(tx, y + 15, tx, y + 35);
+        }
 
         // Building border
         graphics.lineStyle(2, this.darkenColor(scheme.building, 0.7), 1);

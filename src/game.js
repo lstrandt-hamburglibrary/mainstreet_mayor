@@ -7,6 +7,11 @@ import { SaveSystem } from './systems/SaveSystem.js';
 import { CitizenSystem } from './systems/CitizenSystem.js';
 import { UIManager } from './systems/UIManager.js';
 import { EventSystem } from './systems/EventSystem.js';
+import { SchoolSystem } from './systems/SchoolSystem.js';
+import { EmergencyVehicleSystem } from './systems/EmergencyVehicleSystem.js';
+import { TrainSystem } from './systems/TrainSystem.js';
+import { FireStationSystem } from './systems/FireStationSystem.js';
+import { PoliceStationSystem } from './systems/PoliceStationSystem.js';
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -115,6 +120,21 @@ class MainScene extends Phaser.Scene {
 
         // Initialize event system (parades, festivals, etc.)
         this.eventSystem = new EventSystem(this);
+
+        // Initialize school system
+        this.schoolSystem = new SchoolSystem(this);
+
+        // Initialize emergency vehicle system
+        this.emergencyVehicleSystem = new EmergencyVehicleSystem(this);
+
+        // Initialize train system
+        this.trainSystem = new TrainSystem(this);
+
+        // Initialize fire station system
+        this.fireStationSystem = new FireStationSystem(this);
+
+        // Initialize police station system
+        this.policeStationSystem = new PoliceStationSystem(this);
 
         // Settings menu state
         this.settingsMenuOpen = false;
@@ -719,7 +739,11 @@ class MainScene extends Phaser.Scene {
                 { type: 'library', label: '📖 Library', price: '$400', color: '#8B4513' },
                 { type: 'museum', label: '🏛️ Museum', price: '$800', color: '#D4AF37' },
                 { type: 'school', label: '🏫 School', price: '$8000', color: '#FFC107' },
-                { type: 'officeBuilding', label: '🏢 Office Building', price: '$15000', color: '#607D8B' }
+                { type: 'officeBuilding', label: '🏢 Office Building', price: '$15000', color: '#607D8B' },
+                { type: 'fireStation', label: '🚒 Fire Station', price: '$10000', color: '#D32F2F' },
+                { type: 'policeStation', label: '🚔 Police Station', price: '$12000', color: '#1565C0' },
+                { type: 'hospital', label: '🏥 Hospital', price: '$18000', color: '#FFFFFF' },
+                { type: 'trainStation', label: '🚂 Train Station', price: '$15000', color: '#795548' }
             ],
             resources: [
                 { type: 'bank', label: '🏦 Bank', price: '$500', color: '#2E7D32' },
@@ -3834,21 +3858,36 @@ class MainScene extends Phaser.Scene {
             // Check if we've crossed into a new day
             if (currentDay > lastTaxDay) {
                 let totalTax = 0;
+                let totalMaintenance = 0;
 
-                // Calculate tax for each building (2% of cost per day)
+                // Calculate tax and maintenance for each building
                 for (let building of this.buildings) {
                     const buildingType = this.buildingTypes[building.type];
                     if (buildingType && buildingType.cost) {
                         const buildingTax = Math.floor(buildingType.cost * this.propertyTaxRate);
                         totalTax += buildingTax;
                     }
+
+                    // Check for maintenance costs (emergency services, schools, etc.)
+                    if (buildingType && buildingType.maintenanceCost) {
+                        totalMaintenance += buildingType.maintenanceCost;
+                    }
                 }
 
+                // Deduct property taxes
                 if (totalTax > 0) {
                     this.money -= totalTax;
                     this.money = Math.round(this.money);
                     console.log(`🏛️ Property taxes collected: $${totalTax} for ${this.buildings.length} properties. Day #${currentDay}`);
                     this.uiManager.addNotification(`🏛️ Property tax: -$${totalTax}`);
+                }
+
+                // Deduct maintenance costs
+                if (totalMaintenance > 0) {
+                    this.money -= totalMaintenance;
+                    this.money = Math.round(this.money);
+                    console.log(`🔧 Daily maintenance: $${totalMaintenance}. Day #${currentDay}`);
+                    this.uiManager.addNotification(`🔧 Maintenance: -$${totalMaintenance}`);
                 }
 
                 this.lastTaxCollection = this.gameTime;
@@ -3874,6 +3913,33 @@ class MainScene extends Phaser.Scene {
                 this.eventSystem.update(deltaTime);
             } catch (error) {
                 console.error('Error updating events:', error);
+            }
+        }
+
+        // Update school system
+        if (!this.isPaused) {
+            try {
+                this.schoolSystem.update();
+            } catch (error) {
+                console.error('Error updating school system:', error);
+            }
+        }
+
+        // Update emergency vehicle system
+        if (!this.isPaused) {
+            try {
+                this.emergencyVehicleSystem.update();
+            } catch (error) {
+                console.error('Error updating emergency vehicle system:', error);
+            }
+        }
+
+        // Update train system
+        if (!this.isPaused) {
+            try {
+                this.trainSystem.update();
+            } catch (error) {
+                console.error('Error updating train system:', error);
             }
         }
 
@@ -3919,7 +3985,7 @@ class MainScene extends Phaser.Scene {
         }
 
         // Toggle build mode with B key
-        if (Phaser.Input.Keyboard.JustDown(this.bKey) && !this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.bankMenuOpen && !this.restartConfirmShowing && !this.deleteConfirmShowing && !this.buildConfirmShowing) {
+        if (Phaser.Input.Keyboard.JustDown(this.bKey) && !this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.schoolSystem.insideSchool && !this.bankMenuOpen && !this.restartConfirmShowing && !this.deleteConfirmShowing && !this.buildConfirmShowing) {
             this.buildMode = !this.buildMode;
             this.deleteMode = false;  // Exit delete mode if entering build mode
             this.buildMenuContainer.setVisible(this.buildMode);
@@ -3934,7 +4000,7 @@ class MainScene extends Phaser.Scene {
         }
 
         // Start holiday parade with P key (for testing/fun)
-        if (Phaser.Input.Keyboard.JustDown(this.pKey) && !this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.bankMenuOpen) {
+        if (Phaser.Input.Keyboard.JustDown(this.pKey) && !this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.schoolSystem.insideSchool && !this.bankMenuOpen) {
             // Only start parade if no event is active
             if (!this.eventSystem.activeEvent) {
                 this.eventSystem.startHolidayParade();
@@ -4136,6 +4202,170 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // Check if player is near a school (only when NOT inside a building)
+        if (!this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.schoolSystem.insideSchool) {
+            let nearSchool = null;
+            let closestSchoolDistance = 150;
+            for (let building of this.buildings) {
+                if (building.type === 'school') {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestSchoolDistance) {
+                        nearSchool = building;
+                        closestSchoolDistance = distance;
+                    }
+                }
+            }
+
+            // School interaction - Enter school
+            if (nearSchool && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+                // Initialize school data if not already done
+                if (!nearSchool.schoolData) {
+                    this.schoolSystem.initializeSchool(nearSchool);
+                }
+
+                // Show prompt above the school building
+                const schoolType = this.buildingTypes[nearSchool.type];
+                if (!this.schoolPrompt) {
+                    this.schoolPrompt = this.add.text(nearSchool.x, nearSchool.y - schoolType.height - 100, 'Press E to enter School', {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#FFC107',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.schoolPrompt.x = nearSchool.x;
+                    this.schoolPrompt.y = nearSchool.y - schoolType.height - 100;
+                    this.schoolPrompt.setVisible(true);
+                }
+
+                // Enter school
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.schoolSystem.enterSchool(nearSchool);
+                }
+            } else {
+                if (this.schoolPrompt) {
+                    this.schoolPrompt.setVisible(false);
+                }
+            }
+        }
+
+        // Check if player is near a fire station
+        if (!this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.schoolSystem.insideSchool) {
+            let nearFireStation = null;
+            let closestFireStationDistance = 150;
+            for (let building of this.buildings) {
+                if (building.type === 'fireStation') {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestFireStationDistance) {
+                        nearFireStation = building;
+                        closestFireStationDistance = distance;
+                    }
+                }
+            }
+
+            if (nearFireStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+                const buildingType = this.buildingTypes[nearFireStation.type];
+                if (!this.fireStationPrompt) {
+                    this.fireStationPrompt = this.add.text(nearFireStation.x, nearFireStation.y - buildingType.height - 100, 'Press E to manage Fire Station', {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#D32F2F',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.fireStationPrompt.x = nearFireStation.x;
+                    this.fireStationPrompt.y = nearFireStation.y - buildingType.height - 100;
+                    this.fireStationPrompt.setVisible(true);
+                }
+
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.fireStationSystem.showFireStationUI(nearFireStation);
+                }
+            } else {
+                if (this.fireStationPrompt) {
+                    this.fireStationPrompt.setVisible(false);
+                }
+            }
+        }
+
+        // Check if player is near a police station
+        if (!this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.schoolSystem.insideSchool) {
+            let nearPoliceStation = null;
+            let closestPoliceStationDistance = 150;
+            for (let building of this.buildings) {
+                if (building.type === 'policeStation') {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestPoliceStationDistance) {
+                        nearPoliceStation = building;
+                        closestPoliceStationDistance = distance;
+                    }
+                }
+            }
+
+            if (nearPoliceStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+                const buildingType = this.buildingTypes[nearPoliceStation.type];
+                if (!this.policeStationPrompt) {
+                    this.policeStationPrompt = this.add.text(nearPoliceStation.x, nearPoliceStation.y - buildingType.height - 100, 'Press E to manage Police Station', {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#1976D2',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.policeStationPrompt.x = nearPoliceStation.x;
+                    this.policeStationPrompt.y = nearPoliceStation.y - buildingType.height - 100;
+                    this.policeStationPrompt.setVisible(true);
+                }
+
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.policeStationSystem.showPoliceStationUI(nearPoliceStation);
+                }
+            } else {
+                if (this.policeStationPrompt) {
+                    this.policeStationPrompt.setVisible(false);
+                }
+            }
+        }
+
+        // Check if player is near a train station
+        if (!this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.schoolSystem.insideSchool) {
+            let nearTrainStation = null;
+            let closestTrainStationDistance = 150;
+            for (let building of this.buildings) {
+                if (building.type === 'trainStation') {
+                    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
+                    if (distance < closestTrainStationDistance) {
+                        nearTrainStation = building;
+                        closestTrainStationDistance = distance;
+                    }
+                }
+            }
+
+            if (nearTrainStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+                const buildingType = this.buildingTypes[nearTrainStation.type];
+                if (!this.trainStationPrompt) {
+                    this.trainStationPrompt = this.add.text(nearTrainStation.x, nearTrainStation.y - buildingType.height - 100, 'Press E to view Train Statistics', {
+                        fontSize: '12px',
+                        color: '#ffffff',
+                        backgroundColor: '#795548',
+                        padding: { x: 5, y: 3 }
+                    }).setOrigin(0.5).setDepth(1000);
+                } else {
+                    this.trainStationPrompt.x = nearTrainStation.x;
+                    this.trainStationPrompt.y = nearTrainStation.y - buildingType.height - 100;
+                    this.trainStationPrompt.setVisible(true);
+                }
+
+                if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+                    this.showTrainStationUI(nearTrainStation);
+                }
+            } else {
+                if (this.trainStationPrompt) {
+                    this.trainStationPrompt.setVisible(false);
+                }
+            }
+        }
+
         // Exit shop if inside
         if (this.insideShop) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
@@ -4154,6 +4384,13 @@ class MainScene extends Phaser.Scene {
         if (this.insideRestaurant) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
                 this.restaurantSystem.exitRestaurant();
+            }
+        }
+
+        // Exit school if inside
+        if (this.schoolSystem.insideSchool) {
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
+                this.schoolSystem.exitSchool();
             }
         }
 
@@ -4507,7 +4744,7 @@ class MainScene extends Phaser.Scene {
             this.playerVisual.y = this.player.y;
 
             // Movement (disabled when inside buildings, menus open, or restart confirmation showing)
-            const movementBlocked = this.restartConfirmShowing || this.insideShop || this.insideHotel || this.insideRestaurant || this.insideApartment ||
+            const movementBlocked = this.restartConfirmShowing || this.insideShop || this.insideHotel || this.insideRestaurant || this.insideApartment || this.schoolSystem.insideSchool ||
                                    this.bankMenuOpen || this.mailboxMenuOpen || this.buildConfirmShowing;
 
             // Debug logging if movement is blocked unexpectedly
@@ -4555,25 +4792,20 @@ class MainScene extends Phaser.Scene {
     }
 
     checkBuildingOverlap(x, width) {
-        // Check if a building at position x with given width would overlap with existing buildings
-        const halfWidth = width / 2;
-        const minSpacing = 5; // Minimum 5 pixel gap between buildings (reduced for tighter placement)
+        // LOT-BASED SYSTEM: Check if this lot is already occupied
+        const LOT_SIZE = 250;
+        const lotNumber = Math.round(x / LOT_SIZE);
 
         for (let existingBuilding of this.buildings) {
-            const existingType = this.buildingTypes[existingBuilding.type];
-            const existingHalfWidth = existingType.width / 2;
+            const existingLotNumber = Math.round(existingBuilding.x / LOT_SIZE);
 
-            // Calculate the minimum distance needed (sum of half-widths plus spacing)
-            const minDistance = halfWidth + existingHalfWidth + minSpacing;
-
-            // Check if too close
-            const distance = Math.abs(x - existingBuilding.x);
-            if (distance < minDistance) {
-                console.log(`Overlap detected: Distance=${distance}, MinRequired=${minDistance}, Building at ${existingBuilding.x}, Trying to place at ${x}`);
-                return true; // Overlap detected
+            if (lotNumber === existingLotNumber) {
+                console.log(`❌ Lot ${lotNumber} is already occupied by ${existingBuilding.type}`);
+                return true; // This lot is taken
             }
         }
 
+        console.log(`✅ Lot ${lotNumber} at x=${x} is available`);
         return false; // No overlap
     }
 
@@ -4590,8 +4822,8 @@ class MainScene extends Phaser.Scene {
 
         const mouseWorldX = this.input.activePointer.x + this.cameras.main.scrollX;
 
-        // Snap to grid (every 240 pixels along the street for bigger buildings)
-        const snappedX = Math.round(mouseWorldX / 240) * 240;
+        // Snap to grid (every 250 pixels along the street for bigger buildings)
+        const snappedX = Math.round(mouseWorldX / 250) * 250;
         const buildingY = this.gameHeight - 100; // Ground level (matches the gray street)
 
         // Only recreate preview if position changed
@@ -4704,11 +4936,11 @@ class MainScene extends Phaser.Scene {
         const building = this.buildingTypes[this.selectedBuilding];
 
         // Use the saved position from when confirmation was triggered
-        const x = this.pendingBuildingX;
+        let x = this.pendingBuildingX;
 
-        // Check for overlaps with existing buildings
+        // Check for overlaps with existing buildings (lot-based system)
         if (this.checkBuildingOverlap(x, building.width)) {
-            alert('Cannot place building here - it would overlap with an existing building!\n\nPlease choose a different location.');
+            alert('This lot is already occupied!\n\nMove to an empty lot (grid space) to build.');
             return false;
         }
 
@@ -4921,6 +5153,137 @@ class MainScene extends Phaser.Scene {
     // Hotel functions moved to HotelSystem.js
     // Shop functions moved to ShopSystem.js
     // Save/load functions moved to SaveSystem.js
+
+    showTrainStationUI(building) {
+        // Create UI
+        const ui = this.add.container(400, 150);
+        ui.setDepth(1001);
+        ui.setScrollFactor(0);
+
+        // Background
+        const bg = this.add.graphics();
+        bg.fillStyle(0x1a1a1a, 0.95);
+        bg.fillRoundedRect(0, 0, 700, 400, 10);
+        bg.lineStyle(3, 0x795548, 1);
+        bg.strokeRoundedRect(0, 0, 700, 400, 10);
+        ui.add(bg);
+
+        // Title
+        const title = this.add.text(350, 20, '🚂 TRAIN STATION', {
+            fontSize: '32px',
+            fontWeight: 'bold',
+            color: '#795548',
+            align: 'center'
+        });
+        title.setOrigin(0.5, 0);
+        ui.add(title);
+
+        // Statistics
+        let yPos = 80;
+        const stats = [
+            `💰 Total Rail Revenue: $${this.trainSystem.totalRevenue}`,
+            `👥 Total Passengers Served: ${this.trainSystem.totalPassengers}`,
+            `🎫 Fare per Passenger: $${this.trainSystem.RAIL_FARE}`,
+            ``,
+            `🚂 Active Trains: ${this.trainSystem.trains.length}`,
+            `⏱️ Train Interval: Every ${this.trainSystem.TRAIN_INTERVAL} minutes`,
+            `🎒 Train Capacity: ${this.trainSystem.TRAIN_CAPACITY} passengers`,
+        ];
+
+        for (let stat of stats) {
+            if (stat === '') {
+                yPos += 20;
+                continue;
+            }
+            const text = this.add.text(50, yPos, stat, {
+                fontSize: '20px',
+                color: '#ffffff'
+            });
+            ui.add(text);
+            yPos += 35;
+        }
+
+        // Info message
+        const info = this.add.text(350, 300, 'Trains automatically collect fares when passengers board.\nRevenue helps fund your city!', {
+            fontSize: '16px',
+            color: '#FFD700',
+            align: 'center',
+            fontStyle: 'italic'
+        });
+        info.setOrigin(0.5, 0);
+        ui.add(info);
+
+        // Close button - simpler approach
+        const closeBtnBg = this.add.graphics();
+        closeBtnBg.fillStyle(0x795548, 1);
+        closeBtnBg.fillRoundedRect(200, 350, 300, 36, 5);
+        closeBtnBg.lineStyle(2, 0xffffff, 1);
+        closeBtnBg.strokeRoundedRect(200, 350, 300, 36, 5);
+        closeBtnBg.setInteractive(new Phaser.Geom.Rectangle(200, 350, 300, 36), Phaser.Geom.Rectangle.Contains);
+        closeBtnBg.on('pointerdown', () => {
+            console.log('Closing train station UI');
+            ui.destroy();
+        });
+        closeBtnBg.on('pointerover', () => {
+            closeBtnBg.setAlpha(0.8);
+        });
+        closeBtnBg.on('pointerout', () => {
+            closeBtnBg.setAlpha(1);
+        });
+        ui.add(closeBtnBg);
+
+        const closeBtnText = this.add.text(350, 368, '✖ CLOSE', {
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: '#ffffff'
+        });
+        closeBtnText.setOrigin(0.5);
+        ui.add(closeBtnText);
+
+        this.currentUI = ui;
+    }
+
+    createSimpleButton(container, x, y, text, onClick, color = '#795548') {
+        const btn = this.add.container(x, y);
+        btn.setSize(300, 36);
+
+        const bg = this.add.graphics();
+        const colorValue = parseInt(color.replace('#', ''), 16);
+        bg.fillStyle(colorValue, 1);
+        bg.fillRoundedRect(-150, -18, 300, 36, 5);
+        bg.lineStyle(2, 0xffffff, 1);
+        bg.strokeRoundedRect(-150, -18, 300, 36, 5);
+        btn.add(bg);
+
+        const label = this.add.text(0, 0, text, {
+            fontSize: '18px',
+            fontWeight: 'bold',
+            color: '#ffffff'
+        });
+        label.setOrigin(0.5);
+        btn.add(label);
+
+        btn.setInteractive(
+            new Phaser.Geom.Rectangle(-150, -18, 300, 36),
+            Phaser.Geom.Rectangle.Contains
+        );
+
+        btn.on('pointerdown', () => {
+            console.log('Train station close button clicked');
+            onClick();
+        });
+        btn.on('pointerover', () => {
+            bg.setAlpha(0.8);
+            this.input.setDefaultCursor('pointer');
+        });
+        btn.on('pointerout', () => {
+            bg.setAlpha(1);
+            this.input.setDefaultCursor('default');
+        });
+
+        container.add(btn);
+        return btn;
+    }
 
     openBankMenu() {
         this.bankMenuOpen = true;
