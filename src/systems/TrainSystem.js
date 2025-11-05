@@ -9,6 +9,12 @@ export class TrainSystem {
         this.RAIL_FARE = 3; // $3 per passenger
         this.totalRevenue = 0; // Track total rail revenue
         this.totalPassengers = 0; // Track total passengers served
+
+        // Milestone tracking
+        this.lastUpgradePrompt = 0;
+        this.PROMPT_COOLDOWN = 400; // Game time units between prompts
+        this.promptedUpgrades = new Set();
+        this.averageCapacityUsage = 0; // Track how full trains typically are
     }
 
     update() {
@@ -226,6 +232,10 @@ export class TrainSystem {
             // Add money to the city
             this.scene.money += fareCollected;
 
+            // Track capacity usage for milestone checking
+            const capacityUsage = train.passengers.length / train.maxCapacity;
+            this.averageCapacityUsage = (this.averageCapacityUsage * 0.8) + (capacityUsage * 0.2);
+
             console.log(`🚂 Train picked up ${boardedCount} passengers at station (${train.passengers.length}/${train.maxCapacity} capacity)`);
             console.log(`💰 Collected $${fareCollected} in rail fares (Total: $${this.totalRevenue})`);
 
@@ -238,6 +248,119 @@ export class TrainSystem {
         if (train.currentStationIndex === train.stations.length - 1) {
             this.unloadAllPassengers(train);
         }
+    }
+
+    checkMilestones() {
+        const currentTime = this.scene.gameTime || 0;
+        if (currentTime - this.lastUpgradePrompt < this.PROMPT_COOLDOWN) return;
+
+        // Celebrate revenue milestones
+        const revenueMilestones = [500, 1000, 2500, 5000, 10000];
+        for (let milestone of revenueMilestones) {
+            if (this.totalRevenue >= milestone && !this.promptedUpgrades.has(`revenue-${milestone}`)) {
+                this.showInfoPopup(
+                    '🚂 Rail Success!',
+                    `Your train system has generated $${this.totalRevenue} in total revenue! ${this.totalPassengers} passengers have traveled by rail.`
+                );
+                this.promptedUpgrades.add(`revenue-${milestone}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+        }
+
+        // Suggest more stations if trains are consistently full
+        const stations = this.scene.buildings.filter(b => b.type === 'trainStation');
+        if (this.averageCapacityUsage > 0.7 &&
+            stations.length < 3 &&
+            this.totalPassengers > 50 &&
+            !this.promptedUpgrades.has(`expand-${stations.length}`)) {
+
+            this.showInfoPopup(
+                '🚂 High Demand!',
+                `Trains are running at ${Math.round(this.averageCapacityUsage * 100)}% capacity! Consider building more train stations to handle the growing demand.`
+            );
+            this.promptedUpgrades.add(`expand-${stations.length}`);
+            this.lastUpgradePrompt = currentTime;
+            return;
+        }
+    }
+
+    showInfoPopup(title, message) {
+        // Create popup
+        const popup = this.scene.add.container(640, 360);
+        popup.setDepth(2000);
+        popup.setScrollFactor(0);
+
+        // Background
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x1a1a1a, 0.98);
+        bg.fillRoundedRect(-250, -100, 500, 200, 10);
+        bg.lineStyle(3, 0x795548, 1);
+        bg.strokeRoundedRect(-250, -100, 500, 200, 10);
+        popup.add(bg);
+
+        // Title
+        const titleText = this.scene.add.text(0, -70, title, {
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#795548',
+            align: 'center'
+        });
+        titleText.setOrigin(0.5);
+        popup.add(titleText);
+
+        // Message
+        const messageText = this.scene.add.text(0, -10, message, {
+            fontSize: '16px',
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 450 }
+        });
+        messageText.setOrigin(0.5);
+        popup.add(messageText);
+
+        // OK button
+        const okBtn = this.createPopupButton(popup, 0, 60, '✓ OK', () => {
+            popup.destroy();
+        }, '#4CAF50');
+
+        // Auto-close after 8 seconds
+        this.scene.time.delayedCall(8000, () => {
+            if (popup && popup.active) {
+                popup.destroy();
+            }
+        });
+    }
+
+    createPopupButton(container, x, y, text, onClick, color = '#4CAF50') {
+        const btn = this.scene.add.container(x, y);
+
+        const bg = this.scene.add.graphics();
+        const colorValue = parseInt(color.replace('#', ''), 16);
+        bg.fillStyle(colorValue, 1);
+        bg.fillRoundedRect(-70, -18, 140, 36, 5);
+        bg.lineStyle(2, 0xffffff, 1);
+        bg.strokeRoundedRect(-70, -18, 140, 36, 5);
+        btn.add(bg);
+
+        const label = this.scene.add.text(0, 0, text, {
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: '#ffffff'
+        });
+        label.setOrigin(0.5);
+        btn.add(label);
+
+        btn.setInteractive(
+            new Phaser.Geom.Rectangle(-70, -18, 140, 36),
+            Phaser.Geom.Rectangle.Contains
+        );
+        btn.on('pointerdown', onClick);
+        btn.on('pointerover', () => bg.setAlpha(0.8));
+        btn.on('pointerout', () => bg.setAlpha(1));
+
+        container.add(btn);
+        return btn;
     }
 
     unloadAllPassengers(train) {

@@ -8,6 +8,11 @@ export class FireStationSystem {
         this.recentIncidents = [];
         this.totalIncidentsResponded = 0;
         this.averageResponseTime = 4.5; // minutes
+
+        // Milestone tracking to avoid spam
+        this.lastUpgradePrompt = 0;
+        this.PROMPT_COOLDOWN = 300; // Game time units between prompts
+        this.promptedUpgrades = new Set(); // Track what we've already prompted for
     }
 
     initializeFireStation(building) {
@@ -45,6 +50,169 @@ export class FireStationSystem {
         rating -= recentBadIncidents * 3;
 
         this.fireSafetyRating = Math.max(0, Math.min(100, rating));
+    }
+
+    checkMilestones() {
+        if (this.fireStations.length === 0) return;
+
+        const currentTime = this.scene.gameTime || 0;
+        if (currentTime - this.lastUpgradePrompt < this.PROMPT_COOLDOWN) return;
+
+        const population = this.scene.population || 0;
+
+        // Check each fire station for upgrade opportunities
+        for (let station of this.fireStations) {
+            if (!station.fireStationData) continue;
+
+            const stationId = station.id || this.fireStations.indexOf(station);
+
+            // Suggest equipment upgrade if fire safety is low
+            if (station.fireStationData.equipment === 'Standard' &&
+                this.fireSafetyRating < 60 &&
+                !this.promptedUpgrades.has(`equipment-${stationId}`)) {
+
+                this.showUpgradePrompt(
+                    '🚒 Fire Safety Alert!',
+                    `Fire safety rating is low (${this.fireSafetyRating}/100). Upgrade fire station equipment to improve response capability?`,
+                    5000,
+                    () => this.upgradeEquipment(station, null)
+                );
+                this.promptedUpgrades.add(`equipment-${stationId}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+
+            // Suggest training upgrade if response times are slow
+            if (station.fireStationData.trainingLevel === 'Basic' &&
+                this.averageResponseTime > 5 &&
+                !this.promptedUpgrades.has(`training-${stationId}`)) {
+
+                this.showUpgradePrompt(
+                    '📚 Training Needed!',
+                    `Average response time is ${this.averageResponseTime.toFixed(1)} minutes. Upgrade firefighter training to improve response times?`,
+                    3000,
+                    () => this.upgradeTraining(station, null)
+                );
+                this.promptedUpgrades.add(`training-${stationId}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+
+            // Suggest additional fire truck if population is high
+            if (station.fireStationData.trucks < 5 &&
+                population > 50 + (station.fireStationData.trucks * 30) &&
+                !this.promptedUpgrades.has(`truck-${stationId}-${station.fireStationData.trucks}`)) {
+
+                this.showUpgradePrompt(
+                    '🚒 More Coverage Needed!',
+                    `Population has grown to ${population}. Purchase an additional fire truck for better coverage?`,
+                    8000,
+                    () => this.buyFireTruck(station, null)
+                );
+                this.promptedUpgrades.add(`truck-${stationId}-${station.fireStationData.trucks}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+        }
+    }
+
+    showUpgradePrompt(title, message, cost, onAccept) {
+        // Create popup
+        const popup = this.scene.add.container(640, 360);
+        popup.setDepth(2000);
+        popup.setScrollFactor(0);
+
+        // Background
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x1a1a1a, 0.98);
+        bg.fillRoundedRect(-250, -120, 500, 240, 10);
+        bg.lineStyle(3, 0xD32F2F, 1);
+        bg.strokeRoundedRect(-250, -120, 500, 240, 10);
+        popup.add(bg);
+
+        // Title
+        const titleText = this.scene.add.text(0, -90, title, {
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#D32F2F',
+            align: 'center'
+        });
+        titleText.setOrigin(0.5);
+        popup.add(titleText);
+
+        // Message
+        const messageText = this.scene.add.text(0, -30, message, {
+            fontSize: '16px',
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 450 }
+        });
+        messageText.setOrigin(0.5);
+        popup.add(messageText);
+
+        // Cost display
+        const costText = this.scene.add.text(0, 30, `Cost: $${cost}`, {
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: '#4CAF50'
+        });
+        costText.setOrigin(0.5);
+        popup.add(costText);
+
+        // Accept button
+        const acceptBtn = this.createPopupButton(popup, -80, 80, '✓ Upgrade', () => {
+            if (this.scene.money >= cost) {
+                onAccept();
+                popup.destroy();
+            } else {
+                if (this.scene.uiManager) {
+                    this.scene.uiManager.addNotification(`❌ Not enough money! Need $${cost}`);
+                }
+            }
+        }, '#4CAF50');
+
+        // Decline button
+        const declineBtn = this.createPopupButton(popup, 80, 80, '✗ Not Now', () => {
+            popup.destroy();
+        }, '#F44336');
+
+        // Auto-close after 10 seconds
+        this.scene.time.delayedCall(10000, () => {
+            if (popup && popup.active) {
+                popup.destroy();
+            }
+        });
+    }
+
+    createPopupButton(container, x, y, text, onClick, color = '#4CAF50') {
+        const btn = this.scene.add.container(x, y);
+
+        const bg = this.scene.add.graphics();
+        const colorValue = parseInt(color.replace('#', ''), 16);
+        bg.fillStyle(colorValue, 1);
+        bg.fillRoundedRect(-70, -18, 140, 36, 5);
+        bg.lineStyle(2, 0xffffff, 1);
+        bg.strokeRoundedRect(-70, -18, 140, 36, 5);
+        btn.add(bg);
+
+        const label = this.scene.add.text(0, 0, text, {
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: '#ffffff'
+        });
+        label.setOrigin(0.5);
+        btn.add(label);
+
+        btn.setInteractive(
+            new Phaser.Geom.Rectangle(-70, -18, 140, 36),
+            Phaser.Geom.Rectangle.Contains
+        );
+        btn.on('pointerdown', onClick);
+        btn.on('pointerover', () => bg.setAlpha(0.8));
+        btn.on('pointerout', () => bg.setAlpha(1));
+
+        container.add(btn);
+        return btn;
     }
 
     showFireStationUI(building) {

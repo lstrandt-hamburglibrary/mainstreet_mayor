@@ -8,6 +8,11 @@ export class PoliceStationSystem {
         this.recentCrimes = [];
         this.totalCrimesResponded = 0;
         this.averageResponseTime = 5.0; // minutes
+
+        // Milestone tracking to avoid spam
+        this.lastUpgradePrompt = 0;
+        this.PROMPT_COOLDOWN = 300; // Game time units between prompts
+        this.promptedUpgrades = new Set(); // Track what we've already prompted for
     }
 
     initializePoliceStation(building) {
@@ -42,6 +47,186 @@ export class PoliceStationSystem {
         }
 
         this.crimeRate = Math.max(0, Math.min(100, crimeRate));
+    }
+
+    checkMilestones() {
+        if (this.policeStations.length === 0) return;
+
+        const currentTime = this.scene.gameTime || 0;
+        if (currentTime - this.lastUpgradePrompt < this.PROMPT_COOLDOWN) return;
+
+        const population = this.scene.population || 0;
+
+        // Check each police station for upgrade opportunities
+        for (let station of this.policeStations) {
+            if (!station.policeStationData) continue;
+
+            const stationId = station.id || this.policeStations.indexOf(station);
+
+            // Suggest equipment upgrade if crime rate is high
+            if (station.policeStationData.equipment === 'Standard' &&
+                this.crimeRate > 35 &&
+                !this.promptedUpgrades.has(`equipment-${stationId}`)) {
+
+                this.showUpgradePrompt(
+                    '👮 Crime Alert!',
+                    `Crime rate is high (${this.crimeRate}/100). Upgrade police equipment to improve law enforcement?`,
+                    6000,
+                    () => this.upgradeEquipment(station, null)
+                );
+                this.promptedUpgrades.add(`equipment-${stationId}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+
+            // Suggest training upgrade if response times are slow
+            if (station.policeStationData.trainingLevel === 'Basic' &&
+                this.averageResponseTime > 6 &&
+                !this.promptedUpgrades.has(`training-${stationId}`)) {
+
+                this.showUpgradePrompt(
+                    '📚 Training Needed!',
+                    `Police response time is ${this.averageResponseTime.toFixed(1)} minutes. Upgrade officer training to improve response times?`,
+                    4000,
+                    () => this.upgradeTraining(station, null)
+                );
+                this.promptedUpgrades.add(`training-${stationId}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+
+            // Suggest additional police car if population is high
+            if (station.policeStationData.vehicles < 6 &&
+                population > 60 + (station.policeStationData.vehicles * 25) &&
+                !this.promptedUpgrades.has(`car-${stationId}-${station.policeStationData.vehicles}`)) {
+
+                this.showUpgradePrompt(
+                    '🚔 More Patrols Needed!',
+                    `Population has grown to ${population}. Purchase an additional police car for better patrol coverage?`,
+                    7000,
+                    () => this.buyPoliceCar(station, null)
+                );
+                this.promptedUpgrades.add(`car-${stationId}-${station.policeStationData.vehicles}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+
+            // Suggest community program if crime rate is moderate and no programs yet
+            if (station.policeStationData.communityPrograms === 0 &&
+                this.crimeRate > 25 && this.crimeRate < 50 &&
+                population > 40 &&
+                !this.promptedUpgrades.has(`program-${stationId}-0`)) {
+
+                this.showUpgradePrompt(
+                    '🤝 Community Engagement!',
+                    `Start a community program to reduce crime through prevention and outreach?`,
+                    2500,
+                    () => this.startCommunityProgram(station, null)
+                );
+                this.promptedUpgrades.add(`program-${stationId}-0`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+        }
+    }
+
+    showUpgradePrompt(title, message, cost, onAccept) {
+        // Create popup
+        const popup = this.scene.add.container(640, 360);
+        popup.setDepth(2000);
+        popup.setScrollFactor(0);
+
+        // Background
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x1a1a1a, 0.98);
+        bg.fillRoundedRect(-250, -120, 500, 240, 10);
+        bg.lineStyle(3, 0x1976D2, 1);
+        bg.strokeRoundedRect(-250, -120, 500, 240, 10);
+        popup.add(bg);
+
+        // Title
+        const titleText = this.scene.add.text(0, -90, title, {
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#1976D2',
+            align: 'center'
+        });
+        titleText.setOrigin(0.5);
+        popup.add(titleText);
+
+        // Message
+        const messageText = this.scene.add.text(0, -30, message, {
+            fontSize: '16px',
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 450 }
+        });
+        messageText.setOrigin(0.5);
+        popup.add(messageText);
+
+        // Cost display
+        const costText = this.scene.add.text(0, 30, `Cost: $${cost}`, {
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: '#4CAF50'
+        });
+        costText.setOrigin(0.5);
+        popup.add(costText);
+
+        // Accept button
+        const acceptBtn = this.createPopupButton(popup, -80, 80, '✓ Upgrade', () => {
+            if (this.scene.money >= cost) {
+                onAccept();
+                popup.destroy();
+            } else {
+                if (this.scene.uiManager) {
+                    this.scene.uiManager.addNotification(`❌ Not enough money! Need $${cost}`);
+                }
+            }
+        }, '#4CAF50');
+
+        // Decline button
+        const declineBtn = this.createPopupButton(popup, 80, 80, '✗ Not Now', () => {
+            popup.destroy();
+        }, '#F44336');
+
+        // Auto-close after 10 seconds
+        this.scene.time.delayedCall(10000, () => {
+            if (popup && popup.active) {
+                popup.destroy();
+            }
+        });
+    }
+
+    createPopupButton(container, x, y, text, onClick, color = '#4CAF50') {
+        const btn = this.scene.add.container(x, y);
+
+        const bg = this.scene.add.graphics();
+        const colorValue = parseInt(color.replace('#', ''), 16);
+        bg.fillStyle(colorValue, 1);
+        bg.fillRoundedRect(-70, -18, 140, 36, 5);
+        bg.lineStyle(2, 0xffffff, 1);
+        bg.strokeRoundedRect(-70, -18, 140, 36, 5);
+        btn.add(bg);
+
+        const label = this.scene.add.text(0, 0, text, {
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: '#ffffff'
+        });
+        label.setOrigin(0.5);
+        btn.add(label);
+
+        btn.setInteractive(
+            new Phaser.Geom.Rectangle(-70, -18, 140, 36),
+            Phaser.Geom.Rectangle.Contains
+        );
+        btn.on('pointerdown', onClick);
+        btn.on('pointerover', () => bg.setAlpha(0.8));
+        btn.on('pointerout', () => bg.setAlpha(1));
+
+        container.add(btn);
+        return btn;
     }
 
     showPoliceStationUI(building) {

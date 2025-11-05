@@ -12,6 +12,10 @@ import { EmergencyVehicleSystem } from './systems/EmergencyVehicleSystem.js';
 import { TrainSystem } from './systems/TrainSystem.js';
 import { FireStationSystem } from './systems/FireStationSystem.js';
 import { PoliceStationSystem } from './systems/PoliceStationSystem.js';
+import { LibrarySystem } from './systems/LibrarySystem.js';
+import { MuseumSystem } from './systems/MuseumSystem.js';
+import { HospitalSystem } from './systems/HospitalSystem.js';
+import { EntertainmentSystem } from './systems/EntertainmentSystem.js';
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -135,6 +139,18 @@ class MainScene extends Phaser.Scene {
 
         // Initialize police station system
         this.policeStationSystem = new PoliceStationSystem(this);
+
+        // Initialize library system
+        this.librarySystem = new LibrarySystem(this);
+
+        // Initialize museum system
+        this.museumSystem = new MuseumSystem(this);
+
+        // Initialize hospital system
+        this.hospitalSystem = new HospitalSystem(this);
+
+        // Initialize entertainment system
+        this.entertainmentSystem = new EntertainmentSystem(this);
 
         // Settings menu state
         this.settingsMenuOpen = false;
@@ -732,8 +748,8 @@ class MainScene extends Phaser.Scene {
             ],
             entertainment: [
                 { type: 'arcade', label: '🕹️ Arcade', price: '$350', color: '#FF00FF' },
-                { type: 'themePark', label: '🎡 Theme Park', price: '$2000', color: '#FF1493' },
-                { type: 'movieTheater', label: '🎬 Movie Theater', price: '$12000', color: '#8B0000' }
+                { type: 'themePark', label: '🎡 Theme Park', price: '$18000', color: '#FF1493' },
+                { type: 'movieTheater', label: '🎬 Movie Theater', price: '$8000', color: '#8B0000' }
             ],
             services: [
                 { type: 'library', label: '📖 Library', price: '$400', color: '#8B4513' },
@@ -3659,6 +3675,7 @@ class MainScene extends Phaser.Scene {
                     this.money -= building.dailyWage;
                     this.money = Math.round(this.money);
                     console.log(`💵 Paid $${building.dailyWage} wage to shop employee. Day #${currentDay}`);
+                    this.uiManager.addNotification(`💵 Shop wages: -$${building.dailyWage}`);
 
                     building.lastWageCheck = this.gameTime;
 
@@ -3683,6 +3700,7 @@ class MainScene extends Phaser.Scene {
                     this.money -= building.dailyWage;
                     this.money = Math.round(this.money);
                     console.log(`💵 Paid $${building.dailyWage} wage to hotel employee. Day #${currentDay}`);
+                    this.uiManager.addNotification(`💵 Hotel wages: -$${building.dailyWage}`);
                     building.lastWageCheck = this.gameTime;
                     this.uiManager.updateMoneyUI();
 
@@ -3719,6 +3737,7 @@ class MainScene extends Phaser.Scene {
                     this.money -= building.maidDailyWage;
                     this.money = Math.round(this.money);
                     console.log(`💵 Paid $${building.maidDailyWage} wage to hotel maid. Day #${currentDay}`);
+                    this.uiManager.addNotification(`💵 Maid wages: -$${building.maidDailyWage}`);
                     building.lastMaidWageCheck = this.gameTime;
                     this.uiManager.updateMoneyUI();
 
@@ -3756,6 +3775,7 @@ class MainScene extends Phaser.Scene {
                     }
 
                     if (totalWages > 0) {
+                        this.uiManager.addNotification(`💵 Restaurant wages: -$${totalWages}`);
                         building.lastWageCheck = this.gameTime;
                         this.uiManager.updateMoneyUI();
 
@@ -3940,6 +3960,38 @@ class MainScene extends Phaser.Scene {
                 this.trainSystem.update();
             } catch (error) {
                 console.error('Error updating train system:', error);
+            }
+        }
+
+        // Check milestones for automatic upgrade prompts
+        if (!this.isPaused && this.gameTime % 60 === 0) { // Check every 60 game ticks
+            try {
+                if (this.fireStationSystem) {
+                    this.fireStationSystem.checkMilestones();
+                }
+                if (this.policeStationSystem) {
+                    this.policeStationSystem.checkMilestones();
+                }
+                if (this.trainSystem) {
+                    this.trainSystem.checkMilestones();
+                }
+                if (this.schoolSystem) {
+                    this.schoolSystem.checkMilestones();
+                }
+                if (this.librarySystem) {
+                    this.librarySystem.checkMilestones();
+                }
+                if (this.museumSystem) {
+                    this.museumSystem.checkMilestones();
+                }
+                if (this.hospitalSystem) {
+                    this.hospitalSystem.checkMilestones();
+                }
+                if (this.entertainmentSystem) {
+                    this.entertainmentSystem.checkMilestones();
+                }
+            } catch (error) {
+                console.error('Error checking milestones:', error);
             }
         }
 
@@ -4263,30 +4315,31 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
-            if (nearFireStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
-                const buildingType = this.buildingTypes[nearFireStation.type];
-                if (!this.fireStationPrompt) {
-                    this.fireStationPrompt = this.add.text(nearFireStation.x, nearFireStation.y - buildingType.height - 100, 'Press E to manage Fire Station', {
-                        fontSize: '12px',
-                        color: '#ffffff',
-                        backgroundColor: '#D32F2F',
-                        padding: { x: 5, y: 3 }
-                    }).setOrigin(0.5).setDepth(1000);
-                } else {
-                    this.fireStationPrompt.x = nearFireStation.x;
-                    this.fireStationPrompt.y = nearFireStation.y - buildingType.height - 100;
-                    this.fireStationPrompt.setVisible(true);
-                }
+            // Fire station prompt disabled - upgrades now automatic via milestones
+            // if (nearFireStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+            //     const buildingType = this.buildingTypes[nearFireStation.type];
+            //     if (!this.fireStationPrompt) {
+            //         this.fireStationPrompt = this.add.text(nearFireStation.x, nearFireStation.y - buildingType.height - 100, 'Press E to manage Fire Station', {
+            //             fontSize: '12px',
+            //             color: '#ffffff',
+            //             backgroundColor: '#D32F2F',
+            //             padding: { x: 5, y: 3 }
+            //         }).setOrigin(0.5).setDepth(1000);
+            //     } else {
+            //         this.fireStationPrompt.x = nearFireStation.x;
+            //         this.fireStationPrompt.y = nearFireStation.y - buildingType.height - 100;
+            //         this.fireStationPrompt.setVisible(true);
+            //     }
 
-                // Temporarily disabled
-                // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                //     this.fireStationSystem.showFireStationUI(nearFireStation);
-                // }
-            } else {
-                if (this.fireStationPrompt) {
-                    this.fireStationPrompt.setVisible(false);
-                }
-            }
+            //     // Fire station UI disabled - upgrades now automatic via milestones
+            //     // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+            //     //     this.fireStationSystem.showFireStationUI(nearFireStation);
+            //     // }
+            // } else {
+            //     if (this.fireStationPrompt) {
+            //         this.fireStationPrompt.setVisible(false);
+            //     }
+            // }
         }
 
         // Check if player is near a police station
@@ -4303,30 +4356,31 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
-            if (nearPoliceStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
-                const buildingType = this.buildingTypes[nearPoliceStation.type];
-                if (!this.policeStationPrompt) {
-                    this.policeStationPrompt = this.add.text(nearPoliceStation.x, nearPoliceStation.y - buildingType.height - 100, 'Press E to manage Police Station', {
-                        fontSize: '12px',
-                        color: '#ffffff',
-                        backgroundColor: '#1976D2',
-                        padding: { x: 5, y: 3 }
-                    }).setOrigin(0.5).setDepth(1000);
-                } else {
-                    this.policeStationPrompt.x = nearPoliceStation.x;
-                    this.policeStationPrompt.y = nearPoliceStation.y - buildingType.height - 100;
-                    this.policeStationPrompt.setVisible(true);
-                }
+            // Police station prompt disabled - upgrades now automatic via milestones
+            // if (nearPoliceStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+            //     const buildingType = this.buildingTypes[nearPoliceStation.type];
+            //     if (!this.policeStationPrompt) {
+            //         this.policeStationPrompt = this.add.text(nearPoliceStation.x, nearPoliceStation.y - buildingType.height - 100, 'Press E to manage Police Station', {
+            //             fontSize: '12px',
+            //             color: '#ffffff',
+            //             backgroundColor: '#1976D2',
+            //             padding: { x: 5, y: 3 }
+            //         }).setOrigin(0.5).setDepth(1000);
+            //     } else {
+            //         this.policeStationPrompt.x = nearPoliceStation.x;
+            //         this.policeStationPrompt.y = nearPoliceStation.y - buildingType.height - 100;
+            //         this.policeStationPrompt.setVisible(true);
+            //     }
 
-                // Temporarily disabled
-                // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                //     this.policeStationSystem.showPoliceStationUI(nearPoliceStation);
-                // }
-            } else {
-                if (this.policeStationPrompt) {
-                    this.policeStationPrompt.setVisible(false);
-                }
-            }
+            //     // Police station UI disabled - upgrades now automatic via milestones
+            //     // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+            //     //     this.policeStationSystem.showPoliceStationUI(nearPoliceStation);
+            //     // }
+            // } else {
+            //     if (this.policeStationPrompt) {
+            //         this.policeStationPrompt.setVisible(false);
+            //     }
+            // }
         }
 
         // Check if player is near a train station
@@ -4343,30 +4397,31 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
-            if (nearTrainStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
-                const buildingType = this.buildingTypes[nearTrainStation.type];
-                if (!this.trainStationPrompt) {
-                    this.trainStationPrompt = this.add.text(nearTrainStation.x, nearTrainStation.y - buildingType.height - 100, 'Press E to view Train Statistics', {
-                        fontSize: '12px',
-                        color: '#ffffff',
-                        backgroundColor: '#795548',
-                        padding: { x: 5, y: 3 }
-                    }).setOrigin(0.5).setDepth(1000);
-                } else {
-                    this.trainStationPrompt.x = nearTrainStation.x;
-                    this.trainStationPrompt.y = nearTrainStation.y - buildingType.height - 100;
-                    this.trainStationPrompt.setVisible(true);
-                }
+            // Train station prompt disabled - now just informational popups via milestones
+            // if (nearTrainStation && !this.buildMode && !this.deleteMode && !this.bankMenuOpen && !this.mailboxMenuOpen) {
+            //     const buildingType = this.buildingTypes[nearTrainStation.type];
+            //     if (!this.trainStationPrompt) {
+            //         this.trainStationPrompt = this.add.text(nearTrainStation.x, nearTrainStation.y - buildingType.height - 100, 'Press E to view Train Statistics', {
+            //             fontSize: '12px',
+            //             color: '#ffffff',
+            //             backgroundColor: '#795548',
+            //             padding: { x: 5, y: 3 }
+            //         }).setOrigin(0.5).setDepth(1000);
+            //     } else {
+            //         this.trainStationPrompt.x = nearTrainStation.x;
+            //         this.trainStationPrompt.y = nearTrainStation.y - buildingType.height - 100;
+            //         this.trainStationPrompt.setVisible(true);
+            //     }
 
-                // Temporarily disabled
-                // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
-                //     this.showTrainStationUI(nearTrainStation);
-                // }
-            } else {
-                if (this.trainStationPrompt) {
-                    this.trainStationPrompt.setVisible(false);
-                }
-            }
+            //     // Train station UI disabled - now just informational popups via milestones
+            //     // if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
+            //     //     this.showTrainStationUI(nearTrainStation);
+            //     // }
+            // } else {
+            //     if (this.trainStationPrompt) {
+            //         this.trainStationPrompt.setVisible(false);
+            //     }
+            // }
         }
 
         // Exit shop if inside

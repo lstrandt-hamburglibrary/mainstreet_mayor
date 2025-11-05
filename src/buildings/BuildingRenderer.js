@@ -1387,47 +1387,51 @@ export class BuildingRenderer {
     }
 
     drawPlayground(graphics, building, x, y, facadeVariation) {
-        // Mulch base
-        graphics.fillStyle(0xA1887F, 1);
-        graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
+        // Transparent background - no mulch base
+        // graphics.fillStyle(0xA1887F, 1);
+        // graphics.fillRect(x - building.width/2, y - building.height, building.width, building.height);
 
-        // Swing set
+        // Swing set - positioned on ground
         const swingX = x - 50;
-        const swingY = y - building.height + 40;
+        const swingHeight = 60;
+        const swingY = y - swingHeight; // Top of frame
 
         graphics.fillStyle(0xFF9800, 1);
-        // Swing frame
-        graphics.fillRect(swingX - 40, swingY, 5, 60);
-        graphics.fillRect(swingX + 35, swingY, 5, 60);
+        // Swing frame posts (sitting on ground)
+        graphics.fillRect(swingX - 40, swingY, 5, swingHeight);
+        graphics.fillRect(swingX + 35, swingY, 5, swingHeight);
+        // Top bar
         graphics.fillRect(swingX - 40, swingY, 80, 5);
 
-        // Swings
+        // Swings hanging from top bar
         graphics.lineStyle(2, 0x424242, 1);
-        graphics.lineBetween(swingX - 25, swingY, swingX - 25, swingY + 40);
-        graphics.lineBetween(swingX + 20, swingY, swingX + 20, swingY + 40);
+        graphics.lineBetween(swingX - 25, swingY + 5, swingX - 25, swingY + 45);
+        graphics.lineBetween(swingX + 20, swingY + 5, swingX + 20, swingY + 45);
         graphics.fillStyle(0xF44336, 1);
-        graphics.fillRect(swingX - 30, swingY + 40, 10, 3);
-        graphics.fillRect(swingX + 15, swingY + 40, 10, 3);
+        graphics.fillRect(swingX - 30, swingY + 45, 10, 3);
+        graphics.fillRect(swingX + 15, swingY + 45, 10, 3);
 
-        // Slide
+        // Slide - positioned on ground
         const slideX = x + 40;
-        const slideY = y - building.height + 50;
+        const slideHeight = 70;
+        const slideY = y - slideHeight; // Top of platform
 
         graphics.fillStyle(0x2196F3, 1);
         // Slide platform
         graphics.fillRect(slideX - 15, slideY, 30, 5);
-        graphics.fillRect(slideX - 10, slideY + 5, 5, 35);
-        graphics.fillRect(slideX + 5, slideY + 5, 5, 35);
-        // Slide surface
+        // Platform support legs
+        graphics.fillRect(slideX - 10, slideY + 5, 5, slideHeight - 5);
+        graphics.fillRect(slideX + 5, slideY + 5, 5, slideHeight - 5);
+        // Slide surface (goes down to ground)
         graphics.fillTriangle(
-            slideX - 15, slideY + 40,
-            slideX + 15, slideY + 40,
-            slideX + 40, slideY + 60
+            slideX - 15, slideY + 5,
+            slideX + 15, slideY + 5,
+            slideX + 40, y
         );
 
-        // Border
-        graphics.lineStyle(3, 0xFF6F00, 1);
-        graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
+        // Border removed for transparent background
+        // graphics.lineStyle(3, 0xFF6F00, 1);
+        // graphics.strokeRect(x - building.width/2, y - building.height, building.width, building.height);
     }
 
     drawFountain(graphics, building, x, y, facadeVariation) {

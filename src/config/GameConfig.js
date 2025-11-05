@@ -247,7 +247,7 @@ export const BuildingTypes = {
     },
     themePark: {
         name: 'Theme Park',
-        cost: 2000,
+        cost: 18000,
         wood: 80,
         bricks: 60,
         width: 480, // Takes up 2 building spaces!
@@ -309,7 +309,7 @@ export const BuildingTypes = {
     },
     movieTheater: {
         name: 'Movie Theater',
-        cost: 12000,
+        cost: 8000,
         wood: 60,
         bricks: 70,
         width: 230,

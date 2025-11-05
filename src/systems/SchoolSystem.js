@@ -37,6 +37,11 @@ export class SchoolSystem {
 
         // Active events
         this.activeEvents = [];
+
+        // Milestone tracking
+        this.lastUpgradePrompt = 0;
+        this.PROMPT_COOLDOWN = 350;
+        this.promptedUpgrades = new Set();
     }
 
     initializeSchool(building) {
@@ -473,6 +478,248 @@ export class SchoolSystem {
         if (this.announcements.length > 50) {
             this.announcements.shift();
         }
+    }
+
+    checkMilestones() {
+        if (this.schools.length === 0) return;
+
+        const currentTime = this.scene.gameTime || 0;
+        if (currentTime - this.lastUpgradePrompt < this.PROMPT_COOLDOWN) return;
+
+        const population = this.scene.population || 0;
+
+        for (let school of this.schools) {
+            const schoolId = this.schools.indexOf(school);
+
+            // Suggest funding when education level is close to upgrade
+            const fundingNeeded = 5000 * school.educationLevel;
+            const fundingProgress = school.funding / fundingNeeded;
+
+            if (fundingProgress >= 0.5 && fundingProgress < 1 &&
+                school.educationLevel < 5 &&
+                !this.promptedUpgrades.has(`funding-${schoolId}-${school.educationLevel}`)) {
+
+                const amountNeeded = fundingNeeded - school.funding;
+                this.showUpgradePrompt(
+                    '🏫 School Improvement!',
+                    `The school is ${Math.round(fundingProgress * 100)}% of the way to Education Level ${school.educationLevel + 1}. Donate $${amountNeeded} to help reach the goal?`,
+                    amountNeeded,
+                    () => this.donateFunding(school, amountNeeded)
+                );
+                this.promptedUpgrades.add(`funding-${schoolId}-${school.educationLevel}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+
+            // Suggest hiring teachers if student-to-teacher ratio is too high
+            const studentTeacherRatio = school.students.length / school.staff.teachers.length;
+            if (studentTeacherRatio > 25 &&
+                !this.promptedUpgrades.has(`teacher-${schoolId}-${school.staff.teachers.length}`)) {
+
+                this.showUpgradePrompt(
+                    '👨‍🏫 Need More Teachers!',
+                    `Student-to-teacher ratio is ${Math.round(studentTeacherRatio)}:1. Hire an additional teacher to improve education quality?`,
+                    300,
+                    () => this.hireTeacher(school)
+                );
+                this.promptedUpgrades.add(`teacher-${schoolId}-${school.staff.teachers.length}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+
+            // Celebrate graduation milestones
+            const graduateMilestones = [50, 100, 250, 500, 1000];
+            for (let milestone of graduateMilestones) {
+                if (school.stats.totalGraduates >= milestone &&
+                    !this.promptedUpgrades.has(`graduates-${schoolId}-${milestone}`)) {
+
+                    this.showInfoPopup(
+                        '🎓 Graduation Milestone!',
+                        `The school has graduated ${school.stats.totalGraduates} students! This contributes to the city's educated workforce.`
+                    );
+                    this.promptedUpgrades.add(`graduates-${schoolId}-${milestone}`);
+                    this.lastUpgradePrompt = currentTime;
+                    return;
+                }
+            }
+
+            // Suggest expanding facilities if overcrowded
+            if (school.students.length > 200 &&
+                population > 80 &&
+                !this.promptedUpgrades.has(`expansion-${schoolId}`)) {
+
+                this.showInfoPopup(
+                    '🏫 School Overcrowding!',
+                    `The school has ${school.students.length} students! Consider building another school to reduce overcrowding.`
+                );
+                this.promptedUpgrades.add(`expansion-${schoolId}`);
+                this.lastUpgradePrompt = currentTime;
+                return;
+            }
+        }
+    }
+
+    donateFunding(school, amount) {
+        school.funding += amount;
+        school.stats.totalFundsRaised += amount;
+
+        // Check for level up
+        const fundingNeeded = 5000 * school.educationLevel;
+        if (school.funding >= fundingNeeded && school.educationLevel < 5) {
+            school.educationLevel++;
+            if (this.scene.uiManager) {
+                this.scene.uiManager.addNotification(`⭐ School reached Education Level ${school.educationLevel}!`);
+            }
+        }
+
+        if (this.scene.uiManager) {
+            this.scene.uiManager.addNotification(`💝 Donated $${amount} to school!`);
+        }
+    }
+
+    hireTeacher(school) {
+        school.staff.teachers.push({
+            name: this.generateName(),
+            subject: this.getRandomSubject(),
+            experience: 1
+        });
+
+        if (this.scene.uiManager) {
+            this.scene.uiManager.addNotification(`👨‍🏫 New teacher hired!`);
+        }
+    }
+
+    showUpgradePrompt(title, message, cost, onAccept) {
+        const popup = this.scene.add.container(640, 360);
+        popup.setDepth(2000);
+        popup.setScrollFactor(0);
+
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x1a1a1a, 0.98);
+        bg.fillRoundedRect(-250, -120, 500, 240, 10);
+        bg.lineStyle(3, 0xFFC107, 1);
+        bg.strokeRoundedRect(-250, -120, 500, 240, 10);
+        popup.add(bg);
+
+        const titleText = this.scene.add.text(0, -90, title, {
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#FFC107',
+            align: 'center'
+        });
+        titleText.setOrigin(0.5);
+        popup.add(titleText);
+
+        const messageText = this.scene.add.text(0, -30, message, {
+            fontSize: '16px',
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 450 }
+        });
+        messageText.setOrigin(0.5);
+        popup.add(messageText);
+
+        const costText = this.scene.add.text(0, 30, `Cost: $${cost}`, {
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: '#4CAF50'
+        });
+        costText.setOrigin(0.5);
+        popup.add(costText);
+
+        const acceptBtn = this.createPopupButton(popup, -80, 80, '✓ Yes', () => {
+            if (this.scene.money >= cost) {
+                this.scene.money -= cost;
+                onAccept();
+                popup.destroy();
+            } else {
+                if (this.scene.uiManager) {
+                    this.scene.uiManager.addNotification(`❌ Not enough money! Need $${cost}`);
+                }
+            }
+        }, '#4CAF50');
+
+        const declineBtn = this.createPopupButton(popup, 80, 80, '✗ Not Now', () => {
+            popup.destroy();
+        }, '#F44336');
+
+        this.scene.time.delayedCall(10000, () => {
+            if (popup && popup.active) {
+                popup.destroy();
+            }
+        });
+    }
+
+    showInfoPopup(title, message) {
+        const popup = this.scene.add.container(640, 360);
+        popup.setDepth(2000);
+        popup.setScrollFactor(0);
+
+        const bg = this.scene.add.graphics();
+        bg.fillStyle(0x1a1a1a, 0.98);
+        bg.fillRoundedRect(-250, -100, 500, 200, 10);
+        bg.lineStyle(3, 0xFFC107, 1);
+        bg.strokeRoundedRect(-250, -100, 500, 200, 10);
+        popup.add(bg);
+
+        const titleText = this.scene.add.text(0, -70, title, {
+            fontSize: '24px',
+            fontWeight: 'bold',
+            color: '#FFC107',
+            align: 'center'
+        });
+        titleText.setOrigin(0.5);
+        popup.add(titleText);
+
+        const messageText = this.scene.add.text(0, -10, message, {
+            fontSize: '16px',
+            color: '#ffffff',
+            align: 'center',
+            wordWrap: { width: 450 }
+        });
+        messageText.setOrigin(0.5);
+        popup.add(messageText);
+
+        const okBtn = this.createPopupButton(popup, 0, 60, '✓ OK', () => {
+            popup.destroy();
+        }, '#4CAF50');
+
+        this.scene.time.delayedCall(8000, () => {
+            if (popup && popup.active) {
+                popup.destroy();
+            }
+        });
+    }
+
+    createPopupButton(container, x, y, text, onClick, color = '#4CAF50') {
+        const btn = this.scene.add.container(x, y);
+
+        const bg = this.scene.add.graphics();
+        const colorValue = parseInt(color.replace('#', ''), 16);
+        bg.fillStyle(colorValue, 1);
+        bg.fillRoundedRect(-70, -18, 140, 36, 5);
+        bg.lineStyle(2, 0xffffff, 1);
+        bg.strokeRoundedRect(-70, -18, 140, 36, 5);
+        btn.add(bg);
+
+        const label = this.scene.add.text(0, 0, text, {
+            fontSize: '16px',
+            fontWeight: 'bold',
+            color: '#ffffff'
+        });
+        label.setOrigin(0.5);
+        btn.add(label);
+
+        btn.setInteractive(
+            new Phaser.Geom.Rectangle(-70, -18, 140, 36),
+            Phaser.Geom.Rectangle.Contains
+        );
+        btn.on('pointerdown', onClick);
+        btn.on('pointerover', () => bg.setAlpha(0.8));
+        btn.on('pointerout', () => bg.setAlpha(1));
+
+        container.add(btn);
+        return btn;
     }
 
     enterSchool(building) {
