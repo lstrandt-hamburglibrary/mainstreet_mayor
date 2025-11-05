@@ -59,6 +59,7 @@
 
 ## 🚗 Transportation & Infrastructure
 
+- [ ] **Airport** - Major transportation hub for tourists and business travelers
 - [ ] **Car Traffic System** - Vehicles drive on roads, can cause congestion
 - [ ] **Parking Lots/Garages** - Required for bigger shops, generates parking fees
 - [ ] **Subway/Metro System** - Underground transit for faster travel
