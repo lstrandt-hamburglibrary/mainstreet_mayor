@@ -466,6 +466,136 @@ export const BuildingTypes = {
         maintenanceCost: 80, // Costs $80/day to maintain
         trainCapacity: 80, // Trains can hold 80 passengers
         trainInterval: 180 // Train arrives every 180 minutes (3 hours)
+    },
+    gasStation: {
+        name: 'Gas Station',
+        cost: 350,
+        wood: 20,
+        bricks: 25,
+        width: 220,
+        height: 180,
+        color: 0xFFEB3B, // Yellow
+        incomeRate: 12,
+        maxIncome: 120,
+        district: 'downtown',
+        emoji: '⛽'
+    },
+    carDealership: {
+        name: 'Car Dealership',
+        cost: 500,
+        wood: 30,
+        bricks: 35,
+        width: 280,
+        height: 200,
+        color: 0x2196F3, // Blue
+        incomeRate: 18,
+        maxIncome: 180,
+        district: 'downtown',
+        emoji: '🚗'
+    },
+    stadium: {
+        name: 'Stadium',
+        cost: 1200,
+        wood: 80,
+        bricks: 100,
+        width: 400,
+        height: 300,
+        color: 0x4CAF50, // Green
+        incomeRate: 30,
+        maxIncome: 300,
+        district: 'recreation',
+        emoji: '🏟️'
+    },
+    conventionCenter: {
+        name: 'Convention Center',
+        cost: 900,
+        wood: 60,
+        bricks: 70,
+        width: 350,
+        height: 250,
+        color: 0x9C27B0, // Purple
+        incomeRate: 25,
+        maxIncome: 250,
+        district: 'downtown',
+        emoji: '🏛️'
+    },
+    pharmacy: {
+        name: 'Pharmacy',
+        cost: 220,
+        wood: 15,
+        bricks: 12,
+        width: 200,
+        height: 240,
+        color: 0xFF5722, // Deep Orange
+        incomeRate: 8,
+        maxIncome: 80,
+        district: 'downtown',
+        emoji: '💊'
+    },
+    gym: {
+        name: 'Gym',
+        cost: 380,
+        wood: 25,
+        bricks: 28,
+        width: 240,
+        height: 220,
+        color: 0xFF9800, // Orange
+        incomeRate: 10,
+        maxIncome: 100,
+        district: 'recreation',
+        emoji: '🏋️'
+    },
+    coffeeShop: {
+        name: 'Coffee Shop',
+        cost: 180,
+        wood: 12,
+        bricks: 8,
+        width: 180,
+        height: 220,
+        color: 0x795548, // Brown
+        incomeRate: 7,
+        maxIncome: 70,
+        district: 'downtown',
+        emoji: '☕'
+    },
+    hardwareStore: {
+        name: 'Hardware Store',
+        cost: 280,
+        wood: 18,
+        bricks: 20,
+        width: 220,
+        height: 240,
+        color: 0xFF6F00, // Amber
+        incomeRate: 9,
+        maxIncome: 90,
+        district: 'downtown',
+        emoji: '🔨'
+    },
+    petStore: {
+        name: 'Pet Store',
+        cost: 190,
+        wood: 13,
+        bricks: 10,
+        width: 200,
+        height: 230,
+        color: 0xFFC107, // Amber
+        incomeRate: 6,
+        maxIncome: 60,
+        district: 'downtown',
+        emoji: '🐾'
+    },
+    artGallery: {
+        name: 'Art Gallery',
+        cost: 420,
+        wood: 28,
+        bricks: 32,
+        width: 260,
+        height: 260,
+        color: 0x673AB7, // Deep Purple
+        incomeRate: 12,
+        maxIncome: 120,
+        district: 'recreation',
+        emoji: '🎨'
     }
 };
 

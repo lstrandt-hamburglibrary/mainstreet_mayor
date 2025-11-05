@@ -312,6 +312,9 @@ export class EventSystem {
                 this.endEvent();
             }
         }
+
+        // Check for random events periodically
+        this.checkRandomEvents();
     }
 
     /**
@@ -334,5 +337,208 @@ export class EventSystem {
             return this.activeEvent.incomeMultiplier;
         }
         return 1.0;
+    }
+
+    /**
+     * Check for random events - triggers periodically
+     */
+    checkRandomEvents() {
+        // Don't trigger new events if one is active
+        if (this.activeEvent) return;
+
+        // Initialize next event time if not set
+        if (!this.nextEventTime) {
+            // First event in 300-600 game minutes (5-10 hours)
+            this.nextEventTime = this.scene.gameTime + 300 + Math.random() * 300;
+            return;
+        }
+
+        // Check if it's time for an event
+        if (this.scene.gameTime >= this.nextEventTime) {
+            // Trigger random event
+            this.triggerRandomEvent();
+
+            // Schedule next event (400-800 game minutes)
+            this.nextEventTime = this.scene.gameTime + 400 + Math.random() * 400;
+        }
+    }
+
+    /**
+     * Trigger a random event
+     */
+    triggerRandomEvent() {
+        // Only trigger events if player has unlocked at least one street
+        if (!this.scene.buildings || this.scene.buildings.length < 5) return;
+
+        // List of possible events
+        const eventTypes = [
+            'street_festival',
+            'market_boom',
+            'construction_accident',
+            'tourist_wave',
+            'weather_sunny',
+            'weather_rain',
+            'population_boom'
+        ];
+
+        // Pick random event
+        const randomEvent = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+
+        switch (randomEvent) {
+            case 'street_festival':
+                this.startStreetFestival();
+                break;
+            case 'market_boom':
+                this.startMarketBoom();
+                break;
+            case 'construction_accident':
+                this.startConstructionAccident();
+                break;
+            case 'tourist_wave':
+                this.startTouristWave();
+                break;
+            case 'weather_sunny':
+                this.startSunnyWeather();
+                break;
+            case 'weather_rain':
+                this.startRainyWeather();
+                break;
+            case 'population_boom':
+                this.startPopulationBoom();
+                break;
+        }
+    }
+
+    /**
+     * Street Festival Event - Boosts income for 4 hours
+     */
+    startStreetFestival() {
+        console.log('🎉 Street Festival starting!');
+        this.createAirplane('🎉 STREET FESTIVAL TODAY! 🎉', this.scene.gameHeight * 0.2);
+        this.scene.uiManager.addNotification('🎉 Street Festival! +25% income for 4 hours!');
+
+        this.activeEvent = {
+            type: 'street_festival',
+            startTime: this.scene.gameTime,
+            duration: 240, // 4 hours
+            incomeMultiplier: 1.25
+        };
+    }
+
+    /**
+     * Market Boom Event - Boosts all business income for 6 hours
+     */
+    startMarketBoom() {
+        console.log('📈 Market Boom!');
+        this.createAirplane('📈 ECONOMIC BOOM! 📈', this.scene.gameHeight * 0.2);
+        this.scene.uiManager.addNotification('📈 Economic Boom! +40% business income for 6 hours!');
+
+        this.activeEvent = {
+            type: 'market_boom',
+            startTime: this.scene.gameTime,
+            duration: 360, // 6 hours
+            incomeMultiplier: 1.40
+        };
+    }
+
+    /**
+     * Construction Accident - Costs money to repair
+     */
+    startConstructionAccident() {
+        const repairCost = 500 + Math.floor(Math.random() * 1500); // $500-$2000
+
+        console.log(`⚠️ Construction accident! Cost: $${repairCost}`);
+        this.scene.uiManager.addNotification(`⚠️ Construction accident! Repair cost: -$${repairCost}`);
+
+        this.scene.money -= repairCost;
+        this.scene.money = Math.max(0, this.scene.money);
+
+        // Brief event (just the notification)
+        this.activeEvent = {
+            type: 'construction_accident',
+            startTime: this.scene.gameTime,
+            duration: 1 // 1 minute
+        };
+    }
+
+    /**
+     * Tourist Wave Event - Attracts more tourists
+     */
+    startTouristWave() {
+        console.log('🧳 Tourist wave incoming!');
+        this.createAirplane('🧳 TOURISM SEASON! 🧳', this.scene.gameHeight * 0.2);
+        this.scene.uiManager.addNotification('🧳 Tourist Wave! Extra visitors for 8 hours!');
+
+        // Spawn extra tourists
+        const extraTourists = 5 + Math.floor(Math.random() * 10);
+        for (let i = 0; i < extraTourists; i++) {
+            this.scene.time.delayedCall(i * 1000, () => {
+                this.scene.citizenSystem.spawnCitizen(true); // Spawn as tourist
+            });
+        }
+
+        this.activeEvent = {
+            type: 'tourist_wave',
+            startTime: this.scene.gameTime,
+            duration: 480, // 8 hours
+            incomeMultiplier: 1.15
+        };
+    }
+
+    /**
+     * Sunny Weather Event - Boosts recreation and entertainment
+     */
+    startSunnyWeather() {
+        console.log('☀️ Beautiful sunny day!');
+        this.scene.uiManager.addNotification('☀️ Sunny Weather! +30% recreation income for 12 hours!');
+
+        this.activeEvent = {
+            type: 'weather_sunny',
+            startTime: this.scene.gameTime,
+            duration: 720, // 12 hours
+            incomeMultiplier: 1.30,
+            affectedDistricts: ['recreation']
+        };
+    }
+
+    /**
+     * Rainy Weather Event - Reduces income but provides money bonus
+     */
+    startRainyWeather() {
+        console.log('🌧️ Rainy day ahead!');
+        this.scene.uiManager.addNotification('🌧️ Rainy Weather! -10% income but +$1000 water savings!');
+
+        // Give water savings bonus
+        this.scene.money += 1000;
+
+        this.activeEvent = {
+            type: 'weather_rain',
+            startTime: this.scene.gameTime,
+            duration: 360, // 6 hours
+            incomeMultiplier: 0.90
+        };
+    }
+
+    /**
+     * Population Boom Event - Attracts new residents
+     */
+    startPopulationBoom() {
+        console.log('👨‍👩‍👧‍👦 Population boom!');
+        this.createAirplane('👨‍👩‍👧‍👦 POPULATION GROWTH! 👨‍👩‍👧‍👦', this.scene.gameHeight * 0.2);
+        this.scene.uiManager.addNotification('👨‍👩‍👧‍👦 Population Boom! New residents arriving!');
+
+        // Spawn extra residents
+        const extraResidents = 3 + Math.floor(Math.random() * 7);
+        for (let i = 0; i < extraResidents; i++) {
+            this.scene.time.delayedCall(i * 2000, () => {
+                this.scene.citizenSystem.spawnCitizen(false); // Spawn as resident
+            });
+        }
+
+        this.activeEvent = {
+            type: 'population_boom',
+            startTime: this.scene.gameTime,
+            duration: 120 // 2 hours
+        };
     }
 }

@@ -159,6 +159,7 @@ class MainScene extends Phaser.Scene {
         // Initialize mission system
         this.missionSystem = new MissionSystem(this);
         this.missionsMenuOpen = false;
+        this.statsMenuOpen = false;
 
         // Settings menu state
         this.settingsMenuOpen = false;
@@ -526,6 +527,30 @@ class MainScene extends Phaser.Scene {
 
         this.missionsButton.on('pointerout', () => {
             this.missionsButton.setStyle({ backgroundColor: '#FFD700' });
+        });
+
+        // Stats button
+        this.statsButton = this.add.text(this.gameWidth - 450, 20, '📊 STATS', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#4CAF50',
+            padding: { x: 12, y: 6 }
+        }).setScrollFactor(0).setDepth(99999).setInteractive();
+
+        this.statsButton.on('pointerdown', () => {
+            if (this.statsMenuOpen) {
+                this.uiManager.hideStatsPanel();
+            } else {
+                this.uiManager.showStatsPanel();
+            }
+        });
+
+        this.statsButton.on('pointerover', () => {
+            this.statsButton.setStyle({ backgroundColor: '#66BB6A' });
+        });
+
+        this.statsButton.on('pointerout', () => {
+            this.statsButton.setStyle({ backgroundColor: '#4CAF50' });
         });
 
         // City Name Display (top center)
@@ -3744,7 +3769,8 @@ class MainScene extends Phaser.Scene {
 
                 // Calculate park/recreation boost
                 const parkBoost = this.calculateParkBoost(building);
-                const totalBonus = districtBonus * (1 + parkBoost);
+                const streetBonus = building.streetBonus || 1.0;
+                const totalBonus = districtBonus * (1 + parkBoost) * streetBonus;
 
                 const incomeToAdd = elapsedMinutes * buildingType.incomeRate * totalBonus;
 
@@ -3774,7 +3800,8 @@ class MainScene extends Phaser.Scene {
             if (buildingType && buildingType.resourceType) {
                 // Calculate time elapsed in minutes (adjusted for time speed)
                 const elapsedMinutes = ((now - building.lastResourceTime) / 60000) * this.timeSpeed;
-                const resourcesToAdd = elapsedMinutes * buildingType.regenRate;
+                const streetBonus = building.streetBonus || 1.0;
+                const resourcesToAdd = elapsedMinutes * buildingType.regenRate * streetBonus;
 
                 building.storedResources = Math.min(
                     building.storedResources + resourcesToAdd,
@@ -3819,7 +3846,8 @@ class MainScene extends Phaser.Scene {
                         const elapsedMinutes = ((now - unit.lastIncomeTime) / 60000) * this.timeSpeed;
                         const districtBonus = building.districtBonus || 1.0;
                         const parkBoost = this.calculateParkBoost(building);
-                        const totalBonus = districtBonus * (1 + parkBoost);
+                        const streetBonus = building.streetBonus || 1.0;
+                        const totalBonus = districtBonus * (1 + parkBoost) * streetBonus;
                         const incomeToAdd = elapsedMinutes * unit.tenant.rentOffer * totalBonus;
 
                         unit.accumulatedIncome = Math.min(
@@ -3890,7 +3918,8 @@ class MainScene extends Phaser.Scene {
                             room.nightsOccupied++;
 
                             // Generate nightly income
-                            const nightlyIncome = hotelType.nightlyRate;
+                            const streetBonus = building.streetBonus || 1.0;
+                            const nightlyIncome = hotelType.nightlyRate * streetBonus;
                             building.accumulatedIncome += nightlyIncome;
                             console.log(`💵 Room ${roomIndex + 1} earned $${nightlyIncome} for night #${room.nightsOccupied}`);
 
@@ -5621,7 +5650,9 @@ class MainScene extends Phaser.Scene {
             lastResourceTime: Date.now(),
             placedDistrict: placedDistrict,
             districtBonus: districtBonus,
-            facadeVariation: facadeVariation  // Use the variation we already generated
+            facadeVariation: facadeVariation,  // Use the variation we already generated
+            streetNumber: this.currentStreet || 1,  // Track which street this building is on
+            streetBonus: 1.0  // Will be calculated based on district clustering
         };
 
         // Add visual indicator if building is in correct district
@@ -5733,8 +5764,66 @@ class MainScene extends Phaser.Scene {
             console.log(`Built ${building.name}! Resources: $${this.money}, Wood: ${this.wood}, Bricks: ${this.bricks}`);
         }
 
+        // Calculate and apply street bonuses for all buildings
+        this.calculateStreetBonuses();
+
         // Auto-save after building
         this.saveSystem.saveGame();
+    }
+
+    calculateStreetBonuses() {
+        // Calculate bonuses based on building clustering on each street
+        // Group buildings by street and type
+        const streetGroups = {};
+
+        for (let building of this.buildings) {
+            const streetNum = building.streetNumber || 1;
+            if (!streetGroups[streetNum]) {
+                streetGroups[streetNum] = {};
+            }
+
+            const buildingType = this.buildingTypes[building.type];
+            if (!buildingType) continue;
+
+            const category = buildingType.district || 'other';
+
+            if (!streetGroups[streetNum][category]) {
+                streetGroups[streetNum][category] = [];
+            }
+            streetGroups[streetNum][category].push(building);
+        }
+
+        // Calculate and apply bonuses
+        for (let building of this.buildings) {
+            const streetNum = building.streetNumber || 1;
+            const buildingType = this.buildingTypes[building.type];
+            if (!buildingType) continue;
+
+            const category = buildingType.district || 'other';
+            const buildingsInCategory = streetGroups[streetNum][category] || [];
+            const count = buildingsInCategory.length;
+
+            // Determine bonus based on category and count
+            let bonus = 1.0;
+            let bonusLabel = '';
+
+            if (category === 'residential' && count >= 5) {
+                bonus = 1.10; // +10% income for residential districts
+                bonusLabel = '🏘️ Residential District';
+            } else if (category === 'downtown' && count >= 5) {
+                bonus = 1.15; // +15% income for business districts
+                bonusLabel = '🏢 Business District';
+            } else if (category === 'recreation' && count >= 3) {
+                bonus = 1.20; // +20% income for entertainment districts
+                bonusLabel = '🎭 Entertainment District';
+            } else if (category === 'industrial' && count >= 2) {
+                bonus = 1.25; // +25% production for industrial zones
+                bonusLabel = '🏭 Industrial Zone';
+            }
+
+            building.streetBonus = bonus;
+            building.streetBonusLabel = bonusLabel;
+        }
     }
 
     addPopulationCapacity(buildingType) {

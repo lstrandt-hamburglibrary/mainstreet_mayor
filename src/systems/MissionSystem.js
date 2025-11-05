@@ -250,6 +250,165 @@ export class MissionSystem {
                 reward: { money: 300000, wood: 5000, bricks: 5000 },
                 completed: false,
                 special: 'unlock_street_10'
+            },
+
+            // Tourism and Entertainment missions
+            {
+                id: 'tourist_town',
+                title: 'Tourist Attraction',
+                description: 'Have 20 tourists visit your city',
+                type: 'tourist_count',
+                target: 20,
+                reward: { money: 5000 },
+                completed: false
+            },
+            {
+                id: 'entertainment_district',
+                title: 'Entertainment Capital',
+                description: 'Build a movie theater, bowling alley, and museum',
+                type: 'building_set',
+                buildings: ['movieTheater', 'bowling', 'museum'],
+                reward: { money: 10000 },
+                completed: false
+            },
+            {
+                id: 'build_stadium',
+                title: 'Sports City',
+                description: 'Build a stadium',
+                type: 'building_count',
+                buildingType: 'stadium',
+                target: 1,
+                reward: { money: 8000, wood: 100, bricks: 100 },
+                completed: false
+            },
+            {
+                id: 'recreation_hub',
+                title: 'Recreational Paradise',
+                description: 'Build a park, playground, and gym',
+                type: 'building_set',
+                buildings: ['park', 'playground', 'gym'],
+                reward: { money: 6000 },
+                completed: false
+            },
+
+            // Transportation missions
+            {
+                id: 'build_train_station',
+                title: 'All Aboard!',
+                description: 'Build a train station',
+                type: 'building_count',
+                buildingType: 'trainStation',
+                target: 1,
+                reward: { money: 5000, wood: 75, bricks: 75 },
+                completed: false
+            },
+            {
+                id: 'transit_hub',
+                title: 'Public Transit Hub',
+                description: 'Build 2 train stations to expand rail network',
+                type: 'building_count',
+                buildingType: 'trainStation',
+                target: 2,
+                reward: { money: 12000 },
+                completed: false
+            },
+
+            // Commercial and economic missions
+            {
+                id: 'shopping_center',
+                title: 'Shopping District',
+                description: 'Build 5 different types of shops',
+                type: 'shop_variety',
+                target: 5,
+                reward: { money: 7000 },
+                completed: false
+            },
+            {
+                id: 'restaurant_row',
+                title: 'Restaurant Row',
+                description: 'Build 3 different restaurants',
+                type: 'restaurant_variety',
+                target: 3,
+                reward: { money: 5000 },
+                completed: false
+            },
+            {
+                id: 'industrial_park',
+                title: 'Industrial Park',
+                description: 'Build lumber mill, brick factory, and market',
+                type: 'building_set',
+                buildings: ['lumbermill', 'brickfactory', 'market'],
+                reward: { money: 8000, wood: 150, bricks: 150 },
+                completed: false
+            },
+            {
+                id: 'money_100000',
+                title: 'Millionaire Mayor',
+                description: 'Have $100,000 in cash',
+                type: 'money',
+                target: 100000,
+                reward: { money: 25000 },
+                completed: false
+            },
+
+            // Population milestones
+            {
+                id: 'population_200',
+                title: 'Booming Metropolis',
+                description: 'Reach 200 residents',
+                type: 'population',
+                target: 200,
+                reward: { money: 30000, wood: 500, bricks: 500 },
+                completed: false
+            },
+            {
+                id: 'population_500',
+                title: 'Major City',
+                description: 'Reach 500 residents',
+                type: 'population',
+                target: 500,
+                reward: { money: 100000, wood: 1000, bricks: 1000 },
+                completed: false
+            },
+
+            // Luxury and high-end missions
+            {
+                id: 'luxury_city',
+                title: 'Luxury Living',
+                description: 'Build 3 hotels and a bank',
+                type: 'luxury_buildings',
+                target: 4,
+                reward: { money: 20000 },
+                completed: false
+            },
+            {
+                id: 'diverse_city',
+                title: 'Diverse Metropolis',
+                description: 'Build at least 15 different building types',
+                type: 'building_diversity',
+                target: 15,
+                reward: { money: 18000, wood: 400, bricks: 400 },
+                completed: false
+            },
+
+            // New building type missions
+            {
+                id: 'automotive_district',
+                title: 'Automotive District',
+                description: 'Build a gas station and car dealership',
+                type: 'building_set',
+                buildings: ['gasStation', 'carDealership'],
+                reward: { money: 6000 },
+                completed: false
+            },
+            {
+                id: 'culture_city',
+                title: 'Cultural Center',
+                description: 'Build art gallery, museum, and library',
+                type: 'building_set',
+                buildings: ['artGallery', 'museum', 'library'],
+                reward: { money: 12000 },
+                completed: false
             }
         ];
     }
@@ -294,6 +453,51 @@ export class MissionSystem {
 
             case 'unlock_street':
                 return this.scene.buildings.length;
+
+            case 'tourist_count':
+                // Count total tourists that have visited (current + those who left)
+                const currentTourists = this.scene.citizens ?
+                    this.scene.citizens.filter(c => c.isTourist).length : 0;
+                // This is approximate - in future could track total tourists served
+                return currentTourists;
+
+            case 'shop_variety':
+                // Count different types of shops
+                const shopTypes = ['clothingShop', 'electronicsShop', 'groceryStore', 'bookstore',
+                                   'gasStation', 'hardwareStore', 'petStore', 'pharmacy'];
+                const uniqueShops = new Set();
+                for (let building of this.scene.buildings) {
+                    if (shopTypes.includes(building.type)) {
+                        uniqueShops.add(building.type);
+                    }
+                }
+                return uniqueShops.size;
+
+            case 'restaurant_variety':
+                // Count different types of restaurants
+                const restaurantTypes = ['bakery', 'chinese_restaurant', 'italian_restaurant',
+                                         'diner', 'sub_shop', 'coffeeShop'];
+                const uniqueRestaurants = new Set();
+                for (let building of this.scene.buildings) {
+                    if (restaurantTypes.includes(building.type)) {
+                        uniqueRestaurants.add(building.type);
+                    }
+                }
+                return uniqueRestaurants.size;
+
+            case 'luxury_buildings':
+                // Count hotels and banks
+                return this.scene.buildings.filter(b =>
+                    b.type === 'hotel' || b.type === 'bank'
+                ).length;
+
+            case 'building_diversity':
+                // Count unique building types
+                const uniqueTypes = new Set();
+                for (let building of this.scene.buildings) {
+                    uniqueTypes.add(building.type);
+                }
+                return uniqueTypes.size;
 
             default:
                 return 0;

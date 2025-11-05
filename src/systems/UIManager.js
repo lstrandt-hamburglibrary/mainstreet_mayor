@@ -506,6 +506,114 @@ export class UIManager {
         this.scene.missionsMenuOpen = false;
     }
 
+    showStatsPanel() {
+        // Create stats panel if it doesn't exist
+        if (!this.scene.statsPanel) {
+            this.scene.statsPanel = this.scene.add.container(this.scene.gameWidth - 340, 120);
+            this.scene.statsPanel.setScrollFactor(0).setDepth(9998);
+
+            const bg = this.scene.add.graphics();
+            bg.fillStyle(0x1a1a1a, 0.95);
+            bg.fillRoundedRect(0, 0, 320, 550, 10);
+            bg.lineStyle(3, 0x4CAF50, 1);
+            bg.strokeRoundedRect(0, 0, 320, 550, 10);
+            this.scene.statsPanel.add(bg);
+
+            const title = this.scene.add.text(160, 15, '📊 CITY STATISTICS', {
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#4CAF50',
+                align: 'center'
+            });
+            title.setOrigin(0.5, 0);
+            this.scene.statsPanel.add(title);
+
+            this.scene.statsText = this.scene.add.text(15, 50, '', {
+                fontSize: '12px',
+                color: '#ffffff',
+                lineSpacing: 3,
+                wordWrap: { width: 290 }
+            });
+            this.scene.statsPanel.add(this.scene.statsText);
+        }
+
+        // Calculate statistics
+        let text = '';
+
+        // Overall stats
+        text += `🏙️ CITY OVERVIEW:\n`;
+        text += `Total Buildings: ${this.scene.buildings.length}\n`;
+        const residentCount = this.scene.citizens ? this.scene.citizens.filter(c => !c.isTourist).length : 0;
+        const touristCount = this.scene.citizens ? this.scene.citizens.filter(c => c.isTourist).length : 0;
+        text += `Residents: ${residentCount}/${this.scene.populationCapacity}\n`;
+        text += `Tourists: ${touristCount}\n`;
+        text += `Unlocked Streets: ${this.scene.unlockedStreets}\n\n`;
+
+        // Per-street breakdown
+        text += `📍 PER-STREET BREAKDOWN:\n`;
+        for (let i = 1; i <= this.scene.unlockedStreets; i++) {
+            const streetName = this.scene.streetNames[i] || `Street ${i}`;
+            const streetBuildings = this.scene.buildings.filter(b => (b.streetNumber || 1) === i);
+
+            text += `\n${streetName}:\n`;
+            text += `  Buildings: ${streetBuildings.length}\n`;
+
+            // Count buildings by district
+            const districtCounts = {};
+            for (let building of streetBuildings) {
+                const buildingType = this.scene.buildingTypes[building.type];
+                if (!buildingType) continue;
+                const district = buildingType.district || 'other';
+                districtCounts[district] = (districtCounts[district] || 0) + 1;
+            }
+
+            // Show district breakdown
+            if (Object.keys(districtCounts).length > 0) {
+                text += `  Districts:\n`;
+                for (let [district, count] of Object.entries(districtCounts)) {
+                    text += `    ${district}: ${count}\n`;
+                }
+            }
+
+            // Show active bonuses
+            const bonusBuildings = streetBuildings.filter(b => b.streetBonusLabel);
+            if (bonusBuildings.length > 0) {
+                const bonusLabel = bonusBuildings[0].streetBonusLabel;
+                text += `  ✨ ${bonusLabel}\n`;
+            }
+        }
+
+        // Building type counts
+        text += `\n🏢 BUILDING TYPES:\n`;
+        const typeCounts = {};
+        for (let building of this.scene.buildings) {
+            const buildingType = this.scene.buildingTypes[building.type];
+            if (!buildingType) continue;
+            const name = buildingType.name || building.type;
+            typeCounts[name] = (typeCounts[name] || 0) + 1;
+        }
+
+        // Sort by count and show top types
+        const sortedTypes = Object.entries(typeCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 8);
+
+        for (let [type, count] of sortedTypes) {
+            text += `${type}: ${count}\n`;
+        }
+
+        this.scene.statsText.setText(text);
+        this.scene.statsPanel.setVisible(true);
+        this.scene.statsMenuOpen = true;
+    }
+
+    hideStatsPanel() {
+        if (this.scene.statsPanel) {
+            this.scene.statsPanel.setVisible(false);
+        }
+        this.scene.statsMenuOpen = false;
+    }
+
     updateResourceBuildingUI() {
         let menuText = '';
 
