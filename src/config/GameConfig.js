@@ -10,7 +10,7 @@ export const GameConfig = {
 
     // Bank system
     LOAN_INTEREST_RATE: 0.1,  // 10% interest
-    SAVINGS_INTEREST_RATE: 0.05,  // 5% interest on savings
+    SAVINGS_INTEREST_RATE: 0.15,  // 15% interest on savings
 
     // Tax system
     PROPERTY_TAX_RATE: 0.02,  // 2% of building cost per day

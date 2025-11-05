@@ -10,6 +10,7 @@ export class SaveSystem {
     saveGame() {
         try {
             const saveData = {
+                cityName: this.scene.cityName,
                 money: this.scene.money,
                 wood: this.scene.wood,
                 bricks: this.scene.bricks,
@@ -81,7 +82,15 @@ export class SaveSystem {
                 }),
                 population: this.scene.population,
                 populationCapacity: this.scene.populationCapacity,
-                pendingCitizens: this.scene.pendingCitizens
+                pendingCitizens: this.scene.pendingCitizens,
+                // Save mission progress
+                missions: this.scene.missionSystem ? this.scene.missionSystem.missions.map(m => ({
+                    id: m.id,
+                    completed: m.completed
+                })) : [],
+                unlockedStreets: this.scene.unlockedStreets || 1,
+                currentStreet: this.scene.currentStreet || 1,
+                streetNames: this.scene.streetNames || {}
             };
             localStorage.setItem('mainstreetmayor_save', JSON.stringify(saveData));
             console.log(`💾 Game saved! ${this.scene.buildings.length} buildings:`, this.scene.buildings.map(b => `${b.type} at x=${b.x}`));
@@ -107,6 +116,10 @@ export class SaveSystem {
         try {
             const saveData = JSON.parse(saveDataStr);
 
+            // Restore city name
+            this.scene.cityName = saveData.cityName || 'Main Street';
+            this.scene.updateCityNameDisplay();
+
             // Restore resources
             this.scene.money = saveData.money;
             this.scene.wood = saveData.wood;
@@ -127,6 +140,28 @@ export class SaveSystem {
             this.scene.gameTime = saveData.gameTime || 0;
             this.scene.timeSpeed = saveData.timeSpeed || 1;
             this.scene.lastRealTime = Date.now(); // Reset to current time on load
+
+            // Restore mission progress and street data
+            this.scene.unlockedStreets = saveData.unlockedStreets || 1;
+            this.scene.currentStreet = saveData.currentStreet || 1;
+            this.scene.streetNames = saveData.streetNames || {};
+
+            // Switch to the saved street if not on street 1
+            if (this.scene.currentStreet > 1 && this.scene.streets && this.scene.streets.length >= this.scene.currentStreet) {
+                this.scene.switchToStreet(this.scene.currentStreet);
+            }
+
+            if (saveData.missions && this.scene.missionSystem) {
+                saveData.missions.forEach(savedMission => {
+                    const mission = this.scene.missionSystem.missions.find(m => m.id === savedMission.id);
+                    if (mission) {
+                        mission.completed = savedMission.completed;
+                        if (mission.completed && !this.scene.missionSystem.completedMissions.includes(mission)) {
+                            this.scene.missionSystem.completedMissions.push(mission);
+                        }
+                    }
+                });
+            }
 
             // Clear all existing text objects that might be old signs (depth 11)
             // This prevents duplicate signs from appearing

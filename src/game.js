@@ -16,6 +16,7 @@ import { LibrarySystem } from './systems/LibrarySystem.js';
 import { MuseumSystem } from './systems/MuseumSystem.js';
 import { HospitalSystem } from './systems/HospitalSystem.js';
 import { EntertainmentSystem } from './systems/EntertainmentSystem.js';
+import { MissionSystem } from './systems/MissionSystem.js';
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -30,6 +31,9 @@ class MainScene extends Phaser.Scene {
 
         // Listen for resize events
         this.scale.on('resize', this.handleResize, this);
+
+        // City name
+        this.cityName = 'Main Street'; // Default name
 
         // Resources (default starting values)
         this.money = 5000;
@@ -152,6 +156,10 @@ class MainScene extends Phaser.Scene {
         // Initialize entertainment system
         this.entertainmentSystem = new EntertainmentSystem(this);
 
+        // Initialize mission system
+        this.missionSystem = new MissionSystem(this);
+        this.missionsMenuOpen = false;
+
         // Settings menu state
         this.settingsMenuOpen = false;
 
@@ -182,16 +190,13 @@ class MainScene extends Phaser.Scene {
         // Stars - appear at night
         this.createStars();
 
-        // Ground (positioned at bottom of screen)
-        this.groundY = this.gameHeight - 50;
-        this.ground = this.add.rectangle(6000, this.groundY, 12000, 100, 0x555555);
-        this.ground.setDepth(-10); // Above background, below buildings
+        // Multi-street system: Each street has ground, platform, and furniture
+        this.streets = []; // Array to hold all street data
+        this.streetSpacing = 700; // Vertical spacing between streets
+        this.maxStreets = 10; // Maximum streets that can be built (for now)
 
-        // Ground platform for physics
-        this.groundPlatform = this.physics.add.staticGroup();
-        this.platformY = this.gameHeight - 100;
-        this.groundPlatformBody = this.groundPlatform.create(6000, this.platformY, null).setSize(12000, 20).setVisible(false);
-        this.groundPlatformBody.refreshBody();
+        // Create all potential streets (will show/hide based on unlockedStreets)
+        this.createStreets();
 
         // Add street furniture (benches, lamp posts, trash cans, mailboxes)
         this.lampPosts = []; // Track lamp posts for day/night lighting
@@ -345,8 +350,7 @@ class MainScene extends Phaser.Scene {
         badge.fillCircle(0, -40, 2);
         this.playerVisual.add(badge);
 
-        // Add collisions
-        this.physics.add.collider(this.player, this.groundPlatform);
+        // Add collisions (will be set up after streets are created)
 
         // Camera follow
         this.cameras.main.setBounds(0, 0, 12000, this.gameHeight);
@@ -373,9 +377,21 @@ class MainScene extends Phaser.Scene {
         this.eKey = this.input.keyboard.addKey('E');
         this.escKey = this.input.keyboard.addKey('ESC');
         this.rKey = this.input.keyboard.addKey('R');
+        this.pageUpKey = this.input.keyboard.addKey('PAGE_UP');
+        this.pageDownKey = this.input.keyboard.addKey('PAGE_DOWN');
         this.tKey = this.input.keyboard.addKey('T');
         this.cKey = this.input.keyboard.addKey('C');
         this.pKey = this.input.keyboard.addKey('P');
+        this.vKey = this.input.keyboard.addKey('V');  // Bird's eye view
+
+        // Bird's eye view mode
+        this.birdsEyeView = false;
+        this.normalZoom = 1;
+        this.birdsEyeZoom = 0.25; // Zoom out to 25% to see the entire street
+
+        // Multi-street system
+        this.unlockedStreets = 1; // Start with 1 street, unlock more via missions
+        this.currentStreet = 1; // Which street player is currently on
 
         // Mouse input for building placement and demolish mode
         this.input.on('pointerdown', (pointer) => {
@@ -462,6 +478,79 @@ class MainScene extends Phaser.Scene {
         }).setScrollFactor(0).setDepth(25000); // Very high depth to stay on top
 
         // Settings button (top right)
+        // Building Tally button
+        this.buildingTallyButton = this.add.text(this.gameWidth - 450, 20, '📊 TALLY', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#4CAF50',
+            padding: { x: 12, y: 6 }
+        }).setScrollFactor(0).setDepth(99999).setInteractive();
+
+        this.buildingTallyButton.on('pointerdown', () => {
+            if (this.buildingTallyOpen) {
+                this.uiManager.hideBuildingTally();
+            } else {
+                this.uiManager.showBuildingTally();
+            }
+        });
+
+        this.buildingTallyButton.on('pointerover', () => {
+            this.buildingTallyButton.setStyle({ backgroundColor: '#66BB6A' });
+        });
+
+        this.buildingTallyButton.on('pointerout', () => {
+            this.buildingTallyButton.setStyle({ backgroundColor: '#4CAF50' });
+        });
+
+        this.buildingTallyOpen = false;
+
+        // Missions button
+        this.missionsButton = this.add.text(this.gameWidth - 620, 20, '🏆 MISSIONS', {
+            fontSize: '16px',
+            color: '#ffffff',
+            backgroundColor: '#FFD700',
+            padding: { x: 12, y: 6 }
+        }).setScrollFactor(0).setDepth(99999).setInteractive();
+
+        this.missionsButton.on('pointerdown', () => {
+            if (this.missionsMenuOpen) {
+                this.uiManager.hideMissionsPanel();
+            } else {
+                this.uiManager.showMissionsPanel();
+            }
+        });
+
+        this.missionsButton.on('pointerover', () => {
+            this.missionsButton.setStyle({ backgroundColor: '#FFE082' });
+        });
+
+        this.missionsButton.on('pointerout', () => {
+            this.missionsButton.setStyle({ backgroundColor: '#FFD700' });
+        });
+
+        // City Name Display (top center)
+        this.cityNameDisplay = this.add.text(this.gameWidth / 2, 20, '', {
+            fontSize: '22px',
+            fontWeight: 'bold',
+            color: '#FFD700',
+            backgroundColor: '#1a1a1a',
+            padding: { x: 20, y: 8 }
+        }).setScrollFactor(0).setDepth(99999).setOrigin(0.5, 0).setInteractive();
+
+        this.cityNameDisplay.on('pointerdown', () => {
+            this.showCityNamePrompt();
+        });
+
+        this.cityNameDisplay.on('pointerover', () => {
+            this.cityNameDisplay.setStyle({ backgroundColor: '#2a2a2a' });
+        });
+
+        this.cityNameDisplay.on('pointerout', () => {
+            this.cityNameDisplay.setStyle({ backgroundColor: '#1a1a1a' });
+        });
+
+        this.updateCityNameDisplay();
+
         this.settingsButton = this.add.text(this.gameWidth - 130, 20, '⚙️ MENU', {
             fontSize: '16px',
             color: '#ffffff',
@@ -486,7 +575,7 @@ class MainScene extends Phaser.Scene {
         this.settingsDropdown = this.add.container(this.gameWidth - 200, 55);
         this.settingsDropdown.setScrollFactor(0).setDepth(100000).setVisible(false);
 
-        const dropdownBg = this.add.rectangle(0, 0, 200, 180, 0x424242, 1);
+        const dropdownBg = this.add.rectangle(0, 0, 200, 210, 0x424242, 1);
         dropdownBg.setOrigin(0, 0);
         this.settingsDropdown.add(dropdownBg);
 
@@ -525,8 +614,21 @@ class MainScene extends Phaser.Scene {
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.demolishButton);
 
+        // Help button
+        this.helpButton = this.add.text(10, 160, '❓ Help / Controls', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive().setScrollFactor(0);
+        this.settingsDropdown.add(this.helpButton);
+
+        this.helpButton.on('pointerdown', () => {
+            this.showHelpMenu();
+            this.settingsMenuOpen = false;
+            this.settingsDropdown.setVisible(false);
+        });
+
         // Add hover effects to all dropdown buttons
-        [this.restartButton, this.creativeButton, this.travelButton, this.buildButton, this.demolishButton].forEach(btn => {
+        [this.restartButton, this.creativeButton, this.travelButton, this.buildButton, this.demolishButton, this.helpButton].forEach(btn => {
             btn.on('pointerover', () => btn.setStyle({ color: '#FFD700' }));
             btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
         });
@@ -905,6 +1007,10 @@ class MainScene extends Phaser.Scene {
         this.bankUI.setVisible(false);
         this.bankMenuOpen = false;
         this.nearBank = null; // Track which bank player is near
+
+        // Tax collection popup flag
+        this.taxPopupShowing = false;
+        this.wasPausedBeforeTaxPopup = false;
 
         // Mailbox UI for rental applications
         this.mailboxUI = this.add.text(this.gameWidth / 2, this.gameHeight / 2, '', {
@@ -2236,6 +2342,15 @@ class MainScene extends Phaser.Scene {
         if (this.timeUI) {
             this.timeUI.x = this.gameWidth - 300;
         }
+        if (this.missionsButton) {
+            this.missionsButton.x = this.gameWidth - 620;
+        }
+        if (this.buildingTallyButton) {
+            this.buildingTallyButton.x = this.gameWidth - 450;
+        }
+        if (this.cityNameDisplay) {
+            this.cityNameDisplay.x = this.gameWidth / 2;
+        }
         if (this.settingsButton) {
             this.settingsButton.x = this.gameWidth - 130;
         }
@@ -2283,25 +2398,79 @@ class MainScene extends Phaser.Scene {
             this.deleteConfirmContainer.setPosition(this.gameWidth / 2, this.gameHeight / 2);
         }
 
-        // Update shop interior UI positions
-        if (this.shopInteriorContainer) {
-            // Update background and interior elements to fill screen
-            const interiorBg = this.shopInteriorContainer.list[0]; // First element is background
-            if (interiorBg) {
-                interiorBg.setPosition(this.gameWidth / 2, this.gameHeight / 2);
-                interiorBg.setSize(this.gameWidth, this.gameHeight);
+        // Update interior container backgrounds to fill screen
+        if (this.shopInteriorContainer && this.shopInteriorContainer.list && this.shopInteriorContainer.list.length > 0) {
+            const shopBg = this.shopInteriorContainer.list[0]; // First element is background
+            if (shopBg && shopBg.setPosition && shopBg.setSize) {
+                shopBg.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+                shopBg.setSize(this.gameWidth, this.gameHeight);
             }
+            // Update floor
+            if (this.shopInteriorContainer.list[1]) {
+                const floor = this.shopInteriorContainer.list[1];
+                if (floor.setPosition && floor.setSize) {
+                    floor.setPosition(this.gameWidth / 2, this.gameHeight - 100);
+                    floor.setSize(this.gameWidth, 200);
+                }
+            }
+        }
 
-            // Update button positions (they're not in the container, they're direct scene objects)
-            if (this.shopRestockButton) {
-                this.shopRestockButton.setPosition(this.gameWidth / 2, this.gameHeight - 80);
+        if (this.hotelInteriorContainer && this.hotelInteriorContainer.list && this.hotelInteriorContainer.list.length > 0) {
+            const hotelBg = this.hotelInteriorContainer.list[0]; // First element is background
+            if (hotelBg && hotelBg.setPosition && hotelBg.setSize) {
+                hotelBg.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+                hotelBg.setSize(this.gameWidth, this.gameHeight);
             }
-            if (this.shopHireButton) {
-                this.shopHireButton.setPosition(this.gameWidth / 2, this.gameHeight - 140);
+            // Update floor
+            if (this.hotelInteriorContainer.list[1]) {
+                const floor = this.hotelInteriorContainer.list[1];
+                if (floor.setPosition && floor.setSize) {
+                    floor.setPosition(this.gameWidth / 2, this.gameHeight - 100);
+                    floor.setSize(this.gameWidth, 200);
+                }
             }
-            if (this.shopWageText) {
-                this.shopWageText.setPosition(this.gameWidth / 2, this.gameHeight - 140);
+        }
+
+        if (this.restaurantInteriorContainer && this.restaurantInteriorContainer.list && this.restaurantInteriorContainer.list.length > 0) {
+            const restaurantBg = this.restaurantInteriorContainer.list[0]; // First element is background
+            if (restaurantBg && restaurantBg.setPosition && restaurantBg.setSize) {
+                restaurantBg.setPosition(this.gameWidth / 2, this.gameHeight / 2);
+                restaurantBg.setSize(this.gameWidth, this.gameHeight);
             }
+            // Update floor
+            if (this.restaurantInteriorContainer.list[1]) {
+                const floor = this.restaurantInteriorContainer.list[1];
+                if (floor.setPosition && floor.setSize) {
+                    floor.setPosition(this.gameWidth / 2, this.gameHeight - 100);
+                    floor.setSize(this.gameWidth, 200);
+                }
+            }
+        }
+
+        // Update standalone button positions
+        if (this.shopRestockButton) {
+            this.shopRestockButton.setPosition(this.gameWidth / 2, this.gameHeight - 80);
+        }
+        if (this.shopHireButton) {
+            this.shopHireButton.setPosition(this.gameWidth / 2, this.gameHeight - 140);
+        }
+        if (this.shopWageText) {
+            this.shopWageText.setPosition(this.gameWidth / 2, this.gameHeight - 140);
+        }
+        if (this.hotelCleanButton) {
+            this.hotelCleanButton.setPosition(this.gameWidth / 2, this.gameHeight - 80);
+        }
+        if (this.hotelHireButton) {
+            this.hotelHireButton.setPosition(this.gameWidth / 2, this.gameHeight - 140);
+        }
+        if (this.hotelHireMaidButton) {
+            this.hotelHireMaidButton.setPosition(this.gameWidth / 2, this.gameHeight - 200);
+        }
+        if (this.restaurantHireDayButton) {
+            this.restaurantHireDayButton.setPosition(this.gameWidth / 2, this.gameHeight - 80);
+        }
+        if (this.restaurantHireNightButton) {
+            this.restaurantHireNightButton.setPosition(this.gameWidth / 2, this.gameHeight - 140);
         }
 
         console.log(`Resized to ${newWidth}x${newHeight}`);
@@ -2409,6 +2578,112 @@ class MainScene extends Phaser.Scene {
                 startX: cloudContainer.x
             });
         }
+    }
+
+    createStreets() {
+        // Create multiple parallel streets
+        // Street 1 is at the bottom (current position)
+        // Street 2+ are above it, spaced by streetSpacing pixels
+
+        for (let i = 0; i < this.maxStreets; i++) {
+            const streetNumber = i + 1;
+
+            // Calculate Y position for this street
+            // Street 1: gameHeight - 50
+            // Street 2: gameHeight - 50 - 700 = gameHeight - 750
+            // Street 3: gameHeight - 50 - 1400, etc.
+            const groundY = this.gameHeight - 50 - (i * this.streetSpacing);
+            const platformY = this.gameHeight - 100 - (i * this.streetSpacing);
+
+            // Create ground (gray road)
+            const ground = this.add.rectangle(6000, groundY, 12000, 100, 0x555555);
+            ground.setDepth(-10 + i * 0.1); // Slightly different depth for each street
+
+            // Create platform for physics
+            const platform = this.physics.add.staticGroup();
+            const platformBody = platform.create(6000, platformY, null).setSize(12000, 20).setVisible(false);
+            platformBody.refreshBody();
+
+            // Store street data
+            const streetData = {
+                number: streetNumber,
+                groundY: groundY,
+                platformY: platformY,
+                ground: ground,
+                platform: platform,
+                platformBody: platformBody,
+                name: null, // Will be set when street is named
+                furniture: [] // Will be populated by createStreetFurniture
+            };
+
+            this.streets.push(streetData);
+
+            // Initially hide streets that aren't unlocked yet
+            if (streetNumber > this.unlockedStreets) {
+                ground.setVisible(false);
+            }
+        }
+
+        // Initialize first street with the city name (e.g., "Chewy Row")
+        if (!this.streetNames) {
+            this.streetNames = {};
+        }
+        this.streets[0].name = this.streetNames[1] || this.cityName;
+
+        // Restore saved street names for unlocked streets
+        for (let i = 1; i < this.maxStreets; i++) {
+            const streetData = this.streets[i];
+            if (streetData && this.unlockedStreets > i) {
+                streetData.name = this.streetNames[i + 1] || null;
+            }
+        }
+
+        // For backward compatibility, set references to street 1
+        this.groundY = this.streets[0].groundY;
+        this.ground = this.streets[0].ground;
+        this.groundPlatform = this.streets[0].platform;
+        this.platformY = this.streets[0].platformY;
+        this.groundPlatformBody = this.streets[0].platformBody;
+
+        // Add physics collisions for player with all street platforms
+        if (this.player) {
+            this.streets.forEach(street => {
+                this.physics.add.collider(this.player, street.platform);
+            });
+        }
+
+        console.log(`Created ${this.maxStreets} streets, ${this.unlockedStreets} unlocked`);
+    }
+
+    switchToStreet(streetNumber) {
+        // Switch player and camera to a different street
+        if (streetNumber < 1 || streetNumber > this.unlockedStreets) {
+            console.warn(`Cannot switch to street ${streetNumber} - not unlocked`);
+            return;
+        }
+
+        const street = this.streets[streetNumber - 1];
+        if (!street) {
+            console.warn(`Street ${streetNumber} does not exist`);
+            return;
+        }
+
+        // Move player to the new street's Y position
+        const newPlayerY = street.platformY - 50; // Position player on the platform
+        this.player.y = newPlayerY;
+
+        // Update current street reference
+        this.currentStreet = streetNumber;
+
+        // Update ground reference for building placement
+        this.groundY = street.groundY;
+        this.platformY = street.platformY;
+
+        // Show notification with street name
+        const streetName = street.name || `Street ${streetNumber}`;
+        this.uiManager.addNotification(`🛣️ Now on: ${streetName}`);
+
+        console.log(`Switched to street ${streetNumber}: ${streetName}`);
     }
 
     createStars() {
@@ -3570,12 +3845,36 @@ class MainScene extends Phaser.Scene {
                             building.accumulatedIncome += nightlyIncome;
                             console.log(`💵 Room ${roomIndex + 1} earned $${nightlyIncome} for night #${room.nightsOccupied}`);
 
-                            // Random checkout for non-tourist guests: 33% chance each night after first night
-                            // Tourist guests stay until their timer expires (handled in bus boarding)
-                            if (!room.guest && room.nightsOccupied >= 1 && Math.random() < 0.33) {
+                            // Checkout logic:
+                            // - Regular guests (no room.guest): 40% chance after 1 night, 60% after 2 nights, 80% after 3 nights
+                            // - Tourist guests with room.guest: They stay until their timer expires (handled in CitizenSystem)
+                            //   BUT as a fallback, if they've stayed 5+ nights, force checkout (in case timer failed)
+
+                            let shouldCheckout = false;
+
+                            if (!room.guest) {
+                                // Regular guest - increasing checkout chance based on nights stayed
+                                if (room.nightsOccupied === 1 && Math.random() < 0.4) {
+                                    shouldCheckout = true;
+                                } else if (room.nightsOccupied === 2 && Math.random() < 0.6) {
+                                    shouldCheckout = true;
+                                } else if (room.nightsOccupied >= 3) {
+                                    shouldCheckout = true; // Always checkout after 3 nights
+                                }
+                            } else {
+                                // Tourist guest - only force checkout if they've overstayed (5+ nights)
+                                // This is a fallback in case the tourist timer system failed
+                                if (room.nightsOccupied >= 5) {
+                                    shouldCheckout = true;
+                                    console.log(`⚠️ Tourist in room ${roomIndex + 1} overstayed ${room.nightsOccupied} nights - forcing checkout`);
+                                }
+                            }
+
+                            if (shouldCheckout) {
                                 // Guest checks out - room becomes dirty
                                 room.status = 'dirty';
                                 room.isOccupied = false;
+                                room.guest = null; // Clear guest reference
                                 room.nightsOccupied = 0;
                                 console.log(`Guest checked out of room ${roomIndex + 1}`);
 
@@ -3857,14 +4156,12 @@ class MainScene extends Phaser.Scene {
             if (currentDay > lastInterestDay) {
                 // Calculate daily interest (5% annual = 0.0137% daily)
                 const dailyRate = this.savingsInterestRate / 365;
-                const interestEarned = Math.floor(this.bankBalance * dailyRate);
+                const interestEarned = Math.max(1, Math.round(this.bankBalance * dailyRate)); // Minimum $1/day
 
-                if (interestEarned > 0) {
-                    this.bankBalance += interestEarned;
-                    this.bankBalance = Math.round(this.bankBalance);
-                    console.log(`💰 Bank paid $${interestEarned} interest on savings! Day #${currentDay}. New balance: $${this.bankBalance}`);
-                    this.uiManager.addNotification(`💰 Bank interest: +$${interestEarned}`);
-                }
+                this.bankBalance += interestEarned;
+                this.bankBalance = Math.round(this.bankBalance);
+                console.log(`💰 Bank paid $${interestEarned} interest on savings! Day #${currentDay}. New balance: $${this.bankBalance}`);
+                this.uiManager.addNotification(`💰 Bank interest: +$${interestEarned}`);
 
                 this.lastInterestPayment = this.gameTime;
             }
@@ -3910,12 +4207,47 @@ class MainScene extends Phaser.Scene {
                     this.uiManager.addNotification(`🔧 Maintenance: -$${totalMaintenance}`);
                 }
 
+                // Show popup if there are any expenses
+                if (totalTax > 0 || totalMaintenance > 0) {
+                    this.uiManager.showTaxCollectionPopup(totalTax, totalMaintenance);
+                }
+
                 this.lastTaxCollection = this.gameTime;
             }
         }
 
         // Update resource UI
         this.uiManager.updateMoneyUI();
+
+        // Update building tooltips (show info on hover)
+        if (!this.buildMode && !this.deleteMode) {
+            const pointer = this.input.activePointer;
+            const worldX = pointer.x + this.cameras.main.scrollX;
+            const worldY = pointer.y + this.cameras.main.scrollY;
+
+            let hoveredBuilding = null;
+            for (let building of this.buildings) {
+                const buildingType = this.buildingTypes[building.type];
+                if (!buildingType) continue;
+
+                const width = buildingType.width || 100;
+                const height = buildingType.height || 100;
+
+                if (worldX >= building.x && worldX <= building.x + width &&
+                    worldY >= building.y && worldY <= building.y + height) {
+                    hoveredBuilding = building;
+                    break;
+                }
+            }
+
+            if (hoveredBuilding) {
+                this.uiManager.showBuildingTooltip(hoveredBuilding, pointer.x, pointer.y);
+            } else {
+                this.uiManager.hideBuildingTooltip();
+            }
+        } else {
+            this.uiManager.hideBuildingTooltip();
+        }
 
         // Update buses
         if (!this.isPaused) {
@@ -3942,6 +4274,16 @@ class MainScene extends Phaser.Scene {
                 this.schoolSystem.update();
             } catch (error) {
                 console.error('Error updating school system:', error);
+            }
+        }
+
+        // Check missions (every few seconds)
+        if (!this.isPaused && this.missionSystem) {
+            if (!this.lastMissionCheck) this.lastMissionCheck = Date.now();
+            const now = Date.now();
+            if (now - this.lastMissionCheck >= 3000) { // Check every 3 seconds
+                this.missionSystem.checkMissions();
+                this.lastMissionCheck = now;
             }
         }
 
@@ -4023,6 +4365,15 @@ class MainScene extends Phaser.Scene {
 
         // Pause and travel are now controlled via settings menu (mouse clicks)
 
+        // Handle tax collection popup
+        if (this.taxPopupShowing) {
+            if (Phaser.Input.Keyboard.JustDown(this.enterKey) || Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+                this.uiManager.closeTaxCollectionPopup();
+            }
+            // Return early to prevent other inputs while popup is showing
+            return;
+        }
+
         // Toggle delete mode
         if (Phaser.Input.Keyboard.JustDown(this.xKey) && !this.restartConfirmShowing && !this.deleteConfirmShowing) {
             this.deleteMode = !this.deleteMode;
@@ -4047,6 +4398,143 @@ class MainScene extends Phaser.Scene {
                 if (this.buildingPreview) {
                     this.buildingPreview.destroy();
                     this.buildingPreview = null;
+                }
+            }
+        }
+
+        // Toggle bird's eye view with V key
+        if (Phaser.Input.Keyboard.JustDown(this.vKey)) {
+            try {
+                this.birdsEyeView = !this.birdsEyeView;
+                console.log('Toggling bird\'s eye view:', this.birdsEyeView);
+
+                if (this.birdsEyeView) {
+                    // Enable bird's eye view - zoom out
+                    this.cameras.main.stopFollow();
+                    this.cameras.main.setZoom(this.birdsEyeZoom);
+
+                    // Center camera horizontally on player's current location
+                    const newScrollX = this.player.x - (this.gameWidth / this.birdsEyeZoom / 2);
+                    this.cameras.main.scrollX = newScrollX;
+
+                    // Center camera vertically to show all unlocked streets
+                    // Calculate the vertical span of all unlocked streets
+                    const topStreetY = this.gameHeight - 50 - ((this.unlockedStreets - 1) * this.streetSpacing);
+                    const bottomStreetY = this.gameHeight - 50;
+                    const streetSpan = bottomStreetY - topStreetY;
+                    const centerY = (topStreetY + bottomStreetY) / 2;
+
+                    // Set scrollY to center on all streets
+                    this.cameras.main.scrollY = centerY - (this.gameHeight / this.birdsEyeZoom / 2);
+
+                    // Hide background layers (mountains, clouds, stars - confusing in bird's eye view)
+                    try {
+                        if (this.skyGraphics) this.skyGraphics.setVisible(false);
+                        if (this.celestialBody) this.celestialBody.setVisible(false);
+                        if (this.mountainGraphics) this.mountainGraphics.setVisible(false);
+                        if (this.cityGraphics) this.cityGraphics.setVisible(false);
+                        if (this.clouds) {
+                            this.clouds.forEach(cloud => cloud.setVisible(false));
+                        }
+                        if (this.stars) {
+                            this.stars.forEach(star => star.setVisible(false));
+                        }
+                    } catch (bgError) {
+                        console.warn('Error hiding backgrounds:', bgError);
+                    }
+
+                    if (this.uiManager) {
+                        this.uiManager.addNotification('📐 Bird\'s Eye View - Use arrows to pan, V to exit');
+                    }
+                } else {
+                    // Return to normal view
+                    this.cameras.main.setZoom(this.normalZoom);
+                    this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+
+                    // Show background layers again
+                    try {
+                        if (this.skyGraphics) this.skyGraphics.setVisible(true);
+                        if (this.celestialBody) this.celestialBody.setVisible(true);
+                        if (this.mountainGraphics) this.mountainGraphics.setVisible(true);
+                        if (this.cityGraphics) this.cityGraphics.setVisible(true);
+                        if (this.clouds) {
+                            this.clouds.forEach(cloud => cloud.setVisible(true));
+                        }
+                        if (this.stars) {
+                            this.stars.forEach(star => {
+                                // Stars only visible at night
+                                const hour = Math.floor((this.gameTime % (24 * 60)) / 60);
+                                star.setVisible(hour < 6 || hour >= 20);
+                            });
+                        }
+                    } catch (bgError) {
+                        console.warn('Error showing backgrounds:', bgError);
+                    }
+
+                    if (this.uiManager) {
+                        this.uiManager.addNotification('👤 Street View ON');
+                    }
+                }
+            } catch (error) {
+                console.error('Error toggling bird\'s eye view:', error);
+                this.birdsEyeView = false;
+                this.cameras.main.setZoom(this.normalZoom);
+                this.cameras.main.startFollow(this.player, true, 0.1, 0.1);
+            }
+        }
+
+        // Camera panning in bird's eye view
+        if (this.birdsEyeView) {
+            const panSpeed = 15;
+
+            // Horizontal panning
+            if (this.cursors.left.isDown || this.aKey.isDown) {
+                this.cameras.main.scrollX -= panSpeed;
+            }
+            if (this.cursors.right.isDown || this.dKey.isDown) {
+                this.cameras.main.scrollX += panSpeed;
+            }
+
+            // Vertical panning (to navigate between streets)
+            if (this.cursors.up.isDown || this.wKey.isDown) {
+                this.cameras.main.scrollY -= panSpeed;
+            }
+            if (this.cursors.down.isDown || this.sKey.isDown) {
+                this.cameras.main.scrollY += panSpeed;
+            }
+
+            // Keep camera within bounds
+            this.cameras.main.scrollX = Phaser.Math.Clamp(this.cameras.main.scrollX, 0, 12000 - this.gameWidth / this.birdsEyeZoom);
+
+            // Vertical bounds based on unlocked streets
+            const topStreetY = this.gameHeight - 50 - ((this.unlockedStreets - 1) * this.streetSpacing);
+            const minScrollY = topStreetY - 200; // Extra padding above top street
+            const maxScrollY = this.gameHeight - (this.gameHeight / this.birdsEyeZoom) + 100; // Extra padding below bottom street
+            this.cameras.main.scrollY = Phaser.Math.Clamp(this.cameras.main.scrollY, minScrollY, maxScrollY);
+        }
+
+        // Street switching with Page Up/Page Down (when not in menus or bird's eye view)
+        if (!this.birdsEyeView && !this.insideShop && !this.insideHotel && !this.insideRestaurant &&
+            !this.insideApartment && !this.schoolSystem.insideSchool && !this.bankMenuOpen &&
+            !this.buildMode && !this.deleteMode) {
+
+            // Page Up - Go to previous street (higher street number, visually above)
+            if (Phaser.Input.Keyboard.JustDown(this.pageUpKey)) {
+                if (this.currentStreet < this.unlockedStreets) {
+                    this.currentStreet++;
+                    this.switchToStreet(this.currentStreet);
+                } else {
+                    this.uiManager.addNotification('Already at the highest unlocked street');
+                }
+            }
+
+            // Page Down - Go to next street (lower street number, visually below)
+            if (Phaser.Input.Keyboard.JustDown(this.pageDownKey)) {
+                if (this.currentStreet > 1) {
+                    this.currentStreet--;
+                    this.switchToStreet(this.currentStreet);
+                } else {
+                    this.uiManager.addNotification('Already at the first street');
                 }
             }
         }
@@ -4550,15 +5038,24 @@ class MainScene extends Phaser.Scene {
                 this.closeBankMenu();
             }
 
-            // Bank operations
+            // Bank operations - prompt for custom amounts
             if (Phaser.Input.Keyboard.JustDown(this.key1)) {
-                this.depositMoney(100);
+                const amount = prompt('How much do you want to deposit?', '100');
+                if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
+                    this.depositMoney(parseFloat(amount));
+                }
             }
             if (Phaser.Input.Keyboard.JustDown(this.key2)) {
-                this.withdrawMoney(100);
+                const amount = prompt('How much do you want to withdraw?', '100');
+                if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
+                    this.withdrawMoney(parseFloat(amount));
+                }
             }
             if (Phaser.Input.Keyboard.JustDown(this.key3)) {
-                this.borrowMoney(500);
+                const amount = prompt('How much do you want to borrow? (10% interest)', '500');
+                if (amount && !isNaN(amount) && parseFloat(amount) > 0) {
+                    this.borrowMoney(parseFloat(amount));
+                }
             }
         }
 
@@ -4882,7 +5379,8 @@ class MainScene extends Phaser.Scene {
 
         // Snap to grid (every 250 pixels along the street for bigger buildings)
         const snappedX = Math.round(mouseWorldX / 250) * 250;
-        const buildingY = this.gameHeight - 100; // Ground level (matches the gray street)
+        // Use current street's ground level for building placement
+        const buildingY = this.platformY || (this.gameHeight - 100);
 
         // Only recreate preview if position changed
         if (this.buildingPreview && this.buildingPreview.snappedX === snappedX && this.buildingPreview.buildingY === buildingY) {
@@ -5784,6 +6282,129 @@ class MainScene extends Phaser.Scene {
     }
 
     // Citizen update function moved to CitizenSystem.js
+
+    updateCityNameDisplay() {
+        if (this.cityNameDisplay) {
+            this.cityNameDisplay.setText(`🏙️ ${this.cityName}`);
+        }
+    }
+
+    showCityNamePrompt() {
+        const newName = prompt('Enter a name for your city:', this.cityName);
+        if (newName && newName.trim().length > 0) {
+            this.cityName = newName.trim();
+            this.updateCityNameDisplay();
+            this.uiManager.addNotification(`City renamed to: ${this.cityName}`);
+        }
+    }
+
+    showHelpMenu() {
+        // Create help window
+        const helpWindow = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
+        helpWindow.setScrollFactor(0).setDepth(100001);
+
+        // Background
+        const bg = this.add.graphics();
+        bg.fillStyle(0x1a1a1a, 0.98);
+        bg.fillRoundedRect(-400, -300, 800, 600, 10);
+        bg.lineStyle(3, 0x4CAF50, 1);
+        bg.strokeRoundedRect(-400, -300, 800, 600, 10);
+        helpWindow.add(bg);
+
+        // Title
+        const title = this.add.text(0, -270, '❓ KEYBOARD CONTROLS & HELP', {
+            fontSize: '28px',
+            fontWeight: 'bold',
+            color: '#4CAF50',
+            align: 'center'
+        });
+        title.setOrigin(0.5, 0);
+        helpWindow.add(title);
+
+        // Help text
+        const helpText = `
+MOVEMENT & CAMERA:
+  Arrow Keys / WASD - Move camera left/right
+  V Key - Toggle Bird's Eye View (see all streets)
+  Page Up / Page Down - Switch between unlocked streets
+
+BUILD MODE:
+  B Key - Toggle build mode
+  Number Keys - Select building to place
+  Click - Place selected building
+  ESC - Exit build mode
+
+DELETE MODE:
+  X Key - Toggle delete/demolish mode
+  Click - Delete selected building
+  ESC - Exit delete mode
+
+SPEED CONTROLS:
+  Bottom-left buttons control game speed (Pause, 1x, 2x, 3x)
+
+INTERACTIONS:
+  E / Enter - Interact with buildings
+    • Enter shops, hotels, restaurants to collect income
+    • Use banks, markets, mills, factories
+    • Check rental applications at mailboxes
+  ESC - Close menus and windows
+
+UI BUTTONS:
+  📊 TALLY - View count of all buildings
+  🏙️ City Name - Click to rename your city
+  ⚙️ MENU - Settings (Restart, Creative, Travel, etc.)
+
+MOUSE:
+  Hover over buildings - See info tooltip
+  Click & drag buildings in build mode
+
+TIPS:
+  • Build houses & apartments for residents
+  • Bus stops bring tourists to your town
+  • Approve rental applications at mailboxes
+  • Banks pay 15% annual interest on savings
+  • Property taxes collected daily
+  • Emergency services improve city ratings
+        `.trim();
+
+        const text = this.add.text(-370, -220, helpText, {
+            fontSize: '15px',
+            color: '#ffffff',
+            lineSpacing: 6
+        });
+        helpWindow.add(text);
+
+        // Close button
+        const closeBtn = this.add.text(0, 250, '✖ CLOSE', {
+            fontSize: '20px',
+            fontWeight: 'bold',
+            color: '#ffffff',
+            backgroundColor: '#4CAF50',
+            padding: { x: 30, y: 10 }
+        }).setOrigin(0.5).setInteractive();
+
+        closeBtn.on('pointerdown', () => {
+            helpWindow.destroy();
+        });
+
+        closeBtn.on('pointerover', () => {
+            closeBtn.setStyle({ backgroundColor: '#66BB6A' });
+        });
+
+        closeBtn.on('pointerout', () => {
+            closeBtn.setStyle({ backgroundColor: '#4CAF50' });
+        });
+
+        helpWindow.add(closeBtn);
+
+        // ESC key to close
+        const escKey = this.input.keyboard.addKey('ESC');
+        const escHandler = () => {
+            helpWindow.destroy();
+            escKey.off('down', escHandler);
+        };
+        escKey.on('down', escHandler);
+    }
 }
 
 const config = {

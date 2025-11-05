@@ -107,94 +107,103 @@ export class EmergencyVehicleSystem {
     }
 
     drawFireTruck(graphics) {
+        // Scaled to match train/bus size (120 wide)
+        const scale = 2;
+
         // Main body (red)
         graphics.fillStyle(0xD32F2F, 1);
-        graphics.fillRect(-30, -12, 60, 24);
+        graphics.fillRect(-30*scale, -12*scale, 60*scale, 24*scale);
 
         // Cab section (darker red)
         graphics.fillStyle(0xB71C1C, 1);
-        graphics.fillRect(15, -12, 15, 24);
+        graphics.fillRect(15*scale, -12*scale, 15*scale, 24*scale);
 
         // Windows
         graphics.fillStyle(0x87CEEB, 1);
-        graphics.fillRect(18, -8, 10, 8);
+        graphics.fillRect(18*scale, -8*scale, 10*scale, 8*scale);
 
         // Yellow stripe
         graphics.fillStyle(0xFFEB3B, 1);
-        graphics.fillRect(-30, 0, 60, 4);
+        graphics.fillRect(-30*scale, 0, 60*scale, 4*scale);
 
         // Wheels
         graphics.fillStyle(0x000000, 1);
-        graphics.fillCircle(-15, 12, 5);
-        graphics.fillCircle(10, 12, 5);
+        graphics.fillCircle(-15*scale, 12*scale, 5*scale);
+        graphics.fillCircle(10*scale, 12*scale, 5*scale);
 
         // Wheel rims
         graphics.fillStyle(0x808080, 1);
-        graphics.fillCircle(-15, 12, 3);
-        graphics.fillCircle(10, 12, 3);
+        graphics.fillCircle(-15*scale, 12*scale, 3*scale);
+        graphics.fillCircle(10*scale, 12*scale, 3*scale);
     }
 
     drawPoliceCar(graphics) {
+        // Scaled to match train/bus size (120 wide)
+        const scale = 2;
+
         // Main body (blue and white)
         graphics.fillStyle(0x1565C0, 1);
-        graphics.fillRect(-25, -10, 50, 20);
+        graphics.fillRect(-25*scale, -10*scale, 50*scale, 20*scale);
 
         // Hood
         graphics.fillStyle(0xFFFFFF, 1);
-        graphics.fillRect(-25, -10, 50, 8);
+        graphics.fillRect(-25*scale, -10*scale, 50*scale, 8*scale);
 
         // Windows
         graphics.fillStyle(0x333333, 1);
-        graphics.fillRect(-20, -8, 12, 6);
-        graphics.fillRect(8, -8, 12, 6);
+        graphics.fillRect(-20*scale, -8*scale, 12*scale, 6*scale);
+        graphics.fillRect(8*scale, -8*scale, 12*scale, 6*scale);
 
         // Wheels
         graphics.fillStyle(0x000000, 1);
-        graphics.fillCircle(-12, 10, 4);
-        graphics.fillCircle(12, 10, 4);
+        graphics.fillCircle(-12*scale, 10*scale, 4*scale);
+        graphics.fillCircle(12*scale, 10*scale, 4*scale);
 
         // Wheel rims
         graphics.fillStyle(0x808080, 1);
-        graphics.fillCircle(-12, 10, 2);
-        graphics.fillCircle(12, 10, 2);
+        graphics.fillCircle(-12*scale, 10*scale, 2*scale);
+        graphics.fillCircle(12*scale, 10*scale, 2*scale);
 
         // Badge decal
         graphics.fillStyle(0xFFD700, 1);
-        graphics.fillCircle(0, -5, 3);
+        graphics.fillCircle(0, -5*scale, 3*scale);
     }
 
     drawAmbulance(graphics) {
+        // Scaled to match train/bus size (120 wide)
+        const scale = 2;
+
         // Main body (white)
         graphics.fillStyle(0xFFFFFF, 1);
-        graphics.fillRect(-28, -12, 56, 24);
+        graphics.fillRect(-28*scale, -12*scale, 56*scale, 24*scale);
 
         // Red stripe
         graphics.fillStyle(0xFF0000, 1);
-        graphics.fillRect(-28, -2, 56, 4);
+        graphics.fillRect(-28*scale, -2*scale, 56*scale, 4*scale);
 
         // Cab section
         graphics.fillStyle(0xF0F0F0, 1);
-        graphics.fillRect(16, -12, 12, 24);
+        graphics.fillRect(16*scale, -12*scale, 12*scale, 24*scale);
 
         // Windows
         graphics.fillStyle(0x87CEEB, 1);
-        graphics.fillRect(-24, -8, 10, 8);
-        graphics.fillRect(18, -8, 8, 8);
+        graphics.fillRect(-24*scale, -8*scale, 10*scale, 8*scale);
+        graphics.fillRect(18*scale, -8*scale, 8*scale, 8*scale);
 
         // Red cross
         graphics.fillStyle(0xFF0000, 1);
-        graphics.fillRect(-3, -8, 6, 16);
-        graphics.fillRect(-8, -3, 16, 6);
+        graphics.fillRect(-3*scale, -8*scale, 6*scale, 16*scale);
+        graphics.fillRect(-8*scale, -3*scale, 16*scale, 6*scale);
 
         // Wheels
         graphics.fillStyle(0x000000, 1);
-        graphics.fillCircle(-14, 12, 5);
-        graphics.fillCircle(14, 12, 5);
+        graphics.fillCircle(-14*scale, 12*scale, 5*scale);
+        graphics.fillCircle(14*scale, 12*scale, 5*scale);
 
         // Wheel rims
         graphics.fillStyle(0x808080, 1);
-        graphics.fillCircle(-14, 12, 3);
-        graphics.fillCircle(14, 12, 3);
+        graphics.fillCircle(-14*scale, 12*scale, 3*scale);
+        graphics.fillCircle(14*scale, 12*scale, 3*scale);
     }
 
     updateVehicles() {

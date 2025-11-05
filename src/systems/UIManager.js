@@ -158,13 +158,352 @@ export class UIManager {
     updateBankUI() {
         let menuText = '=== MAIN STREET BANK ===\n';
         menuText += `💰 Cash on Hand: $${Math.round(this.scene.money)}\n`;
-        menuText += `🏦 Bank Balance: $${Math.round(this.scene.bankBalance)}\n`;
+        menuText += `🏦 Bank Balance: $${Math.round(this.scene.bankBalance)} (15% interest)\n`;
         menuText += `💳 Loan Debt: $${Math.round(this.scene.loanAmount)}\n\n`;
-        menuText += '1: Deposit $100\n';
-        menuText += '2: Withdraw $100\n';
-        menuText += '3: Borrow $500 (10% interest)\n';
+        menuText += '1: Deposit (custom amount)\n';
+        menuText += '2: Withdraw (custom amount)\n';
+        menuText += '3: Borrow (custom amount, 10% interest)\n';
         menuText += 'E/Enter: Close';
         this.scene.bankUI.setText(menuText);
+    }
+
+    showTaxCollectionPopup(totalTax, totalMaintenance) {
+        // Create popup if it doesn't exist
+        if (!this.scene.taxPopup) {
+            this.scene.taxPopup = this.scene.add.text(
+                this.scene.gameWidth / 2,
+                this.scene.gameHeight / 2,
+                '',
+                {
+                    fontSize: '24px',
+                    color: '#FFFFFF',
+                    backgroundColor: '#000000',
+                    padding: { x: 30, y: 20 },
+                    align: 'center'
+                }
+            ).setOrigin(0.5).setScrollFactor(0).setDepth(30000);
+        }
+
+        // Build popup text
+        let popupText = '=== DAILY EXPENSES ===\n\n';
+        if (totalTax > 0) {
+            popupText += `🏛️ Property Tax: -$${totalTax}\n`;
+        }
+        if (totalMaintenance > 0) {
+            popupText += `🔧 Maintenance: -$${totalMaintenance}\n`;
+        }
+        popupText += `\nTotal: -$${totalTax + totalMaintenance}\n\n`;
+        popupText += 'Press ENTER or SPACE to continue';
+
+        this.scene.taxPopup.setText(popupText);
+        this.scene.taxPopup.setVisible(true);
+
+        // Set flag to pause game and wait for input
+        this.scene.taxPopupShowing = true;
+        this.scene.wasPausedBeforeTaxPopup = this.scene.isPaused;
+        this.scene.isPaused = true;
+    }
+
+    closeTaxCollectionPopup() {
+        if (this.scene.taxPopup) {
+            this.scene.taxPopup.setVisible(false);
+        }
+        this.scene.taxPopupShowing = false;
+        // Restore previous pause state
+        this.scene.isPaused = this.scene.wasPausedBeforeTaxPopup;
+    }
+
+    showBuildingTally() {
+        // Count buildings by type
+        const tally = {};
+        for (let building of this.scene.buildings) {
+            const type = building.type;
+            tally[type] = (tally[type] || 0) + 1;
+        }
+
+        // Create UI if it doesn't exist
+        if (!this.scene.buildingTallyUI) {
+            this.scene.buildingTallyUI = this.scene.add.container(20, 100);
+            this.scene.buildingTallyUI.setScrollFactor(0).setDepth(9998);
+
+            const bg = this.scene.add.graphics();
+            bg.fillStyle(0x1a1a1a, 0.95);
+            bg.fillRoundedRect(0, 0, 280, 500, 10);
+            bg.lineStyle(3, 0x4CAF50, 1);
+            bg.strokeRoundedRect(0, 0, 280, 500, 10);
+            this.scene.buildingTallyUI.add(bg);
+
+            const title = this.scene.add.text(140, 15, '📊 BUILDING TALLY', {
+                fontSize: '18px',
+                fontWeight: 'bold',
+                color: '#4CAF50',
+                align: 'center'
+            });
+            title.setOrigin(0.5, 0);
+            this.scene.buildingTallyUI.add(title);
+
+            this.scene.buildingTallyText = this.scene.add.text(15, 50, '', {
+                fontSize: '14px',
+                color: '#ffffff',
+                lineSpacing: 4
+            });
+            this.scene.buildingTallyUI.add(this.scene.buildingTallyText);
+        }
+
+        // Build text
+        let text = '';
+        const typeNames = {
+            'house': '🏠 Houses',
+            'apartment': '🏢 Apartments',
+            'shop': '🏪 Shops',
+            'hotel': '🏨 Hotels',
+            'restaurant': '🍽️ Restaurants',
+            'park': '🌳 Parks',
+            'busstop': '🚌 Bus Stops',
+            'market': '🛒 Markets',
+            'lumbermill': '🪵 Lumber Mills',
+            'brickfactory': '🧱 Brick Factories',
+            'bank': '🏦 Banks',
+            'trainstation': '🚂 Train Stations',
+            'school': '🏫 Schools',
+            'office': '🏢 Offices',
+            'movietheater': '🎬 Movie Theaters',
+            'firestation': '🚒 Fire Stations',
+            'policestation': '👮 Police Stations',
+            'hospital': '🏥 Hospitals',
+            'arcade': '🎮 Arcades',
+            'bakery': '🥐 Bakeries',
+            'library': '📚 Libraries',
+            'museum': '🏛️ Museums'
+        };
+
+        // Sort by count (descending)
+        const sortedTypes = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+
+        for (let [type, count] of sortedTypes) {
+            const name = typeNames[type] || type;
+            text += `${name}: ${count}\n`;
+        }
+
+        if (sortedTypes.length === 0) {
+            text = 'No buildings built yet!';
+        } else {
+            text += `\nTotal: ${this.scene.buildings.length} buildings`;
+        }
+
+        this.scene.buildingTallyText.setText(text);
+        this.scene.buildingTallyUI.setVisible(true);
+        this.scene.buildingTallyOpen = true;
+    }
+
+    hideBuildingTally() {
+        if (this.scene.buildingTallyUI) {
+            this.scene.buildingTallyUI.setVisible(false);
+        }
+        this.scene.buildingTallyOpen = false;
+    }
+
+    showBuildingTooltip(building, x, y) {
+        // Create tooltip if it doesn't exist
+        if (!this.scene.buildingTooltip) {
+            this.scene.buildingTooltip = this.scene.add.container(0, 0);
+            this.scene.buildingTooltip.setScrollFactor(0).setDepth(99999);
+
+            const bg = this.scene.add.graphics();
+            this.scene.buildingTooltip.bg = bg;
+            this.scene.buildingTooltip.add(bg);
+
+            const text = this.scene.add.text(0, 0, '', {
+                fontSize: '14px',
+                color: '#ffffff',
+                padding: { x: 10, y: 8 },
+                lineSpacing: 2
+            });
+            this.scene.buildingTooltip.text = text;
+            this.scene.buildingTooltip.add(text);
+        }
+
+        // Get building info
+        const buildingType = this.scene.buildingTypes[building.type];
+        if (!buildingType) return;
+
+        // Don't show tooltip if building doesn't have proper display info
+        if (!buildingType.emoji || !buildingType.name) return;
+
+        let tooltipText = `${buildingType.emoji} ${buildingType.name}\n`;
+
+        // Add income info
+        if (building.accumulatedIncome > 0) {
+            tooltipText += `💰 Income: $${Math.round(building.accumulatedIncome)}\n`;
+        }
+
+        // Add occupancy info for apartments
+        if (building.units && building.units.length > 0) {
+            const occupied = building.units.filter(u => u.tenant).length;
+            const total = building.units.length;
+            tooltipText += `🏠 Occupied: ${occupied}/${total}\n`;
+        }
+
+        // Add occupancy info for hotels
+        if (building.rooms && building.rooms.length > 0) {
+            const occupied = building.rooms.filter(r => r.isOccupied).length;
+            const total = building.rooms.length;
+            tooltipText += `🛏️ Rooms: ${occupied}/${total} occupied\n`;
+        }
+
+        // Add resource info for lumber mill and brick factory
+        if (building.storedResources !== undefined) {
+            const available = Math.floor(building.storedResources);
+            tooltipText += `📦 Available: ${available}\n`;
+        }
+
+        // Add school info
+        if (building.schoolData) {
+            tooltipText += `👨‍🎓 Students: ${building.schoolData.currentEnrollment}/${building.schoolData.capacity}\n`;
+            tooltipText += `⭐ Rating: ${building.schoolData.rating}/100\n`;
+        }
+
+        // Add office info
+        if (building.officeData) {
+            tooltipText += `💼 Employees: ${building.officeData.employees}\n`;
+        }
+
+        // Add fire station info
+        if (building.fireStationData) {
+            tooltipText += `🚒 Trucks: ${building.fireStationData.trucks}\n`;
+            tooltipText += `👨‍🚒 Staff: ${building.fireStationData.staff}\n`;
+        }
+
+        // Add police station info
+        if (building.policeStationData) {
+            tooltipText += `🚔 Vehicles: ${building.policeStationData.vehicles}\n`;
+            tooltipText += `👮 Officers: ${building.policeStationData.officers}\n`;
+        }
+
+        // Add hospital info
+        if (building.hospitalData) {
+            tooltipText += `🛏️ Beds: ${building.hospitalData.beds}\n`;
+            tooltipText += `👨‍⚕️ Doctors: ${building.hospitalData.doctors}\n`;
+        }
+
+        // Update tooltip
+        this.scene.buildingTooltip.text.setText(tooltipText.trim());
+
+        // Update background size
+        const textBounds = this.scene.buildingTooltip.text.getBounds();
+        this.scene.buildingTooltip.bg.clear();
+        this.scene.buildingTooltip.bg.fillStyle(0x1a1a1a, 0.95);
+        this.scene.buildingTooltip.bg.fillRoundedRect(-5, -5, textBounds.width + 20, textBounds.height + 16, 5);
+        this.scene.buildingTooltip.bg.lineStyle(2, 0x4CAF50, 1);
+        this.scene.buildingTooltip.bg.strokeRoundedRect(-5, -5, textBounds.width + 20, textBounds.height + 16, 5);
+
+        // Position tooltip near mouse (screen coordinates)
+        const screenX = x;
+        const screenY = y;
+
+        // Keep tooltip on screen
+        let tooltipX = screenX + 15;
+        let tooltipY = screenY + 15;
+
+        if (tooltipX + textBounds.width + 30 > this.scene.gameWidth) {
+            tooltipX = screenX - textBounds.width - 30;
+        }
+        if (tooltipY + textBounds.height + 20 > this.scene.gameHeight) {
+            tooltipY = screenY - textBounds.height - 20;
+        }
+
+        this.scene.buildingTooltip.setPosition(tooltipX, tooltipY);
+        this.scene.buildingTooltip.setVisible(true);
+    }
+
+    hideBuildingTooltip() {
+        if (this.scene.buildingTooltip) {
+            this.scene.buildingTooltip.setVisible(false);
+        }
+    }
+
+    showMissionsPanel() {
+        // Create missions panel if it doesn't exist
+        if (!this.scene.missionsPanel) {
+            this.scene.missionsPanel = this.scene.add.container(this.scene.gameWidth - 320, 120);
+            this.scene.missionsPanel.setScrollFactor(0).setDepth(9998);
+
+            const bg = this.scene.add.graphics();
+            bg.fillStyle(0x1a1a1a, 0.95);
+            bg.fillRoundedRect(0, 0, 300, 500, 10);
+            bg.lineStyle(3, 0xFFD700, 1);
+            bg.strokeRoundedRect(0, 0, 300, 500, 10);
+            this.scene.missionsPanel.add(bg);
+
+            const title = this.scene.add.text(150, 15, '🏆 MISSIONS', {
+                fontSize: '20px',
+                fontWeight: 'bold',
+                color: '#FFD700',
+                align: 'center'
+            });
+            title.setOrigin(0.5, 0);
+            this.scene.missionsPanel.add(title);
+
+            this.scene.missionsText = this.scene.add.text(15, 50, '', {
+                fontSize: '13px',
+                color: '#ffffff',
+                lineSpacing: 4,
+                wordWrap: { width: 270 }
+            });
+            this.scene.missionsPanel.add(this.scene.missionsText);
+        }
+
+        // Build missions text
+        const activeMissions = this.scene.missionSystem.getActiveMissions();
+        const completedMissions = this.scene.missionSystem.getCompletedMissions();
+
+        let text = '✨ ACTIVE MISSIONS:\n';
+        if (activeMissions.length === 0) {
+            text += 'All missions complete! 🎉\n\n';
+        } else {
+            for (let mission of activeMissions.slice(0, 4)) { // Show first 4
+                const progress = this.scene.missionSystem.getMissionProgress(mission);
+                const target = mission.target || 1;
+
+                text += `\n⭕ ${mission.title}\n`;
+                text += `${mission.description}\n`;
+                text += `Progress: ${progress}/${target}`;
+
+                // Show progress bar
+                const percentage = Math.min(100, Math.floor((progress / target) * 100));
+                const filled = Math.floor(percentage / 10);
+                const empty = 10 - filled;
+                text += `\n[${'█'.repeat(filled)}${'░'.repeat(empty)}] ${percentage}%\n`;
+
+                // Show rewards
+                const rewards = [];
+                if (mission.reward.money) rewards.push(`$${mission.reward.money}`);
+                if (mission.reward.wood) rewards.push(`${mission.reward.wood}🪵`);
+                if (mission.reward.bricks) rewards.push(`${mission.reward.bricks}🧱`);
+                text += `Reward: ${rewards.join(', ')}\n`;
+            }
+        }
+
+        text += `\n🏆 COMPLETED: ${completedMissions.length}/${this.scene.missionSystem.missions.length}`;
+
+        // List recently completed missions
+        if (completedMissions.length > 0) {
+            text += '\n\nRecent completions:';
+            for (let mission of completedMissions.slice(-3)) { // Last 3
+                text += `\n✅ ${mission.title}`;
+            }
+        }
+
+        this.scene.missionsText.setText(text);
+        this.scene.missionsPanel.setVisible(true);
+        this.scene.missionsMenuOpen = true;
+    }
+
+    hideMissionsPanel() {
+        if (this.scene.missionsPanel) {
+            this.scene.missionsPanel.setVisible(false);
+        }
+        this.scene.missionsMenuOpen = false;
     }
 
     updateResourceBuildingUI() {
