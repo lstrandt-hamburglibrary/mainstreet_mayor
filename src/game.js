@@ -2604,6 +2604,28 @@ class MainScene extends Phaser.Scene {
             const platformBody = platform.create(6000, platformY, null).setSize(12000, 20).setVisible(false);
             platformBody.refreshBody();
 
+            // Create street name sign (will be updated with actual name later)
+            const signBg = this.add.graphics();
+            signBg.fillStyle(0x1a1a1a, 0.9);
+            signBg.fillRoundedRect(0, 0, 300, 80, 8);
+            signBg.lineStyle(3, 0xFFD700, 1);
+            signBg.strokeRoundedRect(0, 0, 300, 80, 8);
+
+            const signText = this.add.text(150, 40, `Street ${streetNumber}`, {
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: '#FFD700',
+                stroke: '#000000',
+                strokeThickness: 3
+            });
+            signText.setOrigin(0.5);
+
+            const signContainer = this.add.container(100, groundY - 120);
+            signContainer.add([signBg, signText]);
+            signContainer.setScrollFactor(0); // Fixed to screen
+            signContainer.setDepth(10000); // Above everything
+            signContainer.setVisible(false); // Hidden initially
+
             // Store street data
             const streetData = {
                 number: streetNumber,
@@ -2613,6 +2635,8 @@ class MainScene extends Phaser.Scene {
                 platform: platform,
                 platformBody: platformBody,
                 name: null, // Will be set when street is named
+                sign: signContainer, // Street name sign
+                signText: signText, // Reference to text for updates
                 furniture: [] // Will be populated by createStreetFurniture
             };
 
@@ -2636,6 +2660,12 @@ class MainScene extends Phaser.Scene {
             if (streetData && this.unlockedStreets > i) {
                 streetData.name = this.streetNames[i + 1] || null;
             }
+        }
+
+        // Show street 1's sign by default
+        if (this.streets[0].sign && this.streets[0].signText) {
+            this.streets[0].signText.setText(this.streets[0].name || this.cityName);
+            this.streets[0].sign.setVisible(true);
         }
 
         // For backward compatibility, set references to street 1
@@ -2668,6 +2698,13 @@ class MainScene extends Phaser.Scene {
             return;
         }
 
+        // Hide all street signs first
+        for (let s of this.streets) {
+            if (s.sign) {
+                s.sign.setVisible(false);
+            }
+        }
+
         // Move player to the new street's Y position
         const newPlayerY = street.platformY - 50; // Position player on the platform
         this.player.y = newPlayerY;
@@ -2679,8 +2716,14 @@ class MainScene extends Phaser.Scene {
         this.groundY = street.groundY;
         this.platformY = street.platformY;
 
-        // Show notification with street name
+        // Show current street's sign with updated name
         const streetName = street.name || `Street ${streetNumber}`;
+        if (street.sign && street.signText) {
+            street.signText.setText(streetName);
+            street.sign.setVisible(true);
+        }
+
+        // Show notification with street name
         this.uiManager.addNotification(`🛣️ Now on: ${streetName}`);
 
         console.log(`Switched to street ${streetNumber}: ${streetName}`);
@@ -3248,22 +3291,28 @@ class MainScene extends Phaser.Scene {
     }
 
     spawnBuses() {
-        // Spawn 3 buses that travel the full route
-        const groundLevel = this.gameHeight - 100;
+        // Spawn buses across all unlocked streets
+        // 2 buses per street for better coverage
+        for (let i = 0; i < this.unlockedStreets; i++) {
+            const street = this.streets[i];
+            if (!street) continue;
 
-        // Bus 1 starts at beginning - positioned at ground level
-        this.createBus(500, groundLevel - 40, 1);
+            const busY = street.platformY - 40; // Position above the street platform
 
-        // Bus 2 starts at middle
-        this.createBus(6000, groundLevel - 40, 1);
+            // Bus 1 on this street - starts at beginning
+            this.createBus(500 + (i * 200), busY, 1, i + 1);
 
-        // Bus 3 starts at end
-        this.createBus(11000, groundLevel - 40, 1);
+            // Bus 2 on this street - starts at middle
+            this.createBus(6000 + (i * 200), busY, 1, i + 1);
+        }
+
+        console.log(`Spawned ${this.unlockedStreets * 2} buses across ${this.unlockedStreets} street(s)`);
     }
 
-    createBus(startX, startY, direction) {
+    createBus(startX, startY, direction, streetNumber = 1) {
         const bus = this.add.container(startX, startY);
         bus.setDepth(12); // Above buildings (10), below player (100)
+        bus.streetNumber = streetNumber; // Track which street this bus operates on
 
         // Bus body (big yellow/orange bus)
         const body = this.add.graphics();

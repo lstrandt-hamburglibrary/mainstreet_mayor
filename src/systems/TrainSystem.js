@@ -38,22 +38,28 @@ export class TrainSystem {
             return; // No stations, no trains
         }
 
-        // Spawn train at the leftmost station
-        const leftmostStation = stations.reduce((min, station) =>
-            station.x < min.x ? station : min
-        , stations[0]);
+        // Randomly pick a street to spawn the train on (from unlocked streets)
+        const randomStreetIndex = Math.floor(Math.random() * this.scene.unlockedStreets);
+        const street = this.scene.streets[randomStreetIndex];
 
-        const groundLevel = this.scene.gameHeight - 100;
+        if (!street) {
+            return; // Street doesn't exist
+        }
+
+        console.log(`🚂 Spawning train on street ${randomStreetIndex + 1} with ${stations.length} station(s)`);
+
+        const trainY = street.platformY - 50;
         const startX = -200; // Start off-screen left
 
-        this.createTrain(startX, groundLevel - 50, 1, stations);
+        this.createTrain(startX, trainY, 1, stations, randomStreetIndex + 1);
 
         if (this.scene.uiManager) {
-            this.scene.uiManager.addNotification('🚂 Train arriving!');
+            const streetName = street.name || `Street ${randomStreetIndex + 1}`;
+            this.scene.uiManager.addNotification(`🚂 Train arriving on ${streetName}!`);
         }
     }
 
-    createTrain(startX, startY, direction, stations) {
+    createTrain(startX, startY, direction, stations, streetNumber = 1) {
         const container = this.scene.add.container(startX, startY);
         container.setDepth(12);
 

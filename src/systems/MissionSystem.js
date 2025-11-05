@@ -154,6 +154,102 @@ export class MissionSystem {
                 reward: { money: 15000 },
                 completed: false,
                 special: 'unlock_street_2' // Special flag for unlocking
+            },
+
+            // Street 3 unlock
+            {
+                id: 'unlock_third_street',
+                title: 'Growing Metropolis',
+                description: 'Build 35 buildings to unlock 3rd street',
+                type: 'unlock_street',
+                target: 35,
+                reward: { money: 25000, wood: 500, bricks: 500 },
+                completed: false,
+                special: 'unlock_street_3'
+            },
+
+            // Street 4 unlock
+            {
+                id: 'unlock_fourth_street',
+                title: 'Urban Sprawl',
+                description: 'Build 55 buildings to unlock 4th street',
+                type: 'unlock_street',
+                target: 55,
+                reward: { money: 40000, wood: 750, bricks: 750 },
+                completed: false,
+                special: 'unlock_street_4'
+            },
+
+            // Street 5 unlock
+            {
+                id: 'unlock_fifth_street',
+                title: 'Major City',
+                description: 'Build 80 buildings to unlock 5th street',
+                type: 'unlock_street',
+                target: 80,
+                reward: { money: 60000, wood: 1000, bricks: 1000 },
+                completed: false,
+                special: 'unlock_street_5'
+            },
+
+            // Street 6 unlock
+            {
+                id: 'unlock_sixth_street',
+                title: 'Metropolitan Hub',
+                description: 'Build 110 buildings to unlock 6th street',
+                type: 'unlock_street',
+                target: 110,
+                reward: { money: 85000, wood: 1500, bricks: 1500 },
+                completed: false,
+                special: 'unlock_street_6'
+            },
+
+            // Street 7 unlock
+            {
+                id: 'unlock_seventh_street',
+                title: 'Mega City',
+                description: 'Build 145 buildings to unlock 7th street',
+                type: 'unlock_street',
+                target: 145,
+                reward: { money: 115000, wood: 2000, bricks: 2000 },
+                completed: false,
+                special: 'unlock_street_7'
+            },
+
+            // Street 8 unlock
+            {
+                id: 'unlock_eighth_street',
+                title: 'Urban Giant',
+                description: 'Build 185 buildings to unlock 8th street',
+                type: 'unlock_street',
+                target: 185,
+                reward: { money: 150000, wood: 2500, bricks: 2500 },
+                completed: false,
+                special: 'unlock_street_8'
+            },
+
+            // Street 9 unlock
+            {
+                id: 'unlock_ninth_street',
+                title: 'City Empire',
+                description: 'Build 230 buildings to unlock 9th street',
+                type: 'unlock_street',
+                target: 230,
+                reward: { money: 200000, wood: 3000, bricks: 3000 },
+                completed: false,
+                special: 'unlock_street_9'
+            },
+
+            // Street 10 unlock (final)
+            {
+                id: 'unlock_tenth_street',
+                title: 'Ultimate Metropolis',
+                description: 'Build 280 buildings to unlock 10th street',
+                type: 'unlock_street',
+                target: 280,
+                reward: { money: 300000, wood: 5000, bricks: 5000 },
+                completed: false,
+                special: 'unlock_street_10'
             }
         ];
     }
@@ -222,28 +318,35 @@ export class MissionSystem {
             }
         }
 
-        // Handle special unlocks
-        if (mission.special === 'unlock_street_2') {
+        // Handle special unlocks - Generic street unlock system
+        if (mission.special && mission.special.startsWith('unlock_street_')) {
+            // Extract street number from special flag (e.g., 'unlock_street_2' -> 2)
+            const streetNumber = parseInt(mission.special.split('_')[2]);
+
             if (!this.scene.unlockedStreets) {
                 this.scene.unlockedStreets = 1; // Start with street 1
             }
-            this.scene.unlockedStreets = 2; // Unlock street 2
 
-            // Show street 2 if it exists
-            if (this.scene.streets && this.scene.streets[1]) {
-                const street2 = this.scene.streets[1];
-                street2.ground.setVisible(true);
+            // Unlock the new street
+            this.scene.unlockedStreets = streetNumber;
+
+            // Show the street if it exists
+            const streetIndex = streetNumber - 1;
+            if (this.scene.streets && this.scene.streets[streetIndex]) {
+                const newStreet = this.scene.streets[streetIndex];
+                newStreet.ground.setVisible(true);
 
                 // Prompt user to name the new street
-                const streetName = prompt('🎉 You unlocked a second street! What would you like to name it?', 'Main Street');
+                const ordinal = this.getOrdinal(streetNumber);
+                const streetName = prompt(`🎉 You unlocked a ${ordinal} street! What would you like to name it?`, `Street ${streetNumber}`);
                 if (streetName && streetName.trim()) {
-                    street2.name = streetName.trim();
-                    this.scene.streetNames[2] = streetName.trim();
-                    this.scene.uiManager.addNotification(`🎉 ${streetName} unlocked! Press V for bird's eye view`);
+                    newStreet.name = streetName.trim();
+                    this.scene.streetNames[streetNumber] = streetName.trim();
+                    this.scene.uiManager.addNotification(`🎉 ${streetName} unlocked! Press Page Up to visit`);
                 } else {
-                    street2.name = 'Street 2';
-                    this.scene.streetNames[2] = 'Street 2';
-                    this.scene.uiManager.addNotification('🎉 SECOND STREET UNLOCKED! Check bird\'s eye view (V)');
+                    newStreet.name = `Street ${streetNumber}`;
+                    this.scene.streetNames[streetNumber] = `Street ${streetNumber}`;
+                    this.scene.uiManager.addNotification(`🎉 STREET ${streetNumber} UNLOCKED! Press Page Up to visit`);
                 }
             }
         }
@@ -353,5 +456,25 @@ export class MissionSystem {
 
     getCompletedMissions() {
         return this.completedMissions;
+    }
+
+    getOrdinal(num) {
+        // Convert number to ordinal string (2 -> "2nd", 3 -> "3rd", etc.)
+        const ordinals = ['', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+        if (num <= 10) {
+            return ordinals[num];
+        }
+        // Fallback for numbers > 10
+        const lastDigit = num % 10;
+        const lastTwoDigits = num % 100;
+        if (lastTwoDigits >= 11 && lastTwoDigits <= 13) {
+            return num + 'th';
+        }
+        switch (lastDigit) {
+            case 1: return num + 'st';
+            case 2: return num + 'nd';
+            case 3: return num + 'rd';
+            default: return num + 'th';
+        }
     }
 }
