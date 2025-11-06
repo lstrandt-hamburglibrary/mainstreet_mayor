@@ -550,17 +550,17 @@ export class UIManager {
         text += `Unlocked Streets: ${this.scene.unlockedStreets}\n\n`;
 
         // Financial summary
-        text += `💰 DAILY FINANCES:\n`;
+        text += `💰 HOURLY FINANCES:\n`;
 
-        // Calculate estimated daily income
-        let estimatedDailyIncome = 0;
+        // Calculate estimated hourly income (income is per real-time minute, not game minute)
+        let estimatedHourlyIncome = 0;
         for (let building of this.scene.buildings) {
             const buildingType = this.scene.buildingTypes[building.type];
             if (buildingType && buildingType.incomeRate) {
-                // incomeRate is per minute, multiply by 1440 minutes per day
+                // incomeRate is per real-time minute, multiply by 60 for hourly
                 const streetBonus = building.streetBonus || 1.0;
                 const districtBonus = building.districtBonus || 1.0;
-                estimatedDailyIncome += buildingType.incomeRate * 1440 * streetBonus * districtBonus;
+                estimatedHourlyIncome += buildingType.incomeRate * 60 * streetBonus * districtBonus;
             }
 
             // Add apartment income
@@ -569,17 +569,18 @@ export class UIManager {
                     if (unit.rented && unit.tenant) {
                         const streetBonus = building.streetBonus || 1.0;
                         const districtBonus = building.districtBonus || 1.0;
-                        estimatedDailyIncome += unit.tenant.rentOffer * 1440 * streetBonus * districtBonus;
+                        estimatedHourlyIncome += unit.tenant.rentOffer * 60 * streetBonus * districtBonus;
                     }
                 }
             }
 
-            // Add hotel income
+            // Add hotel income (estimated hourly based on nightly rate)
             if (building.type === 'hotel' && building.rooms) {
                 const hotelType = this.scene.buildingTypes.hotel;
                 const occupiedRooms = building.rooms.filter(r => r.status === 'occupied' || r.isOccupied).length;
                 const streetBonus = building.streetBonus || 1.0;
-                estimatedDailyIncome += hotelType.nightlyRate * occupiedRooms * streetBonus;
+                // Hotels charge per night (game night), estimate as hourly portion
+                estimatedHourlyIncome += (hotelType.nightlyRate * occupiedRooms * streetBonus) / 12;
             }
         }
 
@@ -597,20 +598,18 @@ export class UIManager {
             }
         }
 
-        const totalExpenses = dailyTaxes + dailyMaintenance;
-        const netProfit = estimatedDailyIncome - totalExpenses;
-
-        text += `Income: +$${Math.floor(estimatedDailyIncome)}/day\n`;
-        text += `Property Tax: -$${dailyTaxes}/day\n`;
+        text += `Income: ~$${Math.floor(estimatedHourlyIncome)}/hour\n`;
+        text += `\nTaxes (per game day):\n`;
+        text += `Property Tax: -$${dailyTaxes}\n`;
         if (dailyMaintenance > 0) {
-            text += `Maintenance: -$${dailyMaintenance}/day\n`;
+            text += `Maintenance: -$${dailyMaintenance}\n`;
         }
-        text += `Net Profit: `;
-        if (netProfit >= 0) {
-            text += `+$${Math.floor(netProfit)}/day ✅\n`;
-        } else {
-            text += `-$${Math.floor(Math.abs(netProfit))}/day ⚠️\n`;
-        }
+        const totalExpenses = dailyTaxes + dailyMaintenance;
+        text += `Total: -$${totalExpenses}\n`;
+
+        // Note about game day timing
+        const gameDayMinutes = Math.ceil(1440 / (2.5 * this.scene.timeSpeed)); // rough estimate
+        text += `\n(Game day ≈ ${gameDayMinutes} real min at ${this.scene.timeSpeed}x speed)\n`;
         text += `\n`;
 
         // Per-street breakdown
