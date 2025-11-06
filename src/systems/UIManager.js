@@ -549,6 +549,70 @@ export class UIManager {
         text += `Tourists: ${touristCount}\n`;
         text += `Unlocked Streets: ${this.scene.unlockedStreets}\n\n`;
 
+        // Financial summary
+        text += `💰 DAILY FINANCES:\n`;
+
+        // Calculate estimated daily income
+        let estimatedDailyIncome = 0;
+        for (let building of this.scene.buildings) {
+            const buildingType = this.scene.buildingTypes[building.type];
+            if (buildingType && buildingType.incomeRate) {
+                // incomeRate is per minute, multiply by 1440 minutes per day
+                const streetBonus = building.streetBonus || 1.0;
+                const districtBonus = building.districtBonus || 1.0;
+                estimatedDailyIncome += buildingType.incomeRate * 1440 * streetBonus * districtBonus;
+            }
+
+            // Add apartment income
+            if (building.type === 'apartment' && building.units) {
+                for (let unit of building.units) {
+                    if (unit.rented && unit.tenant) {
+                        const streetBonus = building.streetBonus || 1.0;
+                        const districtBonus = building.districtBonus || 1.0;
+                        estimatedDailyIncome += unit.tenant.rentOffer * 1440 * streetBonus * districtBonus;
+                    }
+                }
+            }
+
+            // Add hotel income
+            if (building.type === 'hotel' && building.rooms) {
+                const hotelType = this.scene.buildingTypes.hotel;
+                const occupiedRooms = building.rooms.filter(r => r.status === 'occupied' || r.isOccupied).length;
+                const streetBonus = building.streetBonus || 1.0;
+                estimatedDailyIncome += hotelType.nightlyRate * occupiedRooms * streetBonus;
+            }
+        }
+
+        // Calculate daily expenses
+        let dailyTaxes = 0;
+        let dailyMaintenance = 0;
+
+        for (let building of this.scene.buildings) {
+            const buildingType = this.scene.buildingTypes[building.type];
+            if (buildingType && buildingType.cost) {
+                dailyTaxes += Math.floor(buildingType.cost * this.scene.propertyTaxRate);
+            }
+            if (buildingType && buildingType.maintenanceCost) {
+                dailyMaintenance += buildingType.maintenanceCost;
+            }
+        }
+
+        const totalExpenses = dailyTaxes + dailyMaintenance;
+        const netProfit = estimatedDailyIncome - totalExpenses;
+
+        text += `Income: +$${Math.floor(estimatedDailyIncome)}/day\n`;
+        text += `Property Tax: -$${dailyTaxes}/day\n`;
+        if (dailyMaintenance > 0) {
+            text += `Maintenance: -$${dailyMaintenance}/day\n`;
+        }
+        text += `Net Profit: `;
+        if (netProfit >= 0) {
+            text += `+$${Math.floor(netProfit)}/day ✅\n`;
+        } else {
+            text += `-$${Math.floor(Math.abs(netProfit))}/day ⚠️\n`;
+        }
+        text += `\n`;
+
         // Per-street breakdown
         text += `📍 PER-STREET BREAKDOWN:\n`;
         for (let i = 1; i <= this.scene.unlockedStreets; i++) {
