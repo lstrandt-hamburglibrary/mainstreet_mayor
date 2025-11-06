@@ -146,6 +146,33 @@ export class SaveSystem {
             this.scene.currentStreet = saveData.currentStreet || 1;
             this.scene.streetNames = saveData.streetNames || {};
 
+            // Create ground visuals for any unlocked streets that don't have them yet
+            for (let i = 0; i < this.scene.unlockedStreets; i++) {
+                const street = this.scene.streets[i];
+                if (street && !street.ground) {
+                    const groundY = this.scene.gameHeight - 50 - (i * this.scene.streetSpacing);
+                    street.ground = this.scene.add.rectangle(6000, groundY, 12000, 100, 0x555555);
+                    street.ground.setDepth(-10 + i * 0.1);
+                    console.log(`✅ Created ground for previously unlocked street ${i + 1} (from save)`);
+
+                    // Hide if not current street
+                    if ((i + 1) !== this.scene.currentStreet) {
+                        street.ground.setVisible(false);
+                        console.log(`🚫 Hiding ground for street ${i + 1} (not current)`);
+                    }
+
+                    // Enable physics platform
+                    if (street.platformBody) {
+                        street.platformBody.enableBody();
+                    }
+                }
+            }
+
+            // Update camera bounds for all unlocked streets
+            if (this.scene.updateCameraBoundsForStreets) {
+                this.scene.updateCameraBoundsForStreets();
+            }
+
             // Switch to the saved street if not on street 1
             if (this.scene.currentStreet > 1 && this.scene.streets && this.scene.streets.length >= this.scene.currentStreet) {
                 this.scene.switchToStreet(this.scene.currentStreet);

@@ -17,6 +17,7 @@ import { MuseumSystem } from './systems/MuseumSystem.js';
 import { HospitalSystem } from './systems/HospitalSystem.js';
 import { EntertainmentSystem } from './systems/EntertainmentSystem.js';
 import { MissionSystem } from './systems/MissionSystem.js';
+import { ResourceBuildingSystem } from './systems/ResourceBuildingSystem.js';
 
 class MainScene extends Phaser.Scene {
     constructor() {
@@ -114,6 +115,9 @@ class MainScene extends Phaser.Scene {
         // Initialize shop system
         this.shopSystem = new ShopSystem(this);
 
+        // Initialize resource building system (lumber mill, brick factory)
+        this.resourceBuildingSystem = new ResourceBuildingSystem(this);
+
         // Initialize save system
         this.saveSystem = new SaveSystem(this);
 
@@ -195,6 +199,8 @@ class MainScene extends Phaser.Scene {
         this.streets = []; // Array to hold all street data
         this.streetSpacing = 700; // Vertical spacing between streets
         this.maxStreets = 10; // Maximum streets that can be built (for now)
+        this.unlockedStreets = 1; // Start with 1 street, unlock more via missions
+        this.currentStreet = 1; // Which street player is currently on
 
         // Create all potential streets (will show/hide based on unlockedStreets)
         this.createStreets();
@@ -390,10 +396,6 @@ class MainScene extends Phaser.Scene {
         this.normalZoom = 1;
         this.birdsEyeZoom = 0.25; // Zoom out to 25% to see the entire street
 
-        // Multi-street system
-        this.unlockedStreets = 1; // Start with 1 street, unlock more via missions
-        this.currentStreet = 1; // Which street player is currently on
-
         // Mouse input for building placement and demolish mode
         this.input.on('pointerdown', (pointer) => {
             // Handle build mode
@@ -478,6 +480,33 @@ class MainScene extends Phaser.Scene {
             padding: { x: 8, y: 6 }
         }).setScrollFactor(0).setDepth(25000); // Very high depth to stay on top
 
+        // Save button (top right, beside stats button)
+        this.saveButton = this.add.text(this.gameWidth - 600, 20, '💾 SAVE', {
+            fontSize: '14px',
+            fontWeight: 'bold',
+            color: '#ffffff',
+            backgroundColor: '#2196F3',
+            padding: { x: 12, y: 6 }
+        }).setOrigin(0, 0);
+
+        this.saveButton.setScrollFactor(0);
+        this.saveButton.setDepth(26000); // Higher than resource UI
+        this.saveButton.setInteractive();
+
+        this.saveButton.on('pointerdown', () => {
+            console.log('💾 Save button clicked!');
+            this.saveSystem.saveGame();
+            this.showSaveFeedback();
+        });
+
+        this.saveButton.on('pointerover', () => {
+            this.saveButton.setStyle({ backgroundColor: '#1976D2' });
+        });
+
+        this.saveButton.on('pointerout', () => {
+            this.saveButton.setStyle({ backgroundColor: '#2196F3' });
+        });
+
         // Settings button (top right)
         // Building Tally button
         this.buildingTallyButton = this.add.text(this.gameWidth - 450, 20, '📊 TALLY', {
@@ -505,29 +534,27 @@ class MainScene extends Phaser.Scene {
 
         this.buildingTallyOpen = false;
 
-        // Missions button
-        this.missionsButton = this.add.text(this.gameWidth - 620, 20, '🏆 MISSIONS', {
-            fontSize: '16px',
-            color: '#ffffff',
-            backgroundColor: '#FFD700',
-            padding: { x: 12, y: 6 }
-        }).setScrollFactor(0).setDepth(99999).setInteractive();
+        // Missions button removed - now in menu dropdown
 
-        this.missionsButton.on('pointerdown', () => {
-            if (this.missionsMenuOpen) {
-                this.uiManager.hideMissionsPanel();
-            } else {
-                this.uiManager.showMissionsPanel();
+        // Street name display (bottom right corner)
+        this.streetNameDisplay = this.add.text(
+            this.gameWidth - 20,
+            this.gameHeight - 40,
+            '',
+            {
+                fontSize: '16px',
+                fontWeight: 'bold',
+                color: '#FFD700',
+                backgroundColor: '#1a1a1a',
+                padding: { x: 12, y: 8 }
             }
-        });
+        ).setOrigin(1, 1);
 
-        this.missionsButton.on('pointerover', () => {
-            this.missionsButton.setStyle({ backgroundColor: '#FFE082' });
-        });
+        this.streetNameDisplay.setScrollFactor(0);
+        this.streetNameDisplay.setDepth(26000);
 
-        this.missionsButton.on('pointerout', () => {
-            this.missionsButton.setStyle({ backgroundColor: '#FFD700' });
-        });
+        // Initialize with current street name
+        this.updateStreetNameDisplay();
 
         // Stats button
         this.statsButton = this.add.text(this.gameWidth - 450, 20, '📊 STATS', {
@@ -553,28 +580,7 @@ class MainScene extends Phaser.Scene {
             this.statsButton.setStyle({ backgroundColor: '#4CAF50' });
         });
 
-        // City Name Display (top center)
-        this.cityNameDisplay = this.add.text(this.gameWidth / 2, 20, '', {
-            fontSize: '22px',
-            fontWeight: 'bold',
-            color: '#FFD700',
-            backgroundColor: '#1a1a1a',
-            padding: { x: 20, y: 8 }
-        }).setScrollFactor(0).setDepth(99999).setOrigin(0.5, 0).setInteractive();
-
-        this.cityNameDisplay.on('pointerdown', () => {
-            this.showCityNamePrompt();
-        });
-
-        this.cityNameDisplay.on('pointerover', () => {
-            this.cityNameDisplay.setStyle({ backgroundColor: '#2a2a2a' });
-        });
-
-        this.cityNameDisplay.on('pointerout', () => {
-            this.cityNameDisplay.setStyle({ backgroundColor: '#1a1a1a' });
-        });
-
-        this.updateCityNameDisplay();
+        // City Name Display (removed from top center - now only in street name display)
 
         this.settingsButton = this.add.text(this.gameWidth - 130, 20, '⚙️ MENU', {
             fontSize: '16px',
@@ -600,7 +606,7 @@ class MainScene extends Phaser.Scene {
         this.settingsDropdown = this.add.container(this.gameWidth - 200, 55);
         this.settingsDropdown.setScrollFactor(0).setDepth(100000).setVisible(false);
 
-        const dropdownBg = this.add.rectangle(0, 0, 200, 210, 0x424242, 1);
+        const dropdownBg = this.add.rectangle(0, 0, 200, 240, 0x424242, 1);
         dropdownBg.setOrigin(0, 0);
         this.settingsDropdown.add(dropdownBg);
 
@@ -652,8 +658,25 @@ class MainScene extends Phaser.Scene {
             this.settingsDropdown.setVisible(false);
         });
 
+        // Missions button (in dropdown menu)
+        this.menuMissionsButton = this.add.text(10, 190, '🏆 Missions', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive().setScrollFactor(0);
+        this.settingsDropdown.add(this.menuMissionsButton);
+
+        this.menuMissionsButton.on('pointerdown', () => {
+            if (this.missionsMenuOpen) {
+                this.uiManager.hideMissionsPanel();
+            } else {
+                this.uiManager.showMissionsPanel();
+            }
+            this.settingsMenuOpen = false;
+            this.settingsDropdown.setVisible(false);
+        });
+
         // Add hover effects to all dropdown buttons
-        [this.restartButton, this.creativeButton, this.travelButton, this.buildButton, this.demolishButton, this.helpButton].forEach(btn => {
+        [this.restartButton, this.creativeButton, this.travelButton, this.buildButton, this.demolishButton, this.helpButton, this.menuMissionsButton].forEach(btn => {
             btn.on('pointerover', () => btn.setStyle({ color: '#FFD700' }));
             btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
         });
@@ -1954,6 +1977,29 @@ class MainScene extends Phaser.Scene {
         // Load saved game if exists
         this.saveSystem.loadGame();
 
+        // Hide buildings from other streets (only show current street's buildings)
+        this.buildings.forEach(building => {
+            const buildingStreet = building.streetNumber || 1;
+            if (buildingStreet !== this.currentStreet) {
+                if (building.graphics) building.graphics.setVisible(false);
+                if (building.sign) building.sign.setVisible(false);
+                if (building.signText) building.signText.setVisible(false);
+                if (building.nameLabel) building.nameLabel.setVisible(false);
+                if (building.bonusIndicator) building.bonusIndicator.setVisible(false);
+                if (building.incomeIndicator) building.incomeIndicator.setVisible(false);
+                if (building.resourceIndicator) building.resourceIndicator.setVisible(false);
+                if (building.windowLights) {
+                    building.windowLights.forEach(light => light.setVisible(false));
+                }
+                if (building.vacancySigns) {
+                    building.vacancySigns.forEach(sign => {
+                        if (sign && sign.setVisible) sign.setVisible(false);
+                    });
+                }
+                console.log(`🚫 Hiding building on street ${buildingStreet} (current: ${this.currentStreet})`);
+            }
+        });
+
         // Check for vacant apartments after loading and generate applications
         this.checkVacantApartmentsAfterLoad();
 
@@ -2251,14 +2297,18 @@ class MainScene extends Phaser.Scene {
         const newGroundY = this.gameHeight - 50;
         const newPlatformY = this.gameHeight - 100;
 
-        // Update ground position
-        this.ground.y = newGroundY;
+        // Update ground position (only if initialized)
+        if (this.ground) {
+            this.ground.y = newGroundY;
+        }
         this.groundY = newGroundY;
 
-        // Update platform position
-        this.groundPlatformBody.y = newPlatformY;
+        // Update platform position (only if initialized)
+        if (this.groundPlatformBody && this.groundPlatformBody.body) {
+            this.groundPlatformBody.y = newPlatformY;
+            this.groundPlatformBody.body.reset(1500, newPlatformY);
+        }
         this.platformY = newPlatformY;
-        this.groundPlatformBody.body.reset(1500, newPlatformY);
 
         // Reposition all buildings
         for (let building of this.buildings) {
@@ -2367,14 +2417,18 @@ class MainScene extends Phaser.Scene {
         if (this.timeUI) {
             this.timeUI.x = this.gameWidth - 300;
         }
-        if (this.missionsButton) {
-            this.missionsButton.x = this.gameWidth - 620;
+        // Save button (top right)
+        if (this.saveButton) {
+            this.saveButton.x = this.gameWidth - 600;
         }
+        // Missions button is now on the left, doesn't need repositioning
         if (this.buildingTallyButton) {
             this.buildingTallyButton.x = this.gameWidth - 450;
         }
-        if (this.cityNameDisplay) {
-            this.cityNameDisplay.x = this.gameWidth / 2;
+        // Update street name display position (bottom right)
+        if (this.streetNameDisplay) {
+            this.streetNameDisplay.x = this.gameWidth - 20;
+            this.streetNameDisplay.y = this.gameHeight - 40;
         }
         if (this.settingsButton) {
             this.settingsButton.x = this.gameWidth - 130;
@@ -2620,9 +2674,15 @@ class MainScene extends Phaser.Scene {
             const groundY = this.gameHeight - 50 - (i * this.streetSpacing);
             const platformY = this.gameHeight - 100 - (i * this.streetSpacing);
 
-            // Create ground (gray road)
-            const ground = this.add.rectangle(6000, groundY, 12000, 100, 0x555555);
-            ground.setDepth(-10 + i * 0.1); // Slightly different depth for each street
+            // Create ground (gray road) - only for unlocked streets
+            let ground = null;
+            if (streetNumber <= this.unlockedStreets) {
+                ground = this.add.rectangle(6000, groundY, 12000, 100, 0x555555);
+                ground.setDepth(-10 + i * 0.1); // Slightly different depth for each street
+                console.log(`✅ Created ground for street ${streetNumber} at Y=${groundY}`);
+            } else {
+                console.log(`🚫 Skipped ground creation for locked street ${streetNumber}`);
+            }
 
             // Create platform for physics
             const platform = this.physics.add.staticGroup();
@@ -2667,9 +2727,16 @@ class MainScene extends Phaser.Scene {
 
             this.streets.push(streetData);
 
-            // Initially hide streets that aren't unlocked yet
+            // Disable physics for locked streets
             if (streetNumber > this.unlockedStreets) {
+                platformBody.setVisible(false);
+                platformBody.disableBody(); // Disable physics on locked streets
+            }
+
+            // Hide grounds for all streets except the current one
+            if (ground && streetNumber !== this.currentStreet) {
                 ground.setVisible(false);
+                console.log(`🚫 Hiding ground for street ${streetNumber} (not current street)`);
             }
         }
 
@@ -2705,6 +2772,46 @@ class MainScene extends Phaser.Scene {
         }
 
         console.log(`Created ${this.maxStreets} streets, ${this.unlockedStreets} unlocked`);
+
+        // Update camera bounds to fit all unlocked streets
+        this.updateCameraBoundsForStreets();
+    }
+
+    updateCameraBoundsForStreets() {
+        // Calculate proper camera bounds to include all unlocked streets
+        // Street Y positions: Street 1 = gameHeight-50, Street 2 = gameHeight-750, etc.
+
+        // Safety check - ensure unlockedStreets is defined
+        if (!this.unlockedStreets || this.unlockedStreets < 1) {
+            console.warn('updateCameraBoundsForStreets called but unlockedStreets is invalid:', this.unlockedStreets);
+            // Set default camera bounds for single street
+            this.cameras.main.setBounds(0, 0, 12000, this.gameHeight);
+            return;
+        }
+
+        const lowestStreetY = this.gameHeight - 50; // Street 1 (bottom)
+        const highestStreetY = this.gameHeight - 50 - ((this.unlockedStreets - 1) * this.streetSpacing); // Highest unlocked street
+
+        // Add buffer zones
+        const buffer = 400;
+        const boundsTop = highestStreetY - buffer;
+        const boundsBottom = lowestStreetY + buffer;
+        const boundsHeight = boundsBottom - boundsTop;
+
+        // Set camera bounds: (x, y, width, height) where y is top-left corner
+        this.cameras.main.setBounds(0, boundsTop, 12000, boundsHeight);
+
+        console.log(`📹 Camera bounds: Y from ${boundsTop} to ${boundsBottom} (height: ${boundsHeight}), ${this.unlockedStreets} streets`);
+    }
+
+    updateStreetNameDisplay() {
+        // Update the street name display in bottom right corner
+        if (!this.streetNameDisplay) return;
+
+        const street = this.streets[this.currentStreet - 1];
+        const streetName = street?.name || this.streetNames?.[this.currentStreet] || `Street ${this.currentStreet}`;
+
+        this.streetNameDisplay.setText(`🛣️ ${streetName}`);
     }
 
     switchToStreet(streetNumber) {
@@ -2724,6 +2831,9 @@ class MainScene extends Phaser.Scene {
         const newPlayerY = street.platformY - 50; // Position player on the platform
         this.player.y = newPlayerY;
 
+        // Camera will follow player automatically due to startFollow()
+        console.log(`📹 Player moved to Y=${newPlayerY} on street ${streetNumber}`);
+
         // Update current street reference
         this.currentStreet = streetNumber;
 
@@ -2731,11 +2841,66 @@ class MainScene extends Phaser.Scene {
         this.groundY = street.groundY;
         this.platformY = street.platformY;
 
+        // Hide all other streets' grounds, show only current street
+        this.streets.forEach((s, index) => {
+            const streetNum = index + 1;
+            if (s.ground) {
+                if (streetNum === streetNumber) {
+                    s.ground.setVisible(true);
+                    s.ground.y = s.groundY; // Restore correct position
+                    s.ground.setAlpha(1); // Restore full opacity
+                    console.log(`✅ Showing ground for street ${streetNum} at Y=${s.ground.y}, alpha=${s.ground.alpha}, visible=${s.ground.visible}`);
+                } else {
+                    s.ground.setVisible(false);
+                    s.ground.setAlpha(0); // Make completely transparent
+                    s.ground.y = -10000; // Move far off-screen as backup
+                    console.log(`🚫 Hiding ground for street ${streetNum} - moved to Y=${s.ground.y}, alpha=${s.ground.alpha}, visible=${s.ground.visible}`);
+                }
+            } else {
+                console.log(`⚠️ Street ${streetNum} has no ground object`);
+            }
+        });
+
+        // Hide/show buildings based on which street they're on
+        this.buildings.forEach(building => {
+            const buildingStreet = building.streetNumber || 1;
+            const isVisible = buildingStreet === streetNumber;
+
+            // Set visibility for all building components
+            if (building.graphics) building.graphics.setVisible(isVisible);
+            if (building.sign) building.sign.setVisible(isVisible);
+            if (building.signText) building.signText.setVisible(isVisible);
+            if (building.nameLabel) building.nameLabel.setVisible(isVisible);
+            if (building.bonusIndicator) building.bonusIndicator.setVisible(isVisible);
+            if (building.incomeIndicator) building.incomeIndicator.setVisible(false); // Always hidden by default
+            if (building.resourceIndicator) building.resourceIndicator.setVisible(false); // Always hidden by default
+
+            // Hide window lights
+            if (building.windowLights) {
+                building.windowLights.forEach(light => light.setVisible(false));
+            }
+
+            // Hide vacancy signs
+            if (building.vacancySigns) {
+                building.vacancySigns.forEach(sign => {
+                    if (sign && sign.setVisible) sign.setVisible(isVisible);
+                });
+            }
+        });
+
         // Get street name for notification
         const streetName = street.name || `Street ${streetNumber}`;
 
         // Show notification with street name
         this.uiManager.addNotification(`🛣️ Now on: ${streetName}`);
+
+        // Update street name display
+        this.updateStreetNameDisplay();
+
+        // Update train visibility
+        if (this.trainSystem && this.trainSystem.updateTrainVisibility) {
+            this.trainSystem.updateTrainVisibility(streetNumber);
+        }
 
         console.log(`Switched to street ${streetNumber}: ${streetName}`);
     }
@@ -3685,27 +3850,30 @@ class MainScene extends Phaser.Scene {
         // Update building window lights based on time and occupancy
         for (let building of this.buildings) {
             if (building.windowLights) {
+                const buildingStreet = building.streetNumber || 1;
+                const isOnCurrentStreet = buildingStreet === this.currentStreet;
+
                 if (building.type === 'house') {
-                    // Houses: all windows lit at night
+                    // Houses: all windows lit at night (only if on current street)
                     for (let light of building.windowLights) {
-                        light.setVisible(isNight);
+                        light.setVisible(isNight && isOnCurrentStreet);
                     }
                 } else if (building.type === 'apartment') {
-                    // Apartments: only lit if unit is occupied (rented)
+                    // Apartments: only lit if unit is occupied (rented) and on current street
                     for (let light of building.windowLights) {
                         const unitIndex = light.unitIndex;
                         const windowsPerUnit = 2;
                         const actualUnitIndex = Math.floor(building.windowLights.indexOf(light) / windowsPerUnit);
                         const isOccupied = building.units && building.units[actualUnitIndex] && building.units[actualUnitIndex].rented;
-                        light.setVisible(isNight && isOccupied);
+                        light.setVisible(isNight && isOccupied && isOnCurrentStreet);
                     }
                 } else if (building.type === 'hotel') {
-                    // Hotel: only lit if room is occupied
+                    // Hotel: only lit if room is occupied and on current street
                     for (let light of building.windowLights) {
                         const windowsPerRoom = 2;
                         const roomIndex = Math.floor(building.windowLights.indexOf(light) / windowsPerRoom);
                         const isOccupied = building.rooms && building.rooms[roomIndex] && building.rooms[roomIndex].status === 'occupied';
-                        light.setVisible(isNight && isOccupied);
+                        light.setVisible(isNight && isOccupied && isOnCurrentStreet);
                     }
                 }
             }
@@ -3766,8 +3934,11 @@ class MainScene extends Phaser.Scene {
                 );
                 building.lastIncomeTime = now;
 
-                // Show $ indicator if income is ready to collect (> $5)
-                if (building.accumulatedIncome >= 5) {
+                // Show $ indicator if income is ready to collect (> $5) and on current street
+                const buildingStreet = building.streetNumber || 1;
+                const isOnCurrentStreet = buildingStreet === this.currentStreet;
+
+                if (building.accumulatedIncome >= 5 && isOnCurrentStreet) {
                     if (!building.incomeIndicator) {
                         building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
                             fontSize: '24px'
@@ -3795,8 +3966,11 @@ class MainScene extends Phaser.Scene {
                 );
                 building.lastResourceTime = now;
 
-                // Show resource indicator if resources are available (>= 1)
-                if (building.storedResources >= 1) {
+                // Show resource indicator if resources are available (>= 1) and on current street
+                const buildingStreet = building.streetNumber || 1;
+                const isOnCurrentStreet = buildingStreet === this.currentStreet;
+
+                if (building.storedResources >= 1 && isOnCurrentStreet) {
                     const icon = buildingType.resourceType === 'wood' ? '🪵' : '🧱';
                     if (!building.resourceIndicator || !building.resourceIndicator.scene) {
                         building.resourceIndicator = this.add.text(building.x, building.y - buildingType.height - 80, icon, {
@@ -4003,8 +4177,11 @@ class MainScene extends Phaser.Scene {
                     }
                 }
 
-                // Show income indicator if income is ready to collect
-                if (building.accumulatedIncome >= 1) {
+                // Show income indicator if income is ready to collect and on current street
+                const buildingStreet = building.streetNumber || 1;
+                const isOnCurrentStreet = buildingStreet === this.currentStreet;
+
+                if (building.accumulatedIncome >= 1 && isOnCurrentStreet) {
                     if (!building.incomeIndicator || !building.incomeIndicator.scene) {
                         building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
                             fontSize: '24px'
@@ -4020,7 +4197,10 @@ class MainScene extends Phaser.Scene {
             }
 
             // Entertainment and service building income indicators (arcade, library, museum)
-            if ((this.isEntertainment(building.type) || this.isService(building.type)) && building.accumulatedIncome >= 1) {
+            const buildingStreet2 = building.streetNumber || 1;
+            const isOnCurrentStreet2 = buildingStreet2 === this.currentStreet;
+
+            if ((this.isEntertainment(building.type) || this.isService(building.type)) && building.accumulatedIncome >= 1 && isOnCurrentStreet2) {
                 if (!building.incomeIndicator || !building.incomeIndicator.scene) {
                     building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
                         fontSize: '24px'
@@ -4031,6 +4211,31 @@ class MainScene extends Phaser.Scene {
             } else if (this.isEntertainment(building.type) || this.isService(building.type)) {
                 if (building.incomeIndicator && building.incomeIndicator.scene) {
                     building.incomeIndicator.setVisible(false);
+                }
+            }
+
+            // Initialize shop inventory if missing (for legacy shops)
+            if (this.isShop(building.type) && !building.inventory) {
+                console.log(`🔧 Initializing missing inventory for ${building.type}`);
+                building.inventory = {
+                    stock: 50,
+                    maxStock: 100,
+                    restockCost: 5,
+                    salesPerCustomer: 5
+                };
+                building.hasEmployee = building.hasEmployee || false;
+                building.isOpen = building.isOpen || false;
+                building.dailyWage = building.dailyWage || 0;
+                building.lastWageCheck = building.lastWageCheck || this.gameTime;
+            }
+
+            // Ensure shop is open if it has an employee (sync status)
+            if (this.isShop(building.type) && building.hasEmployee && !building.isOpen) {
+                building.isOpen = true;
+                // Only log once per building
+                if (!building._shopStatusFixed) {
+                    console.log(`🔧 Fixed shop status: ${building.type} has employee but was closed - now open`);
+                    building._shopStatusFixed = true;
                 }
             }
 
@@ -4334,6 +4539,7 @@ class MainScene extends Phaser.Scene {
             try {
                 const deltaTime = 1/60; // Approximate frame time
                 this.eventSystem.update(deltaTime);
+                this.resourceBuildingSystem.update(deltaTime);
             } catch (error) {
                 console.error('Error updating events:', error);
             }
@@ -4584,13 +4790,18 @@ class MainScene extends Phaser.Scene {
             this.cameras.main.scrollY = Phaser.Math.Clamp(this.cameras.main.scrollY, minScrollY, maxScrollY);
         }
 
-        // Street switching with Page Up/Page Down (when not in menus or bird's eye view)
+        // Street switching with Page Up/Page Down or Shift+Arrow keys (when not in menus or bird's eye view)
         if (!this.birdsEyeView && !this.insideShop && !this.insideHotel && !this.insideRestaurant &&
             !this.insideApartment && !this.schoolSystem.insideSchool && !this.bankMenuOpen &&
             !this.buildMode && !this.deleteMode) {
 
-            // Page Up - Go to previous street (higher street number, visually above)
-            if (Phaser.Input.Keyboard.JustDown(this.pageUpKey)) {
+            const shiftKey = this.input.keyboard.addKey('SHIFT');
+            const upArrow = this.cursors.up;
+            const downArrow = this.cursors.down;
+
+            // Page Up or Shift+Up Arrow - Go to previous street (higher street number, visually above)
+            if (Phaser.Input.Keyboard.JustDown(this.pageUpKey) ||
+                (shiftKey.isDown && Phaser.Input.Keyboard.JustDown(upArrow))) {
                 if (this.currentStreet < this.unlockedStreets) {
                     this.currentStreet++;
                     this.switchToStreet(this.currentStreet);
@@ -4599,8 +4810,9 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
-            // Page Down - Go to next street (lower street number, visually below)
-            if (Phaser.Input.Keyboard.JustDown(this.pageDownKey)) {
+            // Page Down or Shift+Down Arrow - Go to next street (lower street number, visually below)
+            if (Phaser.Input.Keyboard.JustDown(this.pageDownKey) ||
+                (shiftKey.isDown && Phaser.Input.Keyboard.JustDown(downArrow))) {
                 if (this.currentStreet > 1) {
                     this.currentStreet--;
                     this.switchToStreet(this.currentStreet);
@@ -4692,7 +4904,8 @@ class MainScene extends Phaser.Scene {
             this.nearShop = null;
             let closestShopDistance = 150;
             for (let building of this.buildings) {
-                if (this.isShop(building.type)) {
+                const buildingStreet = building.streetNumber || 1;
+                if (this.isShop(building.type) && buildingStreet === this.currentStreet) {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestShopDistance) {
                         this.nearShop = building;
@@ -4734,7 +4947,8 @@ class MainScene extends Phaser.Scene {
             this.nearHotel = null;
             let closestHotelDistance = 150;
             for (let building of this.buildings) {
-                if (building.type === 'hotel') {
+                const buildingStreet = building.streetNumber || 1;
+                if (building.type === 'hotel' && buildingStreet === this.currentStreet) {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestHotelDistance) {
                         this.nearHotel = building;
@@ -4776,7 +4990,8 @@ class MainScene extends Phaser.Scene {
             this.nearRestaurant = null;
             let closestRestaurantDistance = 150;
             for (let building of this.buildings) {
-                if (this.isRestaurant(building.type)) {
+                const buildingStreet = building.streetNumber || 1;
+                if (this.isRestaurant(building.type) && buildingStreet === this.currentStreet) {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestRestaurantDistance) {
                         this.nearRestaurant = building;
@@ -4990,6 +5205,17 @@ class MainScene extends Phaser.Scene {
             }
         }
 
+        // Exit resource building if inside
+        if (this.resourceBuildingSystem.insideBuilding) {
+            if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
+                this.resourceBuildingSystem.exitBuilding();
+            }
+            // Handle spacebar for minigame
+            if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+                this.resourceBuildingSystem.handleSpacePress();
+            }
+        }
+
         // Exit hotel if inside
         if (this.insideHotel) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
@@ -5016,7 +5242,8 @@ class MainScene extends Phaser.Scene {
             this.nearApartment = null;
             let closestApartmentDistance = 150;
             for (let building of this.buildings) {
-                if (building.type === 'apartment') {
+                const buildingStreet = building.streetNumber || 1;
+                if (building.type === 'apartment' && buildingStreet === this.currentStreet) {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestApartmentDistance) {
                         this.nearApartment = building;
@@ -5164,6 +5391,10 @@ class MainScene extends Phaser.Scene {
             // Skip if building type doesn't exist
             if (!building.type) continue;
 
+            // Only check buildings on current street
+            const buildingStreet = building.streetNumber || 1;
+            if (buildingStreet !== this.currentStreet) continue;
+
             const buildingType = this.buildingTypes[building.type];
             if (!buildingType) {
                 console.warn(`Building type ${building.type} not found in buildingTypes`);
@@ -5209,7 +5440,8 @@ class MainScene extends Phaser.Scene {
         this.nearResourceBuilding = null;
         let closestResourceDistance = 251; // Start at max range + 1
         for (let building of this.buildings) {
-            if (building.type === 'market' || building.type === 'lumbermill' || building.type === 'brickfactory') {
+            const buildingStreet = building.streetNumber || 1;
+            if ((building.type === 'market' || building.type === 'lumbermill' || building.type === 'brickfactory') && buildingStreet === this.currentStreet) {
                 const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                 if (distance < 250 && distance < closestResourceDistance) {
                     this.nearResourceBuilding = building;
@@ -5282,29 +5514,29 @@ class MainScene extends Phaser.Scene {
                 // Market opens a menu
                 promptText = `Press E: ${resourceType.name}`;
             } else if (this.nearResourceBuilding.type === 'lumbermill') {
-                // Lumber mill - direct collection
-                const available = Math.floor(this.nearResourceBuilding.storedResources);
+                // Lumber mill - collect resources or enter for minigame
+                const available = Math.floor(this.nearResourceBuilding.storedResources || 0);
                 if (available >= 1) {
-                    promptText = `Press E to collect ${available} wood`;
+                    promptText = `🪵 Press 1: Collect ${available} wood | E: Enter (Minigame)`;
                 } else {
-                    promptText = `🪵 Regenerating... (${resourceType.regenRate} wood/min)`;
+                    promptText = `🪵 Press E to enter (Minigame) | Regenerating...`;
                 }
             } else if (this.nearResourceBuilding.type === 'brickfactory') {
-                // Brick factory - direct collection
-                const available = Math.floor(this.nearResourceBuilding.storedResources);
+                // Brick factory - collect resources or enter for minigame
+                const available = Math.floor(this.nearResourceBuilding.storedResources || 0);
                 if (available >= 1) {
-                    promptText = `Press E to collect ${available} bricks`;
+                    promptText = `🧱 Press 1: Collect ${available} bricks | E: Enter (Minigame)`;
                 } else {
-                    promptText = `🧱 Regenerating... (${resourceType.regenRate} bricks/min)`;
+                    promptText = `🧱 Press E to enter (Minigame) | Regenerating...`;
                 }
             }
 
             if (!this.resourcePrompt) {
                 this.resourcePrompt = this.add.text(this.nearResourceBuilding.x, this.nearResourceBuilding.y - resourceType.height - 100, promptText, {
-                    fontSize: '12px',
+                    fontSize: '14px',
                     color: '#ffffff',
                     backgroundColor: '#FF9800',
-                    padding: { x: 5, y: 3 }
+                    padding: { x: 8, y: 5 }
                 }).setOrigin(0.5);
             } else {
                 this.resourcePrompt.setText(promptText);
@@ -5313,16 +5545,25 @@ class MainScene extends Phaser.Scene {
                 this.resourcePrompt.setVisible(true);
             }
 
-            // Handle E key press
+            // Handle E key press (enter building or open menu)
             if (Phaser.Input.Keyboard.JustDown(this.eKey)) {
                 if (this.nearResourceBuilding.type === 'market') {
                     // Market opens menu
                     this.openResourceBuildingMenu();
                 } else if (this.nearResourceBuilding.type === 'lumbermill') {
-                    // Collect wood directly
+                    // Enter lumber mill
+                    this.resourceBuildingSystem.enterBuilding(this.nearResourceBuilding);
+                } else if (this.nearResourceBuilding.type === 'brickfactory') {
+                    // Enter brick factory
+                    this.resourceBuildingSystem.enterBuilding(this.nearResourceBuilding);
+                }
+            }
+
+            // Handle 1 key press (collect resources)
+            if (Phaser.Input.Keyboard.JustDown(this.key1)) {
+                if (this.nearResourceBuilding.type === 'lumbermill') {
                     this.collectWood();
                 } else if (this.nearResourceBuilding.type === 'brickfactory') {
-                    // Collect bricks directly
                     this.collectBricks();
                 }
             }
@@ -6260,6 +6501,39 @@ class MainScene extends Phaser.Scene {
         }
     }
 
+    showSaveFeedback() {
+        // Show temporary "Game Saved!" message
+        const savedText = this.add.text(
+            this.gameWidth / 2,
+            100,
+            '✓ GAME SAVED!',
+            {
+                fontSize: '24px',
+                fontWeight: 'bold',
+                color: '#4CAF50',
+                backgroundColor: '#1a1a1a',
+                padding: { x: 20, y: 12 }
+            }
+        ).setOrigin(0.5);
+
+        savedText.setScrollFactor(0);
+        savedText.setDepth(99999);
+
+        // Fade out and destroy after 2 seconds
+        this.tweens.add({
+            targets: savedText,
+            alpha: 0,
+            duration: 2000,
+            delay: 500,
+            onComplete: () => {
+                savedText.destroy();
+            }
+        });
+
+        // Also add to notification ticker
+        this.uiManager.addNotification('💾 Game saved successfully!');
+    }
+
     collectIncome(building) {
         let income = 0;
 
@@ -6457,7 +6731,7 @@ class MainScene extends Phaser.Scene {
 MOVEMENT & CAMERA:
   Arrow Keys / WASD - Move camera left/right
   V Key - Toggle Bird's Eye View (see all streets)
-  Page Up / Page Down - Switch between unlocked streets
+  Page Up / Page Down (or Shift+Up/Down Arrow) - Switch between streets
 
 BUILD MODE:
   B Key - Toggle build mode

@@ -538,15 +538,17 @@ export class CitizenSystem {
                         const shop = citizen.targetBuilding;
                         if (shop.inventory && shop.isOpen && shop.inventory.stock >= shop.inventory.salesPerCustomer) {
                             // Customer makes a purchase
+                            const oldStock = shop.inventory.stock;
                             shop.inventory.stock -= shop.inventory.salesPerCustomer;
+                            shop.inventory.stock = Math.max(0, shop.inventory.stock); // Ensure stock doesn't go negative
                             const salePrice = shop.inventory.salesPerCustomer * 15; // $15 per unit sold
 
                             // Add to shop's accumulated income (collect when entering shop)
                             shop.accumulatedIncome = (shop.accumulatedIncome || 0) + salePrice;
-                            console.log(`🛍️ Customer bought items at ${shop.type}. Stock now: ${shop.inventory.stock}. Shop income: $${Math.floor(shop.accumulatedIncome)}`);
+                            console.log(`🛍️ Customer bought items at ${shop.type}. Stock: ${oldStock} → ${shop.inventory.stock}. Shop income: $${Math.floor(shop.accumulatedIncome)}`);
 
                             const shopName = this.scene.buildingTypes[shop.type].name;
-                            this.scene.uiManager.addNotification(`🛍️ Purchase at ${shopName} - $${salePrice}`);
+                            this.scene.uiManager.addNotification(`🛍️ Purchase at ${shopName} - $${salePrice} (Stock: ${shop.inventory.stock})`);
 
                             // Update UI if player is currently viewing this shop
                             if (this.scene.insideShop && this.scene.currentShop === shop) {

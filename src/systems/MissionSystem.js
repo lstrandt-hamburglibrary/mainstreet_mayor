@@ -538,7 +538,27 @@ export class MissionSystem {
             const streetIndex = streetNumber - 1;
             if (this.scene.streets && this.scene.streets[streetIndex]) {
                 const newStreet = this.scene.streets[streetIndex];
-                newStreet.ground.setVisible(true);
+
+                // Create ground visual if it doesn't exist yet
+                if (!newStreet.ground) {
+                    const groundY = this.scene.gameHeight - 50 - (streetIndex * this.scene.streetSpacing);
+                    newStreet.ground = this.scene.add.rectangle(6000, groundY, 12000, 100, 0x555555);
+                    newStreet.ground.setDepth(-10 + streetIndex * 0.1);
+                    console.log(`✅ Created ground for newly unlocked street ${streetNumber} at Y=${groundY}`);
+
+                    // Hide immediately - player needs to switch to it to see it
+                    newStreet.ground.setVisible(false);
+                    console.log(`🚫 Hiding newly unlocked street ${streetNumber} (not current)`);
+                } else {
+                    // Don't show it unless player switches to it
+                    newStreet.ground.setVisible(false);
+                }
+
+                // Enable physics platform
+                if (newStreet.platformBody) {
+                    newStreet.platformBody.setVisible(false); // Keep invisible (physics only)
+                    newStreet.platformBody.enableBody();
+                }
 
                 // Prompt user to name the new street
                 const ordinal = this.getOrdinal(streetNumber);
@@ -551,6 +571,11 @@ export class MissionSystem {
                     newStreet.name = `Street ${streetNumber}`;
                     this.scene.streetNames[streetNumber] = `Street ${streetNumber}`;
                     this.scene.uiManager.addNotification(`🎉 STREET ${streetNumber} UNLOCKED! Press Page Up to visit`);
+                }
+
+                // Update camera bounds to include the new street
+                if (this.scene.updateCameraBoundsForStreets) {
+                    this.scene.updateCameraBoundsForStreets();
                 }
             }
         }
@@ -571,12 +596,14 @@ export class MissionSystem {
         const popup = this.scene.add.container(this.scene.gameWidth / 2, this.scene.gameHeight / 2);
         popup.setScrollFactor(0).setDepth(99998);
 
-        // Background
-        const bg = this.scene.add.graphics();
-        bg.fillStyle(0x1a1a1a, 0.98);
-        bg.fillRoundedRect(-250, -150, 500, 300, 10);
-        bg.lineStyle(3, 0xFFD700, 1);
-        bg.strokeRoundedRect(-250, -150, 500, 300, 10);
+        // Background - use rectangle for better input handling
+        const bg = this.scene.add.rectangle(0, 0, 500, 300, 0x1a1a1a, 0.98);
+        bg.setStrokeStyle(3, 0xFFD700, 1);
+        bg.setInteractive(); // Make background interactive to catch clicks
+        bg.on('pointerdown', (pointer, localX, localY, event) => {
+            event.stopPropagation();
+            console.log('Mission popup background clicked');
+        });
         popup.add(bg);
 
         // Trophy icon
@@ -619,19 +646,31 @@ export class MissionSystem {
         reward.setOrigin(0.5);
         popup.add(reward);
 
-        // Close button
-        const closeBtn = this.scene.add.text(0, 110, 'CONTINUE', {
-            fontSize: '18px',
-            color: '#ffffff',
-            backgroundColor: '#4CAF50',
-            padding: { x: 20, y: 10 }
-        }).setOrigin(0.5).setInteractive();
+        // Close button - NOT in container, separate with higher depth for reliable clicking
+        const closeBtn = this.scene.add.text(
+            this.scene.gameWidth / 2,
+            this.scene.gameHeight / 2 + 110,
+            'CONTINUE',
+            {
+                fontSize: '18px',
+                color: '#ffffff',
+                backgroundColor: '#4CAF50',
+                padding: { x: 20, y: 10 }
+            }
+        ).setOrigin(0.5);
+
+        closeBtn.setScrollFactor(0);
+        closeBtn.setDepth(99999); // Higher than popup container
+        closeBtn.setInteractive();
 
         closeBtn.on('pointerdown', () => {
+            console.log('Mission CONTINUE button clicked!');
             popup.destroy();
+            closeBtn.destroy();
         });
 
         closeBtn.on('pointerover', () => {
+            console.log('Hover over mission CONTINUE button');
             closeBtn.setStyle({ backgroundColor: '#66BB6A' });
         });
 
@@ -639,12 +678,16 @@ export class MissionSystem {
             closeBtn.setStyle({ backgroundColor: '#4CAF50' });
         });
 
-        popup.add(closeBtn);
+        // Store reference to destroy with popup
+        popup.closeBtn = closeBtn;
 
         // Auto-close after 8 seconds
         this.scene.time.delayedCall(8000, () => {
             if (popup && popup.active) {
                 popup.destroy();
+            }
+            if (closeBtn && closeBtn.scene) {
+                closeBtn.destroy();
             }
         });
 
