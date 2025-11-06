@@ -550,37 +550,45 @@ export class UIManager {
         text += `Unlocked Streets: ${this.scene.unlockedStreets}\n\n`;
 
         // Financial summary
-        text += `💰 HOURLY FINANCES:\n`;
+        text += `💰 INCOME POTENTIAL:\n`;
 
-        // Calculate estimated hourly income (income is per real-time minute, not game minute)
-        let estimatedHourlyIncome = 0;
+        // Calculate total accumulated income available to collect
+        let totalAccumulated = 0;
+        let potentialIncomeRate = 0; // Income per real minute at current speed
+
         for (let building of this.scene.buildings) {
             const buildingType = this.scene.buildingTypes[building.type];
+
+            // Add accumulated income ready to collect
+            if (building.accumulatedIncome) {
+                totalAccumulated += building.accumulatedIncome;
+            }
+
+            // Calculate potential income rate
             if (buildingType && buildingType.incomeRate) {
-                // incomeRate is per real-time minute, multiply by 60 for hourly
                 const streetBonus = building.streetBonus || 1.0;
                 const districtBonus = building.districtBonus || 1.0;
-                estimatedHourlyIncome += buildingType.incomeRate * 60 * streetBonus * districtBonus;
+                // Income per real minute at current timeSpeed
+                potentialIncomeRate += buildingType.incomeRate * this.scene.timeSpeed * streetBonus * districtBonus;
             }
 
             // Add apartment income
             if (building.type === 'apartment' && building.units) {
                 for (let unit of building.units) {
+                    if (unit.accumulatedIncome) {
+                        totalAccumulated += unit.accumulatedIncome;
+                    }
                     if (unit.rented && unit.tenant) {
                         const streetBonus = building.streetBonus || 1.0;
                         const districtBonus = building.districtBonus || 1.0;
-                        estimatedHourlyIncome += unit.tenant.rentOffer * 60 * streetBonus * districtBonus;
+                        potentialIncomeRate += unit.tenant.rentOffer * this.scene.timeSpeed * streetBonus * districtBonus;
                     }
                 }
             }
 
-            // Add hotel income (estimated hourly based on nightly rate)
-            if (building.type === 'hotel' && building.rooms) {
-                const hotelType = this.scene.buildingTypes.hotel;
-                const occupiedRooms = building.rooms.filter(r => r.status === 'occupied' || r.isOccupied).length;
-                const streetBonus = building.streetBonus || 1.0;
-                // Hotels charge per night (game night), estimate as hourly portion
-                estimatedHourlyIncome += (hotelType.nightlyRate * occupiedRooms * streetBonus) / 12;
+            // Hotels have nightly income
+            if (building.accumulatedIncome && building.type === 'hotel') {
+                totalAccumulated += building.accumulatedIncome;
             }
         }
 
@@ -598,18 +606,16 @@ export class UIManager {
             }
         }
 
-        text += `Income: ~$${Math.floor(estimatedHourlyIncome)}/hour\n`;
-        text += `\nTaxes (per game day):\n`;
-        text += `Property Tax: -$${dailyTaxes}\n`;
+        text += `Ready to collect: +$${Math.floor(totalAccumulated)}\n`;
+        text += `Generation rate: +$${Math.floor(potentialIncomeRate)}/min\n`;
+        text += `(at ${this.scene.timeSpeed}x speed)\n`;
+        text += `\n💸 EXPENSES:\n`;
+        text += `Property Tax: -$${dailyTaxes}/game-day\n`;
         if (dailyMaintenance > 0) {
-            text += `Maintenance: -$${dailyMaintenance}\n`;
+            text += `Maintenance: -$${dailyMaintenance}/game-day\n`;
         }
         const totalExpenses = dailyTaxes + dailyMaintenance;
-        text += `Total: -$${totalExpenses}\n`;
-
-        // Note about game day timing
-        const gameDayMinutes = Math.ceil(1440 / (2.5 * this.scene.timeSpeed)); // rough estimate
-        text += `\n(Game day ≈ ${gameDayMinutes} real min at ${this.scene.timeSpeed}x speed)\n`;
+        text += `Total per day: -$${totalExpenses}\n`;
         text += `\n`;
 
         // Per-street breakdown
