@@ -76,6 +76,8 @@ export const BuildingTypes = {
         width: 200,
         height: 240,
         color: 0xFF69B4,
+        incomeRate: 6,
+        maxIncome: 60,
         district: 'downtown',
         shopType: 'clothing'
     },
@@ -87,6 +89,8 @@ export const BuildingTypes = {
         width: 200,
         height: 240,
         color: 0x2196F3,
+        incomeRate: 8,
+        maxIncome: 80,
         district: 'downtown',
         shopType: 'electronics'
     },
@@ -98,6 +102,8 @@ export const BuildingTypes = {
         width: 200,
         height: 240,
         color: 0x8BC34A,
+        incomeRate: 7,
+        maxIncome: 70,
         district: 'downtown',
         shopType: 'grocery'
     },
@@ -109,6 +115,8 @@ export const BuildingTypes = {
         width: 200,
         height: 240,
         color: 0x9C27B0,
+        incomeRate: 5,
+        maxIncome: 50,
         district: 'downtown',
         shopType: 'bookstore'
     },
