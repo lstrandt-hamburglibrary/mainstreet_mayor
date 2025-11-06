@@ -2687,11 +2687,8 @@ class MainScene extends Phaser.Scene {
             }
         }
 
-        // Show street 1's sign by default
-        if (this.streets[0].sign && this.streets[0].signText) {
-            this.streets[0].signText.setText(this.streets[0].name || this.cityName);
-            this.streets[0].sign.setVisible(true);
-        }
+        // Street name is shown in top bar, no need for sign on street
+        // (sign container remains hidden)
 
         // For backward compatibility, set references to street 1
         this.groundY = this.streets[0].groundY;
@@ -2723,13 +2720,6 @@ class MainScene extends Phaser.Scene {
             return;
         }
 
-        // Hide all street signs first
-        for (let s of this.streets) {
-            if (s.sign) {
-                s.sign.setVisible(false);
-            }
-        }
-
         // Move player to the new street's Y position
         const newPlayerY = street.platformY - 50; // Position player on the platform
         this.player.y = newPlayerY;
@@ -2741,12 +2731,8 @@ class MainScene extends Phaser.Scene {
         this.groundY = street.groundY;
         this.platformY = street.platformY;
 
-        // Show current street's sign with updated name
+        // Get street name for notification
         const streetName = street.name || `Street ${streetNumber}`;
-        if (street.sign && street.signText) {
-            street.signText.setText(streetName);
-            street.sign.setVisible(true);
-        }
 
         // Show notification with street name
         this.uiManager.addNotification(`🛣️ Now on: ${streetName}`);
