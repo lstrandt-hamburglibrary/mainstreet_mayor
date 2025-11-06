@@ -3917,10 +3917,10 @@ class MainScene extends Phaser.Scene {
                             let shouldCheckout = false;
 
                             if (!room.guest) {
-                                // Regular guest - increasing checkout chance based on nights stayed
-                                if (room.nightsOccupied === 1 && Math.random() < 0.4) {
+                                // Regular guest - higher checkout chances for better turnover
+                                if (room.nightsOccupied === 1 && Math.random() < 0.6) {
                                     shouldCheckout = true;
-                                } else if (room.nightsOccupied === 2 && Math.random() < 0.6) {
+                                } else if (room.nightsOccupied === 2 && Math.random() < 0.8) {
                                     shouldCheckout = true;
                                 } else if (room.nightsOccupied >= 3) {
                                     shouldCheckout = true; // Always checkout after 3 nights
@@ -3940,6 +3940,7 @@ class MainScene extends Phaser.Scene {
                                 room.isOccupied = false;
                                 room.guest = null; // Clear guest reference
                                 room.nightsOccupied = 0;
+                                room.lastCheckoutTime = this.gameTime; // Track when guest left
                                 console.log(`Guest checked out of room ${roomIndex + 1}`);
 
                                 // If maid is hired, clean the room immediately
@@ -3953,11 +3954,17 @@ class MainScene extends Phaser.Scene {
                                     }
                                 }
                             }
-                        } else if (room.status === 'clean' && !room.isOccupied && Math.random() < 0.5) {
-                            // Room is clean and not occupied by tourist - 50% chance random guest checks in
-                            room.status = 'occupied';
-                            room.nightsOccupied = 0; // Will become 1 on next night check
-                            console.log(`New guest checked into room ${roomIndex + 1}`);
+                        } else if (room.status === 'clean' && !room.isOccupied) {
+                            // Room is clean - check if enough time has passed since last guest
+                            const timeSinceCheckout = this.gameTime - (room.lastCheckoutTime || 0);
+                            const minVacancyTime = 120; // Room must be vacant for at least 2 game hours (120 minutes)
+
+                            if (timeSinceCheckout >= minVacancyTime && Math.random() < 0.3) {
+                                // 30% chance random guest checks in after cooldown
+                                room.status = 'occupied';
+                                room.nightsOccupied = 0; // Will become 1 on next night check
+                                console.log(`New guest checked into room ${roomIndex + 1}`);
+                            }
                         }
                         // Dirty rooms stay dirty until mayor cleans them
                     }
