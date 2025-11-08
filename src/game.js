@@ -195,15 +195,8 @@ class MainScene extends Phaser.Scene {
         // Stars - appear at night
         this.createStars();
 
-        // Multi-street system: Each street has ground, platform, and furniture
-        this.streets = []; // Array to hold all street data
-        this.streetSpacing = 700; // Vertical spacing between streets
-        this.maxStreets = 10; // Maximum streets that can be built (for now)
-        this.unlockedStreets = 1; // Start with 1 street, unlock more via missions
-        this.currentStreet = 1; // Which street player is currently on
-
-        // Create all potential streets (will show/hide based on unlockedStreets)
-        this.createStreets();
+        // Single street (ground and platform)
+        this.createSingleStreet();
 
         // Add street furniture (benches, lamp posts, trash cans, mailboxes)
         this.lampPosts = []; // Track lamp posts for day/night lighting
@@ -384,8 +377,6 @@ class MainScene extends Phaser.Scene {
         this.eKey = this.input.keyboard.addKey('E');
         this.escKey = this.input.keyboard.addKey('ESC');
         this.rKey = this.input.keyboard.addKey('R');
-        this.pageUpKey = this.input.keyboard.addKey('PAGE_UP');
-        this.pageDownKey = this.input.keyboard.addKey('PAGE_DOWN');
         this.tKey = this.input.keyboard.addKey('T');
         this.cKey = this.input.keyboard.addKey('C');
         this.pKey = this.input.keyboard.addKey('P');
@@ -553,8 +544,8 @@ class MainScene extends Phaser.Scene {
         this.streetNameDisplay.setScrollFactor(0);
         this.streetNameDisplay.setDepth(26000);
 
-        // Initialize with current street name
-        this.updateStreetNameDisplay();
+        // Set street name to city name
+        this.streetNameDisplay.setText(`🛣️ ${this.cityName}`);
 
         // Stats button
         this.statsButton = this.add.text(this.gameWidth - 450, 20, '📊 STATS', {
@@ -2659,251 +2650,30 @@ class MainScene extends Phaser.Scene {
         }
     }
 
-    createStreets() {
-        // Create multiple parallel streets
-        // Street 1 is at the bottom (current position)
-        // Street 2+ are above it, spaced by streetSpacing pixels
+    createSingleStreet() {
+        // Create the main street (ground and platform)
+        const groundY = this.gameHeight - 50;
+        const platformY = this.gameHeight - 100;
 
-        for (let i = 0; i < this.maxStreets; i++) {
-            const streetNumber = i + 1;
+        // Create ground (gray road)
+        this.ground = this.add.rectangle(6000, groundY, 12000, 100, 0x555555);
+        this.ground.setDepth(-10);
+        this.groundY = groundY;
 
-            // Calculate Y position for this street
-            // Street 1: gameHeight - 50
-            // Street 2: gameHeight - 50 - 700 = gameHeight - 750
-            // Street 3: gameHeight - 50 - 1400, etc.
-            const groundY = this.gameHeight - 50 - (i * this.streetSpacing);
-            const platformY = this.gameHeight - 100 - (i * this.streetSpacing);
+        // Create platform for physics
+        this.groundPlatform = this.physics.add.staticGroup();
+        this.groundPlatformBody = this.groundPlatform.create(6000, platformY, null).setSize(12000, 20).setVisible(false);
+        this.groundPlatformBody.refreshBody();
+        this.platformY = platformY;
 
-            // Create ground (gray road) - only for unlocked streets
-            let ground = null;
-            if (streetNumber <= this.unlockedStreets) {
-                ground = this.add.rectangle(6000, groundY, 12000, 100, 0x555555);
-                ground.setDepth(-10 + i * 0.1); // Slightly different depth for each street
-                console.log(`✅ Created ground for street ${streetNumber} at Y=${groundY}`);
-            } else {
-                console.log(`🚫 Skipped ground creation for locked street ${streetNumber}`);
-            }
-
-            // Create platform for physics
-            const platform = this.physics.add.staticGroup();
-            const platformBody = platform.create(6000, platformY, null).setSize(12000, 20).setVisible(false);
-            platformBody.refreshBody();
-
-            // Create street name sign (will be updated with actual name later)
-            const signBg = this.add.graphics();
-            signBg.fillStyle(0x1a1a1a, 0.9);
-            signBg.fillRoundedRect(0, 0, 300, 80, 8);
-            signBg.lineStyle(3, 0xFFD700, 1);
-            signBg.strokeRoundedRect(0, 0, 300, 80, 8);
-
-            const signText = this.add.text(150, 40, `Street ${streetNumber}`, {
-                fontSize: '24px',
-                fontWeight: 'bold',
-                color: '#FFD700',
-                stroke: '#000000',
-                strokeThickness: 3
-            });
-            signText.setOrigin(0.5);
-
-            const signContainer = this.add.container(100, groundY - 120);
-            signContainer.add([signBg, signText]);
-            signContainer.setScrollFactor(0); // Fixed to screen
-            signContainer.setDepth(10000); // Above everything
-            signContainer.setVisible(false); // Hidden initially
-
-            // Store street data
-            const streetData = {
-                number: streetNumber,
-                groundY: groundY,
-                platformY: platformY,
-                ground: ground,
-                platform: platform,
-                platformBody: platformBody,
-                name: null, // Will be set when street is named
-                sign: signContainer, // Street name sign
-                signText: signText, // Reference to text for updates
-                furniture: [] // Will be populated by createStreetFurniture
-            };
-
-            this.streets.push(streetData);
-
-            // Disable physics for locked streets
-            if (streetNumber > this.unlockedStreets) {
-                platformBody.setVisible(false);
-                platformBody.disableBody(); // Disable physics on locked streets
-            }
-
-            // Hide grounds for all streets except the current one
-            if (ground && streetNumber !== this.currentStreet) {
-                ground.setVisible(false);
-                console.log(`🚫 Hiding ground for street ${streetNumber} (not current street)`);
-            }
-        }
-
-        // Initialize first street with the city name (e.g., "Chewy Row")
-        if (!this.streetNames) {
-            this.streetNames = {};
-        }
-        this.streets[0].name = this.streetNames[1] || this.cityName;
-
-        // Restore saved street names for unlocked streets
-        for (let i = 1; i < this.maxStreets; i++) {
-            const streetData = this.streets[i];
-            if (streetData && this.unlockedStreets > i) {
-                streetData.name = this.streetNames[i + 1] || null;
-            }
-        }
-
-        // Street name is shown in top bar, no need for sign on street
-        // (sign container remains hidden)
-
-        // For backward compatibility, set references to street 1
-        this.groundY = this.streets[0].groundY;
-        this.ground = this.streets[0].ground;
-        this.groundPlatform = this.streets[0].platform;
-        this.platformY = this.streets[0].platformY;
-        this.groundPlatformBody = this.streets[0].platformBody;
-
-        // Add physics collisions for player with all street platforms
+        // Add physics collision with player (if player exists)
         if (this.player) {
-            this.streets.forEach(street => {
-                this.physics.add.collider(this.player, street.platform);
-            });
+            this.physics.add.collider(this.player, this.groundPlatform);
         }
 
-        console.log(`Created ${this.maxStreets} streets, ${this.unlockedStreets} unlocked`);
-
-        // Update camera bounds to fit all unlocked streets
-        this.updateCameraBoundsForStreets();
+        console.log(`✅ Created single street at Y=${groundY}`);
     }
 
-    updateCameraBoundsForStreets() {
-        // Calculate proper camera bounds to include all unlocked streets
-        // Street Y positions: Street 1 = gameHeight-50, Street 2 = gameHeight-750, etc.
-
-        // Safety check - ensure unlockedStreets is defined
-        if (!this.unlockedStreets || this.unlockedStreets < 1) {
-            console.warn('updateCameraBoundsForStreets called but unlockedStreets is invalid:', this.unlockedStreets);
-            // Set default camera bounds for single street
-            this.cameras.main.setBounds(0, 0, 12000, this.gameHeight);
-            return;
-        }
-
-        const lowestStreetY = this.gameHeight - 50; // Street 1 (bottom)
-        const highestStreetY = this.gameHeight - 50 - ((this.unlockedStreets - 1) * this.streetSpacing); // Highest unlocked street
-
-        // Add buffer zones
-        const buffer = 400;
-        const boundsTop = highestStreetY - buffer;
-        const boundsBottom = lowestStreetY + buffer;
-        const boundsHeight = boundsBottom - boundsTop;
-
-        // Set camera bounds: (x, y, width, height) where y is top-left corner
-        this.cameras.main.setBounds(0, boundsTop, 12000, boundsHeight);
-
-        console.log(`📹 Camera bounds: Y from ${boundsTop} to ${boundsBottom} (height: ${boundsHeight}), ${this.unlockedStreets} streets`);
-    }
-
-    updateStreetNameDisplay() {
-        // Update the street name display in bottom right corner
-        if (!this.streetNameDisplay) return;
-
-        const street = this.streets[this.currentStreet - 1];
-        const streetName = street?.name || this.streetNames?.[this.currentStreet] || `Street ${this.currentStreet}`;
-
-        this.streetNameDisplay.setText(`🛣️ ${streetName}`);
-    }
-
-    switchToStreet(streetNumber) {
-        // Switch player and camera to a different street
-        if (streetNumber < 1 || streetNumber > this.unlockedStreets) {
-            console.warn(`Cannot switch to street ${streetNumber} - not unlocked`);
-            return;
-        }
-
-        const street = this.streets[streetNumber - 1];
-        if (!street) {
-            console.warn(`Street ${streetNumber} does not exist`);
-            return;
-        }
-
-        // Move player to the new street's Y position
-        const newPlayerY = street.platformY - 50; // Position player on the platform
-        this.player.y = newPlayerY;
-
-        // Camera will follow player automatically due to startFollow()
-        console.log(`📹 Player moved to Y=${newPlayerY} on street ${streetNumber}`);
-
-        // Update current street reference
-        this.currentStreet = streetNumber;
-
-        // Update ground reference for building placement
-        this.groundY = street.groundY;
-        this.platformY = street.platformY;
-
-        // Hide all other streets' grounds, show only current street
-        this.streets.forEach((s, index) => {
-            const streetNum = index + 1;
-            if (s.ground) {
-                if (streetNum === streetNumber) {
-                    s.ground.setVisible(true);
-                    s.ground.y = s.groundY; // Restore correct position
-                    s.ground.setAlpha(1); // Restore full opacity
-                    console.log(`✅ Showing ground for street ${streetNum} at Y=${s.ground.y}, alpha=${s.ground.alpha}, visible=${s.ground.visible}`);
-                } else {
-                    s.ground.setVisible(false);
-                    s.ground.setAlpha(0); // Make completely transparent
-                    s.ground.y = -10000; // Move far off-screen as backup
-                    console.log(`🚫 Hiding ground for street ${streetNum} - moved to Y=${s.ground.y}, alpha=${s.ground.alpha}, visible=${s.ground.visible}`);
-                }
-            } else {
-                console.log(`⚠️ Street ${streetNum} has no ground object`);
-            }
-        });
-
-        // Hide/show buildings based on which street they're on
-        this.buildings.forEach(building => {
-            const buildingStreet = building.streetNumber || 1;
-            const isVisible = buildingStreet === streetNumber;
-
-            // Set visibility for all building components
-            if (building.graphics) building.graphics.setVisible(isVisible);
-            if (building.sign) building.sign.setVisible(isVisible);
-            if (building.signText) building.signText.setVisible(isVisible);
-            if (building.nameLabel) building.nameLabel.setVisible(isVisible);
-            if (building.bonusIndicator) building.bonusIndicator.setVisible(isVisible);
-            if (building.incomeIndicator) building.incomeIndicator.setVisible(false); // Always hidden by default
-            if (building.resourceIndicator) building.resourceIndicator.setVisible(false); // Always hidden by default
-
-            // Hide window lights
-            if (building.windowLights) {
-                building.windowLights.forEach(light => light.setVisible(false));
-            }
-
-            // Hide vacancy signs
-            if (building.vacancySigns) {
-                building.vacancySigns.forEach(sign => {
-                    if (sign && sign.setVisible) sign.setVisible(isVisible);
-                });
-            }
-        });
-
-        // Get street name for notification
-        const streetName = street.name || `Street ${streetNumber}`;
-
-        // Show notification with street name
-        this.uiManager.addNotification(`🛣️ Now on: ${streetName}`);
-
-        // Update street name display
-        this.updateStreetNameDisplay();
-
-        // Update train visibility
-        if (this.trainSystem && this.trainSystem.updateTrainVisibility) {
-            this.trainSystem.updateTrainVisibility(streetNumber);
-        }
-
-        console.log(`Switched to street ${streetNumber}: ${streetName}`);
-    }
 
     createStars() {
         // Create twinkling stars (only visible at night)
@@ -4790,37 +4560,6 @@ class MainScene extends Phaser.Scene {
             this.cameras.main.scrollY = Phaser.Math.Clamp(this.cameras.main.scrollY, minScrollY, maxScrollY);
         }
 
-        // Street switching with Page Up/Page Down or Shift+Arrow keys (when not in menus or bird's eye view)
-        if (!this.birdsEyeView && !this.insideShop && !this.insideHotel && !this.insideRestaurant &&
-            !this.insideApartment && !this.schoolSystem.insideSchool && !this.bankMenuOpen &&
-            !this.buildMode && !this.deleteMode) {
-
-            const shiftKey = this.input.keyboard.addKey('SHIFT');
-            const upArrow = this.cursors.up;
-            const downArrow = this.cursors.down;
-
-            // Page Up or Shift+Up Arrow - Go to previous street (higher street number, visually above)
-            if (Phaser.Input.Keyboard.JustDown(this.pageUpKey) ||
-                (shiftKey.isDown && Phaser.Input.Keyboard.JustDown(upArrow))) {
-                if (this.currentStreet < this.unlockedStreets) {
-                    this.currentStreet++;
-                    this.switchToStreet(this.currentStreet);
-                } else {
-                    this.uiManager.addNotification('Already at the highest unlocked street');
-                }
-            }
-
-            // Page Down or Shift+Down Arrow - Go to next street (lower street number, visually below)
-            if (Phaser.Input.Keyboard.JustDown(this.pageDownKey) ||
-                (shiftKey.isDown && Phaser.Input.Keyboard.JustDown(downArrow))) {
-                if (this.currentStreet > 1) {
-                    this.currentStreet--;
-                    this.switchToStreet(this.currentStreet);
-                } else {
-                    this.uiManager.addNotification('Already at the first street');
-                }
-            }
-        }
 
         // Start holiday parade with P key (for testing/fun)
         if (Phaser.Input.Keyboard.JustDown(this.pKey) && !this.insideShop && !this.insideHotel && !this.insideRestaurant && !this.insideApartment && !this.schoolSystem.insideSchool && !this.bankMenuOpen) {
@@ -5884,9 +5623,7 @@ class MainScene extends Phaser.Scene {
             lastResourceTime: Date.now(),
             placedDistrict: placedDistrict,
             districtBonus: districtBonus,
-            facadeVariation: facadeVariation,  // Use the variation we already generated
-            streetNumber: this.currentStreet || 1,  // Track which street this building is on
-            streetBonus: 1.0  // Will be calculated based on district clustering
+            facadeVariation: facadeVariation  // Use the variation we already generated
         };
 
         // Add visual indicator if building is in correct district
