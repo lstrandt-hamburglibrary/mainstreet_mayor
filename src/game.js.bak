@@ -544,8 +544,8 @@ class MainScene extends Phaser.Scene {
         this.streetNameDisplay.setScrollFactor(0);
         this.streetNameDisplay.setDepth(26000);
 
-        // Set street name to city name
-        this.streetNameDisplay.setText(`🛣️ ${this.cityName}`);
+        // Initialize with current street name
+        this.updateStreetNameDisplay();
 
         // Stats button
         this.statsButton = this.add.text(this.gameWidth - 450, 20, '📊 STATS', {
@@ -1757,11 +1757,9 @@ class MainScene extends Phaser.Scene {
 
         // Restart confirmation UI (container with buttons)
         this.restartConfirmContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
-        this.restartConfirmContainer.setScrollFactor(0).setDepth(30000).setVisible(false);
+        this.restartConfirmContainer.setScrollFactor(0).setDepth(10000).setVisible(false);
 
-        // Background rectangle - make it interactive to block clicks to game behind
         const restartBg = this.add.rectangle(0, 0, 400, 180, 0xC62828, 1);
-        restartBg.setInteractive();
         this.restartConfirmContainer.add(restartBg);
 
         this.restartConfirmUI = this.add.text(0, -40, '', {
@@ -1776,7 +1774,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#D32F2F',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.restartConfirmContainer.add(this.restartConfirmButton);
 
         this.restartCancelButton = this.add.text(80, 40, 'CANCEL', {
@@ -1784,7 +1782,7 @@ class MainScene extends Phaser.Scene {
             color: '#ffffff',
             backgroundColor: '#424242',
             padding: { x: 20, y: 8 }
-        }).setOrigin(0.5).setInteractive();
+        }).setOrigin(0.5).setInteractive().setScrollFactor(0);
         this.restartConfirmContainer.add(this.restartCancelButton);
 
         this.restartConfirmButton.on('pointerover', () => this.restartConfirmButton.setStyle({ backgroundColor: '#EF5350' }));
@@ -4950,6 +4948,10 @@ class MainScene extends Phaser.Scene {
         if (this.resourceBuildingSystem.insideBuilding) {
             if (Phaser.Input.Keyboard.JustDown(this.eKey) || this.input.keyboard.addKey('ESC').isDown) {
                 this.resourceBuildingSystem.exitBuilding();
+            }
+            // Handle spacebar for minigame
+            if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
+                this.resourceBuildingSystem.handleSpacePress();
             }
         }
 

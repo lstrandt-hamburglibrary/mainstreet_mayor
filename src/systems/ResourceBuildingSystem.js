@@ -1,15 +1,17 @@
 /**
  * ResourceBuildingSystem - Manages entering lumber mills and brick factories
- * Allows players to enter and play minigames to earn resources
+ * Allows players to collect resources directly
  */
-import { ResourceMinigameSystem } from './ResourceMinigameSystem.js';
 
 export class ResourceBuildingSystem {
     constructor(scene) {
         this.scene = scene;
-        this.minigameSystem = new ResourceMinigameSystem(scene);
         this.insideBuilding = false;
         this.currentBuilding = null;
+        this.cooldowns = {
+            wood: 0,
+            bricks: 0
+        };
     }
 
     /**
@@ -45,7 +47,7 @@ export class ResourceBuildingSystem {
         if (this.interiorContainer) {
             this.interiorContainer.setVisible(false);
         }
-        if (this.playButton) this.playButton.setVisible(false);
+        if (this.collectButton) this.collectButton.setVisible(false);
         if (this.exitButton) this.exitButton.setVisible(false);
     }
 
@@ -103,8 +105,8 @@ export class ResourceBuildingSystem {
             }).setOrigin(0.5);
             this.interiorContainer.add(this.cooldownText);
 
-            // Play Minigame Button - NOT in container, separate object with high depth
-            this.playButton = this.scene.add.text(this.scene.gameWidth / 2, 250, '▶ PLAY MINIGAME (Earn 10 Resources!) ◀', {
+            // Collect Resources Button
+            this.collectButton = this.scene.add.text(this.scene.gameWidth / 2, 250, '📦 COLLECT RESOURCES (10 Resources) 📦', {
                 fontSize: '24px',
                 fontWeight: 'bold',
                 color: '#ffffff',
@@ -112,28 +114,27 @@ export class ResourceBuildingSystem {
                 padding: { x: 30, y: 15 }
             }).setOrigin(0.5);
 
-            this.playButton.setScrollFactor(0);
-            this.playButton.setDepth(16000); // Higher than container
-            this.playButton.setInteractive();
+            this.collectButton.setScrollFactor(0);
+            this.collectButton.setDepth(16000);
+            this.collectButton.setInteractive();
 
-            this.playButton.on('pointerdown', () => {
-                console.log('🎮 Play button clicked!');
-                this.startMinigame();
+            this.collectButton.on('pointerdown', () => {
+                console.log('📦 Collect button clicked!');
+                this.collectResources();
             });
 
-            this.playButton.on('pointerover', () => {
-                console.log('Hover over play button');
-                this.playButton.setStyle({ backgroundColor: '#66BB6A' });
+            this.collectButton.on('pointerover', () => {
+                console.log('Hover over collect button');
+                this.collectButton.setStyle({ backgroundColor: '#66BB6A' });
             });
 
-            this.playButton.on('pointerout', () => {
-                this.playButton.setStyle({ backgroundColor: '#4CAF50' });
+            this.collectButton.on('pointerout', () => {
+                this.collectButton.setStyle({ backgroundColor: '#4CAF50' });
             });
 
-            // Don't add to container - keep separate
-            this.playButton.setVisible(false);
+            this.collectButton.setVisible(false);
 
-            // Exit button - NOT in container, separate object with high depth
+            // Exit button
             this.exitButton = this.scene.add.text(this.scene.gameWidth / 2, 330, 'EXIT (Press E)', {
                 fontSize: '18px',
                 color: '#ffffff',
@@ -142,7 +143,7 @@ export class ResourceBuildingSystem {
             }).setOrigin(0.5);
 
             this.exitButton.setScrollFactor(0);
-            this.exitButton.setDepth(16000); // Higher than container
+            this.exitButton.setDepth(16000);
             this.exitButton.setInteractive();
 
             this.exitButton.on('pointerdown', () => {
@@ -155,7 +156,6 @@ export class ResourceBuildingSystem {
             });
             this.exitButton.on('pointerout', () => this.exitButton.setStyle({ backgroundColor: '#757575' }));
 
-            // Don't add to container - keep separate
             this.exitButton.setVisible(false);
         }
 
@@ -166,15 +166,30 @@ export class ResourceBuildingSystem {
         const resourceType = isLumberMill ? 'wood' : 'bricks';
 
         this.buildingNameLabel.setText(`${icon} ${name} ${icon}`);
-        this.descriptionText.setText(`Test your timing to collect resources!\nClick when the indicator is in the green zone.`);
+        this.descriptionText.setText(`Collect resources from the ${name.toLowerCase()}.`);
 
         // Update button state and cooldown text
         this.updateCooldownDisplay();
 
         // Show the container and buttons
         this.interiorContainer.setVisible(true);
-        if (this.playButton) this.playButton.setVisible(true);
+        if (this.collectButton) this.collectButton.setVisible(true);
         if (this.exitButton) this.exitButton.setVisible(true);
+    }
+
+    /**
+     * Check if resource collection is available (not on cooldown)
+     */
+    canCollectResources(resourceType) {
+        return this.scene.gameTime >= this.cooldowns[resourceType];
+    }
+
+    /**
+     * Get remaining cooldown time in seconds
+     */
+    getRemainingCooldown(resourceType) {
+        const remaining = this.cooldowns[resourceType] - this.scene.gameTime;
+        return Math.max(0, Math.ceil(remaining / 60)); // Convert to game minutes
     }
 
     /**
@@ -184,53 +199,64 @@ export class ResourceBuildingSystem {
         if (!this.currentBuilding) return;
 
         const resourceType = this.currentBuilding.type === 'lumbermill' ? 'wood' : 'bricks';
-        const canPlay = this.minigameSystem.canPlayMinigame(resourceType);
+        const canCollect = this.canCollectResources(resourceType);
 
-        if (canPlay) {
-            this.cooldownText.setText('✓ Minigame Ready!');
+        if (canCollect) {
+            this.cooldownText.setText('✓ Resources Ready!');
             this.cooldownText.setStyle({ color: '#4CAF50' });
-            this.playButton.setStyle({ backgroundColor: '#4CAF50' });
-            this.playButton.setInteractive();
+            this.collectButton.setStyle({ backgroundColor: '#4CAF50' });
+            this.collectButton.setInteractive();
         } else {
-            const remaining = this.minigameSystem.getRemainingCooldown(resourceType);
+            const remaining = this.getRemainingCooldown(resourceType);
             this.cooldownText.setText(`⏰ Cooldown: ${remaining} minute${remaining !== 1 ? 's' : ''} remaining`);
             this.cooldownText.setStyle({ color: '#F44336' });
-            this.playButton.setStyle({ backgroundColor: '#9E9E9E' });
-            this.playButton.disableInteractive();
+            this.collectButton.setStyle({ backgroundColor: '#9E9E9E' });
+            this.collectButton.disableInteractive();
         }
     }
 
     /**
-     * Start the minigame
+     * Collect resources from the building
      */
-    startMinigame() {
+    collectResources() {
         if (!this.currentBuilding) {
             console.log('No current building');
             return;
         }
 
         const resourceType = this.currentBuilding.type === 'lumbermill' ? 'wood' : 'bricks';
-        console.log('Starting minigame for:', resourceType);
-        this.minigameSystem.startMinigame(resourceType);
+
+        if (!this.canCollectResources(resourceType)) {
+            const remaining = this.getRemainingCooldown(resourceType);
+            this.scene.uiManager.addNotification(`⏰ Cooldown: ${remaining} min remaining`);
+            return;
+        }
+
+        // Award resources
+        const reward = 10;
+        if (resourceType === 'wood') {
+            this.scene.wood += reward;
+            this.scene.uiManager.addNotification(`🪵 +${reward} wood collected!`);
+        } else {
+            this.scene.bricks += reward;
+            this.scene.uiManager.addNotification(`🧱 +${reward} bricks collected!`);
+        }
+
+        // Set cooldown (5 minutes = 300 game seconds)
+        this.cooldowns[resourceType] = this.scene.gameTime + 300;
+
+        // Update UI
+        this.scene.uiManager.updateMoneyUI();
+        this.updateCooldownDisplay();
     }
 
     /**
      * Update method called from main game loop
      */
     update(deltaTime) {
-        // Update minigame if active
-        this.minigameSystem.update(deltaTime);
-
         // Update cooldown display if inside building
-        if (this.insideBuilding && !this.minigameSystem.minigameActive) {
+        if (this.insideBuilding) {
             this.updateCooldownDisplay();
         }
-    }
-
-    /**
-     * Handle spacebar press
-     */
-    handleSpacePress() {
-        this.minigameSystem.handleSpacePress();
     }
 }
