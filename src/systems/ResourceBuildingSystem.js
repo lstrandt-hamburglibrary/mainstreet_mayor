@@ -216,15 +216,18 @@ export class ResourceBuildingSystem {
     }
 
     /**
-     * Collect resources from the building
+     * Collect resources from the building (called from main game when pressing E)
      */
     collectResources() {
-        if (!this.currentBuilding) {
-            console.log('No current building');
+        // Use nearResourceBuilding from the scene (for direct E key collection)
+        const building = this.currentBuilding || this.scene.nearResourceBuilding;
+
+        if (!building) {
+            console.log('No building to collect from');
             return;
         }
 
-        const resourceType = this.currentBuilding.type === 'lumbermill' ? 'wood' : 'bricks';
+        const resourceType = building.type === 'lumbermill' ? 'wood' : 'bricks';
 
         if (!this.canCollectResources(resourceType)) {
             const remaining = this.getRemainingCooldown(resourceType);
@@ -247,7 +250,11 @@ export class ResourceBuildingSystem {
 
         // Update UI
         this.scene.uiManager.updateMoneyUI();
-        this.updateCooldownDisplay();
+
+        // Only update cooldown display if inside building
+        if (this.insideBuilding) {
+            this.updateCooldownDisplay();
+        }
     }
 
     /**
