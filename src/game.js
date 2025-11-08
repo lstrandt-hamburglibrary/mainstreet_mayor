@@ -1970,29 +1970,6 @@ class MainScene extends Phaser.Scene {
         // Load saved game if exists
         this.saveSystem.loadGame();
 
-        // Hide buildings from other streets (only show current street's buildings)
-        this.buildings.forEach(building => {
-            const buildingStreet = building.streetNumber || 1;
-            if (buildingStreet !== this.currentStreet) {
-                if (building.graphics) building.graphics.setVisible(false);
-                if (building.sign) building.sign.setVisible(false);
-                if (building.signText) building.signText.setVisible(false);
-                if (building.nameLabel) building.nameLabel.setVisible(false);
-                if (building.bonusIndicator) building.bonusIndicator.setVisible(false);
-                if (building.incomeIndicator) building.incomeIndicator.setVisible(false);
-                if (building.resourceIndicator) building.resourceIndicator.setVisible(false);
-                if (building.windowLights) {
-                    building.windowLights.forEach(light => light.setVisible(false));
-                }
-                if (building.vacancySigns) {
-                    building.vacancySigns.forEach(sign => {
-                        if (sign && sign.setVisible) sign.setVisible(false);
-                    });
-                }
-                console.log(`🚫 Hiding building on street ${buildingStreet} (current: ${this.currentStreet})`);
-            }
-        });
-
         // Check for vacant apartments after loading and generate applications
         this.checkVacantApartmentsAfterLoad();
 
@@ -3622,13 +3599,11 @@ class MainScene extends Phaser.Scene {
         // Update building window lights based on time and occupancy
         for (let building of this.buildings) {
             if (building.windowLights) {
-                const buildingStreet = building.streetNumber || 1;
-                const isOnCurrentStreet = buildingStreet === this.currentStreet;
 
                 if (building.type === 'house') {
                     // Houses: all windows lit at night (only if on current street)
                     for (let light of building.windowLights) {
-                        light.setVisible(isNight && isOnCurrentStreet);
+                        light.setVisible(isNight);
                     }
                 } else if (building.type === 'apartment') {
                     // Apartments: only lit if unit is occupied (rented) and on current street
@@ -3637,7 +3612,7 @@ class MainScene extends Phaser.Scene {
                         const windowsPerUnit = 2;
                         const actualUnitIndex = Math.floor(building.windowLights.indexOf(light) / windowsPerUnit);
                         const isOccupied = building.units && building.units[actualUnitIndex] && building.units[actualUnitIndex].rented;
-                        light.setVisible(isNight && isOccupied && isOnCurrentStreet);
+                        light.setVisible(isNight && isOccupied);
                     }
                 } else if (building.type === 'hotel') {
                     // Hotel: only lit if room is occupied and on current street
@@ -3645,7 +3620,7 @@ class MainScene extends Phaser.Scene {
                         const windowsPerRoom = 2;
                         const roomIndex = Math.floor(building.windowLights.indexOf(light) / windowsPerRoom);
                         const isOccupied = building.rooms && building.rooms[roomIndex] && building.rooms[roomIndex].status === 'occupied';
-                        light.setVisible(isNight && isOccupied && isOnCurrentStreet);
+                        light.setVisible(isNight && isOccupied);
                     }
                 }
             }
@@ -3707,10 +3682,8 @@ class MainScene extends Phaser.Scene {
                 building.lastIncomeTime = now;
 
                 // Show $ indicator if income is ready to collect (> $5) and on current street
-                const buildingStreet = building.streetNumber || 1;
-                const isOnCurrentStreet = buildingStreet === this.currentStreet;
 
-                if (building.accumulatedIncome >= 5 && isOnCurrentStreet) {
+                if (building.accumulatedIncome >= 5) {
                     if (!building.incomeIndicator) {
                         building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
                             fontSize: '24px'
@@ -3739,10 +3712,8 @@ class MainScene extends Phaser.Scene {
                 building.lastResourceTime = now;
 
                 // Show resource indicator if resources are available (>= 1) and on current street
-                const buildingStreet = building.streetNumber || 1;
-                const isOnCurrentStreet = buildingStreet === this.currentStreet;
 
-                if (building.storedResources >= 1 && isOnCurrentStreet) {
+                if (building.storedResources >= 1) {
                     const icon = buildingType.resourceType === 'wood' ? '🪵' : '🧱';
                     if (!building.resourceIndicator || !building.resourceIndicator.scene) {
                         building.resourceIndicator = this.add.text(building.x, building.y - buildingType.height - 80, icon, {
@@ -3950,10 +3921,8 @@ class MainScene extends Phaser.Scene {
                 }
 
                 // Show income indicator if income is ready to collect and on current street
-                const buildingStreet = building.streetNumber || 1;
-                const isOnCurrentStreet = buildingStreet === this.currentStreet;
 
-                if (building.accumulatedIncome >= 1 && isOnCurrentStreet) {
+                if (building.accumulatedIncome >= 1) {
                     if (!building.incomeIndicator || !building.incomeIndicator.scene) {
                         building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
                             fontSize: '24px'
@@ -3969,10 +3938,8 @@ class MainScene extends Phaser.Scene {
             }
 
             // Entertainment and service building income indicators (arcade, library, museum)
-            const buildingStreet2 = building.streetNumber || 1;
-            const isOnCurrentStreet2 = buildingStreet2 === this.currentStreet;
 
-            if ((this.isEntertainment(building.type) || this.isService(building.type)) && building.accumulatedIncome >= 1 && isOnCurrentStreet2) {
+            if ((this.isEntertainment(building.type) || this.isService(building.type)) && building.accumulatedIncome >= 1) {
                 if (!building.incomeIndicator || !building.incomeIndicator.scene) {
                     building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
                         fontSize: '24px'
@@ -4645,8 +4612,7 @@ class MainScene extends Phaser.Scene {
             this.nearShop = null;
             let closestShopDistance = 150;
             for (let building of this.buildings) {
-                const buildingStreet = building.streetNumber || 1;
-                if (this.isShop(building.type) && buildingStreet === this.currentStreet) {
+                if (this.isShop(building.type)) {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestShopDistance) {
                         this.nearShop = building;
@@ -4688,8 +4654,7 @@ class MainScene extends Phaser.Scene {
             this.nearHotel = null;
             let closestHotelDistance = 150;
             for (let building of this.buildings) {
-                const buildingStreet = building.streetNumber || 1;
-                if (building.type === 'hotel' && buildingStreet === this.currentStreet) {
+                if (building.type === 'hotel') {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestHotelDistance) {
                         this.nearHotel = building;
@@ -4731,8 +4696,7 @@ class MainScene extends Phaser.Scene {
             this.nearRestaurant = null;
             let closestRestaurantDistance = 150;
             for (let building of this.buildings) {
-                const buildingStreet = building.streetNumber || 1;
-                if (this.isRestaurant(building.type) && buildingStreet === this.currentStreet) {
+                if (this.isRestaurant(building.type)) {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestRestaurantDistance) {
                         this.nearRestaurant = building;
@@ -4979,8 +4943,7 @@ class MainScene extends Phaser.Scene {
             this.nearApartment = null;
             let closestApartmentDistance = 150;
             for (let building of this.buildings) {
-                const buildingStreet = building.streetNumber || 1;
-                if (building.type === 'apartment' && buildingStreet === this.currentStreet) {
+                if (building.type === 'apartment') {
                     const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                     if (distance < closestApartmentDistance) {
                         this.nearApartment = building;
@@ -5128,10 +5091,6 @@ class MainScene extends Phaser.Scene {
             // Skip if building type doesn't exist
             if (!building.type) continue;
 
-            // Only check buildings on current street
-            const buildingStreet = building.streetNumber || 1;
-            if (buildingStreet !== this.currentStreet) continue;
-
             const buildingType = this.buildingTypes[building.type];
             if (!buildingType) {
                 console.warn(`Building type ${building.type} not found in buildingTypes`);
@@ -5177,8 +5136,7 @@ class MainScene extends Phaser.Scene {
         this.nearResourceBuilding = null;
         let closestResourceDistance = 251; // Start at max range + 1
         for (let building of this.buildings) {
-            const buildingStreet = building.streetNumber || 1;
-            if ((building.type === 'market' || building.type === 'lumbermill' || building.type === 'brickfactory') && buildingStreet === this.currentStreet) {
+            if ((building.type === 'market' || building.type === 'lumbermill' || building.type === 'brickfactory')) {
                 const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, building.x, building.y);
                 if (distance < 250 && distance < closestResourceDistance) {
                     this.nearResourceBuilding = building;
@@ -5746,7 +5704,6 @@ class MainScene extends Phaser.Scene {
         const streetGroups = {};
 
         for (let building of this.buildings) {
-            const streetNum = building.streetNumber || 1;
             if (!streetGroups[streetNum]) {
                 streetGroups[streetNum] = {};
             }
@@ -5764,7 +5721,6 @@ class MainScene extends Phaser.Scene {
 
         // Calculate and apply bonuses
         for (let building of this.buildings) {
-            const streetNum = building.streetNumber || 1;
             const buildingType = this.buildingTypes[building.type];
             if (!buildingType) continue;
 
