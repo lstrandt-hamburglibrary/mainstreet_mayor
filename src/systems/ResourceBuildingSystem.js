@@ -8,10 +8,6 @@ export class ResourceBuildingSystem {
         this.scene = scene;
         this.insideBuilding = false;
         this.currentBuilding = null;
-        this.cooldowns = {
-            wood: 0,
-            bricks: 0
-        };
     }
 
     /**
@@ -168,8 +164,8 @@ export class ResourceBuildingSystem {
         this.buildingNameLabel.setText(`${icon} ${name} ${icon}`);
         this.descriptionText.setText(`Collect resources from the ${name.toLowerCase()}.`);
 
-        // Update button state and cooldown text
-        this.updateCooldownDisplay();
+        // Update button state and resource text
+        this.updateResourceDisplay();
 
         // Show the container and buttons
         this.interiorContainer.setVisible(true);
@@ -178,38 +174,21 @@ export class ResourceBuildingSystem {
     }
 
     /**
-     * Check if resource collection is available (not on cooldown)
+     * Update resource display
      */
-    canCollectResources(resourceType) {
-        return this.scene.gameTime >= this.cooldowns[resourceType];
-    }
-
-    /**
-     * Get remaining cooldown time in seconds
-     */
-    getRemainingCooldown(resourceType) {
-        const remaining = this.cooldowns[resourceType] - this.scene.gameTime;
-        return Math.max(0, Math.ceil(remaining / 60)); // Convert to game minutes
-    }
-
-    /**
-     * Update cooldown display
-     */
-    updateCooldownDisplay() {
+    updateResourceDisplay() {
         if (!this.currentBuilding) return;
 
-        const resourceType = this.currentBuilding.type === 'lumbermill' ? 'wood' : 'bricks';
-        const canCollect = this.canCollectResources(resourceType);
+        const available = Math.floor(this.currentBuilding.storedResources || 0);
 
-        if (canCollect) {
-            this.cooldownText.setText('✓ Resources Ready!');
+        if (available >= 1) {
+            this.cooldownText.setText(`✓ ${available} Resources Ready!`);
             this.cooldownText.setStyle({ color: '#4CAF50' });
             this.collectButton.setStyle({ backgroundColor: '#4CAF50' });
             this.collectButton.setInteractive();
         } else {
-            const remaining = this.getRemainingCooldown(resourceType);
-            this.cooldownText.setText(`⏰ Cooldown: ${remaining} minute${remaining !== 1 ? 's' : ''} remaining`);
-            this.cooldownText.setStyle({ color: '#F44336' });
+            this.cooldownText.setText(`⏰ Regenerating...`);
+            this.cooldownText.setStyle({ color: '#FFA726' });
             this.collectButton.setStyle({ backgroundColor: '#9E9E9E' });
             this.collectButton.disableInteractive();
         }
@@ -227,33 +206,32 @@ export class ResourceBuildingSystem {
             return;
         }
 
-        const resourceType = building.type === 'lumbermill' ? 'wood' : 'bricks';
-
-        if (!this.canCollectResources(resourceType)) {
-            const remaining = this.getRemainingCooldown(resourceType);
-            this.scene.uiManager.addNotification(`⏰ Cooldown: ${remaining} min remaining`);
+        // Check if resources are available
+        const available = Math.floor(building.storedResources || 0);
+        if (available < 1) {
+            this.scene.uiManager.addNotification(`⏰ No resources available yet - still regenerating`);
             return;
         }
 
-        // Award resources
-        const reward = 10;
+        // Collect all stored resources
+        const resourceType = building.type === 'lumbermill' ? 'wood' : 'bricks';
         if (resourceType === 'wood') {
-            this.scene.wood += reward;
-            this.scene.uiManager.addNotification(`🪵 +${reward} wood collected!`);
+            this.scene.wood += available;
+            this.scene.uiManager.addNotification(`🪵 +${available} wood collected!`);
         } else {
-            this.scene.bricks += reward;
-            this.scene.uiManager.addNotification(`🧱 +${reward} bricks collected!`);
+            this.scene.bricks += available;
+            this.scene.uiManager.addNotification(`🧱 +${available} bricks collected!`);
         }
 
-        // Set cooldown (5 minutes = 300 game seconds)
-        this.cooldowns[resourceType] = this.scene.gameTime + 300;
+        // Reset stored resources to 0
+        building.storedResources = 0;
 
         // Update UI
         this.scene.uiManager.updateMoneyUI();
 
-        // Only update cooldown display if inside building
+        // Only update resource display if inside building
         if (this.insideBuilding) {
-            this.updateCooldownDisplay();
+            this.updateResourceDisplay();
         }
     }
 
@@ -261,9 +239,9 @@ export class ResourceBuildingSystem {
      * Update method called from main game loop
      */
     update(deltaTime) {
-        // Update cooldown display if inside building
+        // Update resource display if inside building
         if (this.insideBuilding) {
-            this.updateCooldownDisplay();
+            this.updateResourceDisplay();
         }
     }
 }

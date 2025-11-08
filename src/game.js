@@ -5209,22 +5209,20 @@ class MainScene extends Phaser.Scene {
                 // Market opens a menu
                 promptText = `Press E: ${resourceType.name}`;
             } else if (this.nearResourceBuilding.type === 'lumbermill') {
-                // Lumber mill - collect resources directly
-                const resourceType = 'wood';
-                if (this.resourceBuildingSystem.canCollectResources(resourceType)) {
-                    promptText = `🪵 Press E: Collect 10 wood`;
+                // Lumber mill - collect accumulated resources
+                const available = Math.floor(this.nearResourceBuilding.storedResources || 0);
+                if (available >= 1) {
+                    promptText = `🪵 Press E: Collect ${available} wood`;
                 } else {
-                    const remaining = this.resourceBuildingSystem.getRemainingCooldown(resourceType);
-                    promptText = `🪵 Cooldown: ${remaining} min`;
+                    promptText = `🪵 Regenerating...`;
                 }
             } else if (this.nearResourceBuilding.type === 'brickfactory') {
-                // Brick factory - collect resources directly
-                const resourceType = 'bricks';
-                if (this.resourceBuildingSystem.canCollectResources(resourceType)) {
-                    promptText = `🧱 Press E: Collect 10 bricks`;
+                // Brick factory - collect accumulated resources
+                const available = Math.floor(this.nearResourceBuilding.storedResources || 0);
+                if (available >= 1) {
+                    promptText = `🧱 Press E: Collect ${available} bricks`;
                 } else {
-                    const remaining = this.resourceBuildingSystem.getRemainingCooldown(resourceType);
-                    promptText = `🧱 Cooldown: ${remaining} min`;
+                    promptText = `🧱 Regenerating...`;
                 }
             }
 
