@@ -65,15 +65,24 @@ class MainScene extends Phaser.Scene {
         // Creative mode (unlimited resources for building preview)
         this.creativeMode = false;
 
+        // Auto-collection setting (default to ON)
+        this.autoCollectionEnabled = true;
+
         // Pause system
         this.isPaused = false;
+
+        // Multi-street system
+        this.currentStreet = 1; // Which street the player is currently on (1-4)
+        this.unlockedStreets = 1; // How many streets are unlocked (starts with 1)
+        this.maxStreets = 4; // Maximum number of streets
+        this.streets = []; // Will store street data (platformY, name, etc.)
 
         // Building system
         this.buildMode = false;
         this.deleteMode = false;  // Delete building mode
         this.selectedBuilding = null;
         this.buildingPreview = null;
-        this.buildings = [];
+        this.buildings = []; // All buildings across all streets
 
         // Transit system
         this.buses = [];
@@ -90,6 +99,7 @@ class MainScene extends Phaser.Scene {
         this.insideShop = false;
         this.currentShop = null;
         this.nearShop = null;
+        this.lowStockPopupShowing = false; // Track if low stock popup is currently showing
 
         // Apartment viewing system
         this.insideApartment = false;
@@ -391,6 +401,7 @@ class MainScene extends Phaser.Scene {
         this.input.on('pointerdown', (pointer) => {
             // Handle build mode
             if (this.buildMode && this.buildingPreview && !this.buildConfirmShowing) {
+                console.log('🏗️ Build mode click detected - showing confirmation dialog');
                 // Save the position where user clicked
                 this.pendingBuildingX = this.buildingPreview.snappedX;
                 this.pendingBuildingY = this.buildingPreview.buildingY;
@@ -404,6 +415,9 @@ class MainScene extends Phaser.Scene {
                 this.buildConfirmUI.setText(`Place ${buildingType.name}?\n\nCost: $${cost}, 🪵${wood}, 🧱${bricks}`);
                 this.buildConfirmContainer.setVisible(true);
                 this.buildConfirmShowing = true;
+                console.log('Confirmation dialog shown, buildConfirmShowing:', this.buildConfirmShowing);
+            } else if (this.buildMode && this.buildingPreview && this.buildConfirmShowing) {
+                console.log('⚠️ Build mode click ignored - dialog already showing');
             }
 
             // Handle delete mode
@@ -597,7 +611,7 @@ class MainScene extends Phaser.Scene {
         this.settingsDropdown = this.add.container(this.gameWidth - 200, 55);
         this.settingsDropdown.setScrollFactor(0).setDepth(100000).setVisible(false);
 
-        const dropdownBg = this.add.rectangle(0, 0, 200, 240, 0x424242, 1);
+        const dropdownBg = this.add.rectangle(0, 0, 200, 270, 0x424242, 1);
         dropdownBg.setOrigin(0, 0);
         this.settingsDropdown.add(dropdownBg);
 
@@ -615,29 +629,36 @@ class MainScene extends Phaser.Scene {
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.creativeButton);
 
+        // Auto-collection toggle button
+        this.autoCollectionButton = this.add.text(10, 70, '💰 Auto-Collect: ON', {
+            fontSize: '14px',
+            color: '#ffffff'
+        }).setInteractive().setScrollFactor(0);
+        this.settingsDropdown.add(this.autoCollectionButton);
+
         // Travel button
-        this.travelButton = this.add.text(10, 70, '🚌 Fast Travel', {
+        this.travelButton = this.add.text(10, 100, '🚌 Fast Travel', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.travelButton);
 
         // Build button
-        this.buildButton = this.add.text(10, 100, '🏗️ Build Mode', {
+        this.buildButton = this.add.text(10, 130, '🏗️ Build Mode', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.buildButton);
 
         // Demolish button
-        this.demolishButton = this.add.text(10, 130, '💥 Demolish Mode', {
+        this.demolishButton = this.add.text(10, 160, '💥 Demolish Mode', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
         this.settingsDropdown.add(this.demolishButton);
 
         // Help button
-        this.helpButton = this.add.text(10, 160, '❓ Help / Controls', {
+        this.helpButton = this.add.text(10, 190, '❓ Help / Controls', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
@@ -650,7 +671,7 @@ class MainScene extends Phaser.Scene {
         });
 
         // Missions button (in dropdown menu)
-        this.menuMissionsButton = this.add.text(10, 190, '🏆 Missions', {
+        this.menuMissionsButton = this.add.text(10, 220, '🏆 Missions', {
             fontSize: '14px',
             color: '#ffffff'
         }).setInteractive().setScrollFactor(0);
@@ -667,7 +688,7 @@ class MainScene extends Phaser.Scene {
         });
 
         // Add hover effects to all dropdown buttons
-        [this.restartButton, this.creativeButton, this.travelButton, this.buildButton, this.demolishButton, this.helpButton, this.menuMissionsButton].forEach(btn => {
+        [this.restartButton, this.creativeButton, this.autoCollectionButton, this.travelButton, this.buildButton, this.demolishButton, this.helpButton, this.menuMissionsButton].forEach(btn => {
             btn.on('pointerover', () => btn.setStyle({ color: '#FFD700' }));
             btn.on('pointerout', () => btn.setStyle({ color: '#ffffff' }));
         });
@@ -684,6 +705,12 @@ class MainScene extends Phaser.Scene {
         this.creativeButton.on('pointerdown', () => {
             this.creativeMode = !this.creativeMode;
             this.creativeButton.setText(this.creativeMode ? '🎨 Creative: ON' : '🎨 Creative: OFF');
+        });
+
+        this.autoCollectionButton.on('pointerdown', () => {
+            this.autoCollectionEnabled = !this.autoCollectionEnabled;
+            this.autoCollectionButton.setText(this.autoCollectionEnabled ? '💰 Auto-Collect: ON' : '💰 Auto-Collect: OFF');
+            this.uiManager.addNotification(this.autoCollectionEnabled ? '💰 Auto-collection enabled' : '💰 Auto-collection disabled - collect manually with E');
         });
 
         this.travelButton.on('pointerdown', () => {
@@ -991,8 +1018,27 @@ class MainScene extends Phaser.Scene {
 
         this.buildConfirmButton.on('pointerdown', () => {
             console.log('✅ PLACE button clicked');
+            console.log('Current buildConfirmShowing:', this.buildConfirmShowing);
+            console.log('Container visible before processing?', this.buildConfirmContainer.visible);
+
+            // Prevent double-clicks
+            if (!this.buildConfirmShowing) {
+                console.log('Dialog already hidden, ignoring click');
+                return;
+            }
+
+            // Immediately disable button and hide dialog to prevent double-clicks
+            this.buildConfirmButton.disableInteractive();
+            this.buildCancelButton.disableInteractive();
+
+            // Hide dialog immediately
+            this.buildConfirmContainer.setVisible(false);
+            this.buildConfirmShowing = false;
+            console.log('Dialog hidden immediately at start of handler');
+
             try {
                 const success = this.placeBuilding();
+                console.log('placeBuilding returned:', success);
 
                 // Only clear selection if building was successfully placed
                 if (success !== false) {
@@ -1010,16 +1056,25 @@ class MainScene extends Phaser.Scene {
                 }
             } catch (error) {
                 console.error('Error placing building:', error);
+                console.error('Stack:', error.stack);
             } finally {
-                // ALWAYS hide the confirmation dialog, even if there was an error
-                this.buildConfirmContainer.setVisible(false);
-                this.buildConfirmShowing = false;
-                console.log('Confirmation dialog hidden, buildConfirmShowing:', this.buildConfirmShowing);
+                // Re-enable buttons for next use
+                this.buildConfirmButton.setInteractive();
+                this.buildCancelButton.setInteractive();
+                console.log('Handler completed, buttons re-enabled');
             }
         });
 
         this.buildCancelButton.on('pointerdown', () => {
             console.log('❌ CANCEL button clicked');
+
+            // Prevent double-clicks
+            if (!this.buildConfirmShowing) {
+                console.log('Dialog already hidden, ignoring cancel click');
+                return;
+            }
+
+            // Immediately hide dialog and disable buttons
             this.buildConfirmContainer.setVisible(false);
             this.buildConfirmShowing = false;
 
@@ -2630,27 +2685,50 @@ class MainScene extends Phaser.Scene {
     }
 
     createSingleStreet() {
-        // Create the main street (ground and platform)
-        const groundY = this.gameHeight - 50;
-        const platformY = this.gameHeight - 100;
+        // Create multiple streets (initially only street 1 is unlocked)
+        const streetNames = ['Main Street', '2nd Avenue', '3rd Boulevard', '4th Plaza'];
 
-        // Create ground (gray road)
-        this.ground = this.add.rectangle(6000, groundY, 12000, 100, 0x555555);
-        this.ground.setDepth(-10);
-        this.groundY = groundY;
+        for (let i = 0; i < this.maxStreets; i++) {
+            const streetNumber = i + 1;
+            const groundY = this.gameHeight - 50;
+            const platformY = this.gameHeight - 100;
 
-        // Create platform for physics
-        this.groundPlatform = this.physics.add.staticGroup();
-        this.groundPlatformBody = this.groundPlatform.create(6000, platformY, null).setSize(12000, 20).setVisible(false);
-        this.groundPlatformBody.refreshBody();
-        this.platformY = platformY;
+            // Create ground (gray road) for each street
+            const ground = this.add.rectangle(6000, groundY, 12000, 100, 0x555555);
+            ground.setDepth(-10);
+            ground.setVisible(streetNumber === this.currentStreet); // Only show current street
+
+            // Create platform for physics for each street
+            const platformGroup = this.physics.add.staticGroup();
+            const platformBody = platformGroup.create(6000, platformY, null).setSize(12000, 20).setVisible(false);
+            platformBody.refreshBody();
+
+            // Store street data
+            this.streets.push({
+                number: streetNumber,
+                name: streetNames[i],
+                ground: ground,
+                platform: platformGroup,
+                platformBody: platformBody,
+                groundY: groundY,
+                platformY: platformY,
+                unlocked: streetNumber === 1 // Only street 1 starts unlocked
+            });
+        }
+
+        // Set references for current street (for backward compatibility)
+        this.ground = this.streets[0].ground;
+        this.groundPlatform = this.streets[0].platform;
+        this.groundPlatformBody = this.streets[0].platformBody;
+        this.groundY = this.streets[0].groundY;
+        this.platformY = this.streets[0].platformY;
 
         // Add physics collision with player (if player exists)
         if (this.player) {
             this.physics.add.collider(this.player, this.groundPlatform);
         }
 
-        console.log(`✅ Created single street at Y=${groundY}`);
+        console.log(`✅ Created ${this.maxStreets} streets (${this.unlockedStreets} unlocked)`);
     }
 
 
@@ -3216,28 +3294,21 @@ class MainScene extends Phaser.Scene {
     }
 
     spawnBuses() {
-        // Spawn buses across all unlocked streets
-        // 2 buses per street for better coverage
-        for (let i = 0; i < this.unlockedStreets; i++) {
-            const street = this.streets[i];
-            if (!street) continue;
+        // Spawn 2 buses on the single main street for better coverage
+        const busY = (this.platformY || this.gameHeight - 100) - 40; // Position above the street platform
 
-            const busY = street.platformY - 40; // Position above the street platform
+        // Bus 1 - starts at beginning
+        this.createBus(500, busY, 1);
 
-            // Bus 1 on this street - starts at beginning
-            this.createBus(500 + (i * 200), busY, 1, i + 1);
+        // Bus 2 - starts at middle
+        this.createBus(6000, busY, 1);
 
-            // Bus 2 on this street - starts at middle
-            this.createBus(6000 + (i * 200), busY, 1, i + 1);
-        }
-
-        console.log(`Spawned ${this.unlockedStreets * 2} buses across ${this.unlockedStreets} street(s)`);
+        console.log(`Spawned 2 buses on Main Street`);
     }
 
-    createBus(startX, startY, direction, streetNumber = 1) {
+    createBus(startX, startY, direction) {
         const bus = this.add.container(startX, startY);
         bus.setDepth(12); // Above buildings (10), below player (100)
-        bus.streetNumber = streetNumber; // Track which street this bus operates on
 
         // Bus body (big yellow/orange bus)
         const body = this.add.graphics();
@@ -3662,8 +3733,8 @@ class MainScene extends Phaser.Scene {
                     continue;
                 }
 
-                // Income accumulation for houses, shops, restaurants
-                if (buildingType && buildingType.incomeRate) {
+                // Income accumulation for houses (NOT shops or restaurants - they only earn from customers)
+                if (buildingType && buildingType.incomeRate && !this.isShop(building.type) && !this.isRestaurant(building.type)) {
                 // Calculate time elapsed in minutes (adjusted for time speed)
                 const elapsedMinutes = ((now - building.lastIncomeTime) / 60000) * this.timeSpeed;
                 const districtBonus = building.districtBonus || 1.0;
@@ -3683,6 +3754,39 @@ class MainScene extends Phaser.Scene {
 
                 // Show $ indicator if income is ready to collect (> $5) and on current street
 
+                // Automatic income collection (collect every $50 or every 5 game minutes, minimum $5)
+                if (this.autoCollectionEnabled) {
+                    if (!building.lastAutoCollectionTime) {
+                        building.lastAutoCollectionTime = this.gameTime;
+                    }
+
+                    const autoCollectThreshold = 50; // Auto-collect when income reaches $50
+                    const autoCollectInterval = 5; // Or every 5 game minutes
+                    const minimumCollectionAmount = 5; // Don't collect less than $5 to avoid spam
+                    const minutesSinceLastCollection = this.gameTime - building.lastAutoCollectionTime;
+
+                    if (building.accumulatedIncome >= autoCollectThreshold ||
+                        (building.accumulatedIncome >= minimumCollectionAmount && minutesSinceLastCollection >= autoCollectInterval)) {
+                        // Auto-collect the income
+                        const collectedAmount = Math.floor(building.accumulatedIncome);
+                        this.money += collectedAmount;
+                        this.money = Math.round(this.money);
+                        building.accumulatedIncome = 0;
+                        building.lastAutoCollectionTime = this.gameTime;
+
+                        // Show notification
+                        const buildingName = buildingType.name || building.type;
+                        this.uiManager.addNotification(`💰 Auto-collected $${collectedAmount} from ${buildingName}`);
+                        this.uiManager.updateMoneyUI();
+
+                        // Hide income indicator
+                        if (building.incomeIndicator) {
+                            building.incomeIndicator.setVisible(false);
+                        }
+                    }
+                }
+
+                // Show $ indicator if income is accumulating (> $5) and on current street
                 if (building.accumulatedIncome >= 5) {
                     if (!building.incomeIndicator) {
                         building.incomeIndicator = this.add.text(building.x, building.y - buildingType.height - 80, '💰', {
@@ -3978,6 +4082,59 @@ class MainScene extends Phaser.Scene {
                 }
             }
 
+            // Shop auto-collection and low stock alerts
+            if (this.isShop(building.type)) {
+                // Auto-collection (only if enabled)
+                if (this.autoCollectionEnabled) {
+                    // Initialize auto-collection tracking
+                    if (!building.lastAutoCollectionTime) {
+                        building.lastAutoCollectionTime = this.gameTime;
+                    }
+
+                    // Auto-collect shop income every $100 or every 5 game minutes (minimum $10 to avoid spam)
+                    const autoCollectThreshold = 100;
+                    const autoCollectInterval = 5;
+                    const minimumCollectionAmount = 10; // Don't collect less than $10
+                    const minutesSinceLastCollection = this.gameTime - building.lastAutoCollectionTime;
+
+                    if (building.accumulatedIncome >= autoCollectThreshold ||
+                        (building.accumulatedIncome >= minimumCollectionAmount && minutesSinceLastCollection >= autoCollectInterval)) {
+                        const collectedAmount = Math.floor(building.accumulatedIncome);
+                        this.money += collectedAmount;
+                        this.money = Math.round(this.money);
+                        building.accumulatedIncome = 0;
+                        building.lastAutoCollectionTime = this.gameTime;
+
+                        const shopName = buildingType.name || building.type;
+                        this.uiManager.addNotification(`💰 Auto-collected $${collectedAmount} from ${shopName}`);
+                        this.uiManager.updateMoneyUI();
+
+                        // Hide income indicator
+                        if (building.incomeIndicator) {
+                            building.incomeIndicator.setVisible(false);
+                        }
+                    }
+                }
+
+                // Low stock alert system
+                if (building.inventory && building.inventory.stock <= 10 && building.inventory.stock > 0) {
+                    // Track if we've already alerted for this stock level
+                    if (!building.lowStockAlerted || building.lastAlertStock !== building.inventory.stock) {
+                        const shopName = buildingType.name || building.type;
+                        this.uiManager.addNotification(`⚠️ ${shopName} is LOW ON STOCK! (${building.inventory.stock} remaining)`);
+                        building.lowStockAlerted = true;
+                        building.lastAlertStock = building.inventory.stock;
+
+                        // Show popup warning
+                        this.showLowStockPopup(building, shopName);
+                    }
+                } else if (building.inventory && building.inventory.stock > 10) {
+                    // Reset alert flag when stock is replenished
+                    building.lowStockAlerted = false;
+                    building.lastAlertStock = null;
+                }
+            }
+
             // Shop employee wage payment (daily)
             if (this.isShop(building.type) && building.hasEmployee && building.dailyWage > 0) {
                 const currentDay = Math.floor(this.gameTime / (24 * 60)); // Current day number
@@ -3999,6 +4156,70 @@ class MainScene extends Phaser.Scene {
                     // Update shop UI if player is viewing this shop
                     if (this.insideShop && this.currentShop === building) {
                         this.shopSystem.updateShopInventoryUI();
+                    }
+                }
+            }
+
+            // Hotel auto-collection
+            if (building.type === 'hotel' && this.autoCollectionEnabled) {
+                // Initialize auto-collection tracking
+                if (!building.lastAutoCollectionTime) {
+                    building.lastAutoCollectionTime = this.gameTime;
+                }
+
+                // Auto-collect hotel income every $150 or every 5 game minutes (minimum $50 to avoid spam)
+                const autoCollectThreshold = 150;
+                const autoCollectInterval = 5;
+                const minimumCollectionAmount = 50; // Don't collect less than $50
+                const minutesSinceLastCollection = this.gameTime - building.lastAutoCollectionTime;
+
+                if (building.accumulatedIncome >= autoCollectThreshold ||
+                    (building.accumulatedIncome >= minimumCollectionAmount && minutesSinceLastCollection >= autoCollectInterval)) {
+                    const collectedAmount = Math.floor(building.accumulatedIncome);
+                    this.money += collectedAmount;
+                    this.money = Math.round(this.money);
+                    building.accumulatedIncome = 0;
+                    building.lastAutoCollectionTime = this.gameTime;
+
+                    const hotelName = buildingType.name || 'Hotel';
+                    this.uiManager.addNotification(`💰 Auto-collected $${collectedAmount} from ${hotelName}`);
+                    this.uiManager.updateMoneyUI();
+
+                    // Hide income indicator
+                    if (building.incomeIndicator) {
+                        building.incomeIndicator.setVisible(false);
+                    }
+                }
+            }
+
+            // Entertainment and service building auto-collection (arcade, library, museum, theme park, movie theater)
+            if ((this.isEntertainment(building.type) || this.isService(building.type)) && this.autoCollectionEnabled) {
+                // Initialize auto-collection tracking
+                if (!building.lastAutoCollectionTime) {
+                    building.lastAutoCollectionTime = this.gameTime;
+                }
+
+                // Auto-collect income every $50 or every 5 game minutes (minimum $10 to avoid spam)
+                const autoCollectThreshold = 50;
+                const autoCollectInterval = 5;
+                const minimumCollectionAmount = 10; // Don't collect less than $10
+                const minutesSinceLastCollection = this.gameTime - building.lastAutoCollectionTime;
+
+                if (building.accumulatedIncome >= autoCollectThreshold ||
+                    (building.accumulatedIncome >= minimumCollectionAmount && minutesSinceLastCollection >= autoCollectInterval)) {
+                    const collectedAmount = Math.floor(building.accumulatedIncome);
+                    this.money += collectedAmount;
+                    this.money = Math.round(this.money);
+                    building.accumulatedIncome = 0;
+                    building.lastAutoCollectionTime = this.gameTime;
+
+                    const buildingName = buildingType.name || building.type;
+                    this.uiManager.addNotification(`💰 Auto-collected $${collectedAmount} from ${buildingName}`);
+                    this.uiManager.updateMoneyUI();
+
+                    // Hide income indicator
+                    if (building.incomeIndicator) {
+                        building.incomeIndicator.setVisible(false);
                     }
                 }
             }
@@ -4063,6 +4284,38 @@ class MainScene extends Phaser.Scene {
 
                 // Maid now cleans rooms immediately when guests check out (see checkout logic above)
                 // No need for time-interval cleaning anymore!
+            }
+
+            // Restaurant auto-collection
+            if (this.isRestaurant(building.type) && this.autoCollectionEnabled) {
+                // Initialize auto-collection tracking
+                if (!building.lastAutoCollectionTime) {
+                    building.lastAutoCollectionTime = this.gameTime;
+                }
+
+                // Auto-collect restaurant income every $100 or every 5 game minutes (minimum $15 to avoid spam)
+                const autoCollectThreshold = 100;
+                const autoCollectInterval = 5;
+                const minimumCollectionAmount = 15; // Don't collect less than $15
+                const minutesSinceLastCollection = this.gameTime - building.lastAutoCollectionTime;
+
+                if (building.accumulatedIncome >= autoCollectThreshold ||
+                    (building.accumulatedIncome >= minimumCollectionAmount && minutesSinceLastCollection >= autoCollectInterval)) {
+                    const collectedAmount = Math.floor(building.accumulatedIncome);
+                    this.money += collectedAmount;
+                    this.money = Math.round(this.money);
+                    building.accumulatedIncome = 0;
+                    building.lastAutoCollectionTime = this.gameTime;
+
+                    const restaurantName = buildingType.name || building.type;
+                    this.uiManager.addNotification(`💰 Auto-collected $${collectedAmount} from ${restaurantName}`);
+                    this.uiManager.updateMoneyUI();
+
+                    // Hide income indicator
+                    if (building.incomeIndicator) {
+                        building.incomeIndicator.setVisible(false);
+                    }
+                }
             }
 
             // Restaurant waiter wage payment
@@ -5362,6 +5615,82 @@ class MainScene extends Phaser.Scene {
         return false; // No overlap
     }
 
+    showLowStockPopup(building, shopName) {
+        // Don't show popup if one is already showing
+        if (this.lowStockPopupShowing) {
+            return;
+        }
+
+        this.lowStockPopupShowing = true;
+
+        // Create popup container
+        const popupContainer = this.add.container(this.gameWidth / 2, this.gameHeight / 2);
+        popupContainer.setScrollFactor(0).setDepth(25000);
+
+        // Semi-transparent background overlay
+        const overlay = this.add.rectangle(0, 0, this.gameWidth, this.gameHeight, 0x000000, 0.7);
+        overlay.setOrigin(0.5);
+        popupContainer.add(overlay);
+
+        // Popup background
+        const popupBg = this.add.rectangle(0, 0, 500, 250, 0xFF6B6B, 1);
+        popupBg.setStrokeStyle(4, 0xFF0000);
+        popupContainer.add(popupBg);
+
+        // Warning icon
+        const warningIcon = this.add.text(0, -70, '⚠️', {
+            fontSize: '48px'
+        }).setOrigin(0.5);
+        popupContainer.add(warningIcon);
+
+        // Title
+        const title = this.add.text(0, -20, 'LOW STOCK WARNING', {
+            fontSize: '24px',
+            color: '#FFFFFF',
+            fontStyle: 'bold'
+        }).setOrigin(0.5);
+        popupContainer.add(title);
+
+        // Message
+        const stock = building.inventory.stock;
+        const message = this.add.text(0, 20, `${shopName} is running low on stock!\n\nOnly ${stock} units remaining.`, {
+            fontSize: '18px',
+            color: '#FFFFFF',
+            align: 'center'
+        }).setOrigin(0.5);
+        popupContainer.add(message);
+
+        // OK button
+        const okButton = this.add.text(0, 85, 'OK', {
+            fontSize: '20px',
+            color: '#FFFFFF',
+            backgroundColor: '#4CAF50',
+            padding: { x: 30, y: 10 }
+        }).setOrigin(0.5).setInteractive();
+        popupContainer.add(okButton);
+
+        // Close popup on click
+        okButton.on('pointerdown', () => {
+            popupContainer.destroy();
+            this.lowStockPopupShowing = false;
+        });
+
+        // Also close popup when clicking overlay
+        overlay.setInteractive();
+        overlay.on('pointerdown', () => {
+            popupContainer.destroy();
+            this.lowStockPopupShowing = false;
+        });
+
+        // Auto-close after 5 seconds
+        this.time.delayedCall(5000, () => {
+            if (popupContainer.scene) { // Check if still exists
+                popupContainer.destroy();
+                this.lowStockPopupShowing = false;
+            }
+        });
+    }
+
     updateBuildingPreview() {
         if (!this.buildMode || !this.selectedBuilding) {
             return;
@@ -5494,7 +5823,8 @@ class MainScene extends Phaser.Scene {
 
         // Check for overlaps with existing buildings (lot-based system)
         if (this.checkBuildingOverlap(x, building.width)) {
-            alert('This lot is already occupied!\n\nMove to an empty lot (grid space) to build.');
+            console.log('❌ This lot is already occupied!');
+            this.uiManager.addNotification('❌ This lot is already occupied! Move to an empty lot.');
             return false;
         }
 
@@ -5503,7 +5833,7 @@ class MainScene extends Phaser.Scene {
             if (this.money < building.cost || this.wood < building.wood || this.bricks < building.bricks) {
                 console.log('Not enough resources! Need: $' + building.cost + ', Wood:' + building.wood + ', Bricks:' + building.bricks);
                 console.log('You have: $' + this.money + ', Wood:' + this.wood + ', Bricks:' + this.bricks);
-                alert('Not enough resources!\n\nNeed: $' + building.cost + ', 🪵' + building.wood + ', 🧱' + building.bricks + '\nYou have: $' + this.money + ', 🪵' + this.wood + ', 🧱' + this.bricks);
+                this.uiManager.addNotification(`❌ Not enough resources! Need: $${building.cost}, 🪵${building.wood}, 🧱${building.bricks}`);
                 return false; // Return false to indicate failure
             }
 

@@ -604,6 +604,21 @@ export const BuildingTypes = {
         maxIncome: 120,
         district: 'recreation',
         emoji: '🎨'
+    },
+    subwayStation: {
+        name: 'Subway Station',
+        cost: 5000,
+        wood: 50,
+        bricks: 60,
+        width: 220,
+        height: 180,
+        color: 0x607D8B, // Blue Grey
+        incomeRate: 0,
+        maxIncome: 0,
+        district: 'downtown',
+        emoji: '🚇',
+        specialType: 'transit',
+        description: 'Travel to other streets'
     }
 };
 

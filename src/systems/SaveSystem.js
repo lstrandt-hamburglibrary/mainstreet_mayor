@@ -20,6 +20,7 @@ export class SaveSystem {
                 lastTaxCollection: this.scene.lastTaxCollection,
                 gameTime: this.scene.gameTime,
                 timeSpeed: this.scene.timeSpeed,
+                autoCollectionEnabled: this.scene.autoCollectionEnabled,
                 buildings: this.scene.buildings.map(b => {
                     // Sanitize rooms to remove circular references (guest -> hotelRoom -> guest)
                     let sanitizedRooms = undefined;
@@ -137,6 +138,13 @@ export class SaveSystem {
             this.scene.gameTime = saveData.gameTime || 0;
             this.scene.timeSpeed = saveData.timeSpeed || 1;
             this.scene.lastRealTime = Date.now(); // Reset to current time on load
+
+            // Restore auto-collection setting (default to true if not saved)
+            this.scene.autoCollectionEnabled = saveData.autoCollectionEnabled !== undefined ? saveData.autoCollectionEnabled : true;
+            // Update button text to reflect loaded setting
+            if (this.scene.autoCollectionButton) {
+                this.scene.autoCollectionButton.setText(this.scene.autoCollectionEnabled ? '💰 Auto-Collect: ON' : '💰 Auto-Collect: OFF');
+            }
 
             if (saveData.missions && this.scene.missionSystem) {
                 saveData.missions.forEach(savedMission => {

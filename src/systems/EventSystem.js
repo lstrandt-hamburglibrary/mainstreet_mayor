@@ -469,11 +469,13 @@ export class EventSystem {
         this.createAirplane('🧳 TOURISM SEASON! 🧳', this.scene.gameHeight * 0.2);
         this.scene.uiManager.addNotification('🧳 Tourist Wave! Extra visitors for 8 hours!');
 
-        // Spawn extra tourists
+        // Spawn extra tourists at random locations along the street
         const extraTourists = 5 + Math.floor(Math.random() * 10);
         for (let i = 0; i < extraTourists; i++) {
             this.scene.time.delayedCall(i * 1000, () => {
-                this.scene.citizenSystem.spawnCitizen(true); // Spawn as tourist
+                // Spawn tourists at random positions along the street
+                const spawnX = 500 + Math.random() * (this.scene.physics.world.bounds.width - 1000);
+                this.scene.citizenSystem.spawnTourist(spawnX);
             });
         }
 
@@ -531,7 +533,7 @@ export class EventSystem {
         const extraResidents = 3 + Math.floor(Math.random() * 7);
         for (let i = 0; i < extraResidents; i++) {
             this.scene.time.delayedCall(i * 2000, () => {
-                this.scene.citizenSystem.spawnCitizen(false); // Spawn as resident
+                this.scene.citizenSystem.spawnNewCitizen(); // Spawn new citizen
             });
         }
 

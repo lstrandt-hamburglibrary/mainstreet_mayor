@@ -38,24 +38,16 @@ export class TrainSystem {
             return; // No stations, no trains
         }
 
-        // Only spawn trains on the current street the player is viewing
-        const currentStreetIndex = this.scene.currentStreet - 1;
-        const street = this.scene.streets[currentStreetIndex];
+        console.log(`🚂 Spawning train with ${stations.length} station(s)`);
 
-        if (!street) {
-            return; // Street doesn't exist
-        }
-
-        console.log(`🚂 Spawning train on current street ${this.scene.currentStreet} with ${stations.length} station(s)`);
-
-        const trainY = street.platformY - 50;
+        // Use the platformY from the scene (single street system)
+        const trainY = (this.scene.platformY || this.scene.gameHeight - 100) - 50;
         const startX = -200; // Start off-screen left
 
-        this.createTrain(startX, trainY, 1, stations, this.scene.currentStreet);
+        this.createTrain(startX, trainY, 1, stations);
 
         if (this.scene.uiManager) {
-            const streetName = street.name || `Street ${this.scene.currentStreet}`;
-            this.scene.uiManager.addNotification(`🚂 Train arriving on ${streetName}!`);
+            this.scene.uiManager.addNotification(`🚂 Train arriving on Main Street!`);
         }
     }
 
@@ -146,14 +138,12 @@ export class TrainSystem {
             currentStationIndex: 0,
             isAtStation: false,
             stopTimer: 0,
-            maxCapacity: this.TRAIN_CAPACITY,
-            streetNumber: streetNumber // Track which street this train is on
+            maxCapacity: this.TRAIN_CAPACITY
         };
 
-        // Only show train if it's on the current street
-        const isOnCurrentStreet = streetNumber === this.scene.currentStreet;
-        container.setVisible(isOnCurrentStreet);
-        console.log(`🚂 Train created on street ${streetNumber}, visible: ${isOnCurrentStreet}`);
+        // Train is always visible (single street system)
+        container.setVisible(true);
+        console.log(`🚂 Train created`);
 
         this.trains.push(train);
     }
@@ -447,14 +437,13 @@ export class TrainSystem {
     }
 
     // Update train visibility based on current street
-    updateTrainVisibility(currentStreet) {
+    updateTrainVisibility() {
+        // Single street system - all trains are always visible
         for (let train of this.trains) {
-            const isOnCurrentStreet = train.streetNumber === currentStreet;
             if (train.container) {
-                train.container.setVisible(isOnCurrentStreet);
+                train.container.setVisible(true);
             }
         }
-        console.log(`🚂 Updated train visibility for street ${currentStreet}`);
     }
 
     destroy() {
