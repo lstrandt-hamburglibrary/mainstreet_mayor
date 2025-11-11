@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Main Street Mayor - Save Recovery</title>
+</head>
+<body>
+    <h1>Main Street Mayor - Save Data Recovery</h1>
+    <button onclick="checkSave()">Check for Save Data</button>
+    <button onclick="downloadSave()">Download Save Backup</button>
+    <button onclick="clearSave()">Clear Save (Start Fresh)</button>
+    <pre id="output"></pre>
+
+    <script>
+        function checkSave() {
+            const saveData = localStorage.getItem('mainstreetmayor_save');
+            const output = document.getElementById('output');
+
+            if (saveData) {
+                const parsed = JSON.parse(saveData);
+                output.textContent = 'Save data found!\n\n' + JSON.stringify(parsed, null, 2);
+                console.log('Save data:', parsed);
+            } else {
+                output.textContent = 'No save data found.';
+            }
+        }
+
+        function downloadSave() {
+            const saveData = localStorage.getItem('mainstreetmayor_save');
+            if (!saveData) {
+                alert('No save data found!');
+                return;
+            }
+
+            const blob = new Blob([saveData], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mainstreetmayor_backup.json';
+            a.click();
+        }
+
+        function clearSave() {
+            if (confirm('Are you sure you want to clear your save data? This cannot be undone!')) {
+                localStorage.removeItem('mainstreetmayor_save');
+                alert('Save cleared! The game will start fresh when you load it.');
+            }
+        }
+    </script>
+</body>
+</html>

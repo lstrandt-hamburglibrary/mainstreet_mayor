@@ -21,6 +21,8 @@ export class SaveSystem {
                 gameTime: this.scene.gameTime,
                 timeSpeed: this.scene.timeSpeed,
                 autoCollectionEnabled: this.scene.autoCollectionEnabled,
+                currentStreet: this.scene.currentStreet,
+                unlockedStreets: this.scene.unlockedStreets,
                 buildings: this.scene.buildings.map(b => {
                     // Sanitize rooms to remove circular references (guest -> hotelRoom -> guest)
                     let sanitizedRooms = undefined;
@@ -49,6 +51,7 @@ export class SaveSystem {
                         type: b.type,
                         x: b.x,
                         y: b.y,
+                        streetNumber: b.streetNumber || 1, // Which street this building is on
                         accumulatedIncome: b.accumulatedIncome || 0,
                         lastIncomeTime: b.lastIncomeTime || Date.now(),
                         storedResources: b.storedResources || 0,
@@ -146,6 +149,16 @@ export class SaveSystem {
                 this.scene.autoCollectionButton.setText(this.scene.autoCollectionEnabled ? '💰 Auto-Collect: ON' : '💰 Auto-Collect: OFF');
             }
 
+            // Restore multi-street data
+            this.scene.currentStreet = saveData.currentStreet || 1;
+            this.scene.unlockedStreets = saveData.unlockedStreets || 1;
+            // Update street unlocked states
+            if (this.scene.streets) {
+                for (let i = 0; i < this.scene.unlockedStreets && i < this.scene.streets.length; i++) {
+                    this.scene.streets[i].unlocked = true;
+                }
+            }
+
             if (saveData.missions && this.scene.missionSystem) {
                 saveData.missions.forEach(savedMission => {
                     const mission = this.scene.missionSystem.missions.find(m => m.id === savedMission.id);
@@ -186,11 +199,12 @@ export class SaveSystem {
                         console.log(`Migrating old 'shop' building to 'clothingShop'`);
                         buildingData.type = 'clothingShop';
                     }
-                    console.log(`Loading building ${index}: ${buildingData.type} at x=${buildingData.x}`);
+                    console.log(`Loading building ${index}: ${buildingData.type} at x=${buildingData.x}, street=${buildingData.streetNumber || 1}`);
                     this.loadBuilding(
                         buildingData.type,
                         buildingData.x,
                         buildingData.y,
+                        buildingData.streetNumber || 1, // Street number
                         buildingData.accumulatedIncome || 0,
                         buildingData.lastIncomeTime || Date.now(),
                         buildingData.storedResources || 0,
@@ -230,7 +244,7 @@ export class SaveSystem {
         }
     }
 
-    loadBuilding(type, x, y, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0, hasMaid = null, maidDailyWage = null, lastMaidWageCheck = null, lastMaidClean = null, tables = null, hasDayWaiter = null, hasNightWaiter = null, dayWaiterWage = null, nightWaiterWage = null, mealPrice = null) {
+    loadBuilding(type, x, y, streetNumber = 1, accumulatedIncome = 0, lastIncomeTime = Date.now(), storedResources = 0, lastResourceTime = Date.now(), units = null, rooms = null, lastNightCheck = null, placedDistrict = null, districtBonus = 1.0, inventory = null, hasEmployee = null, isOpen = null, dailyWage = null, lastWageCheck = null, lastAutoClean = null, facadeVariation = 0, hasMaid = null, maidDailyWage = null, lastMaidWageCheck = null, lastMaidClean = null, tables = null, hasDayWaiter = null, hasNightWaiter = null, dayWaiterWage = null, nightWaiterWage = null, mealPrice = null) {
         console.log(`🔍 Attempting to load building: type=${type}, x=${x}`);
         const building = this.scene.buildingTypes[type];
         if (!building) {
@@ -283,6 +297,7 @@ export class SaveSystem {
             type: type,
             x: x,
             y: buildingY,
+            streetNumber: streetNumber, // Which street this building is on
             accumulatedIncome: accumulatedIncome,
             lastIncomeTime: lastIncomeTime,
             storedResources: storedResources,
